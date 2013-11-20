@@ -1,0 +1,24 @@
+.DS_Store
+.nodemonignore
+public/lib
+
+# Ignore only folders inside node_modules
+# files like helper.js/test_helper.js/etc get into repo
+node_modules/*/
+
+# exclude files from cdn
+public/cdn/js/*
+!public/cdn/js/.gitkeep
+public/cdn/css/*
+!public/cdn/css/.gitkeep
+public/cdn/img/*
+!public/cdn/img/.gitkeep
+public/cdn/lib/*
+!public/cdn/lib/.gitkeep
+public/cdn/views/*
+!public/cdn/views/.gitkeep
+public/cdn/font/*
+!public/cdn/font/.gitkeep
+
+# Vim settings
+.rootdir

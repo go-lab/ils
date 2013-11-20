@@ -1,0 +1,40 @@
+{
+  "name": "ils",
+  "description": "ils",
+  "version": "1.0.0",
+  "private": false,
+  "author": "Evgeny Bogdanov",
+  "engines": {
+    "node": "0.10.x",
+    "npm": "1.2.x"
+  },
+  "scripts": {
+    "start": "NODE_ENV=development ./node_modules/.bin/nodemon server.js",
+    "test": "NODE_ENV=test ./node_modules/.bin/mocha --reporter spec test/test-*.js",
+    "postinstall": ""
+  },
+  "dependencies": {
+    "jade": "latest",
+    "underscore": "latest",
+    "async": "latest",
+    "moment": "latest"
+  },
+  "devDependencies": {
+    "node-inspector": "latest",
+    "mocha": "latest",
+    "grunt": "~0.4.1",
+    "grunt-contrib-watch": "~0.5.1",
+    "grunt-nodemon": "~0.1.0",
+    "grunt-concurrent": "~0.3.0",
+    "grunt-contrib-stylus": "~0.7.0",
+    "grunt-contrib-coffee": "~0.7.0",
+    "grunt-shell": "~0.3.1",
+    "grunt-contrib-jade": "~0.8.0",
+    "grunt-contrib-cssmin": "~0.6.1",
+    "grunt-contrib-uglify": "~0.2.2",
+    "grunt-mocha": "~0.4.1",
+    "chai": "~1.7.2",
+    "require-uncache": "0.0.2",
+    "sinon": "~1.7.3"
+  }
+}

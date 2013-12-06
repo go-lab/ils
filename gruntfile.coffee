@@ -158,7 +158,7 @@ module.exports = (grunt) ->
           stdout: true
           stderr: true
         command: [
-          # minify the iwc.js file
+          # minify the ils.js file
           "grunt uglify:minify"
           # using rsync with compression
           "rsync -az --delete --force ./lib/*.min.js admin@graasp.epfl.ch:/Graaasp/shared/system/gadgets_src/libs/"

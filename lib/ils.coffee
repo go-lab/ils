@@ -50,5 +50,14 @@ ils =
       osapi.spaces.get({ contextId: space.id }).execute (parent) ->
         cb(parent.metadata.type)
 
+  # return: action logger object
+  getActionLogger: (metadataHandler, cb) ->
+    cb(new ut.commons.actionlogging.ActionLogger(metaDataHandler))
+
+  # return: notification client object
+  getNotificationClient: (cb) ->
+    osapi.context.get().execute: (space) ->
+      cb(new ude.commons.NotificationClient(space.id))
+
 # attache ils to the window object
 window.ils = ils

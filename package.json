@@ -3,7 +3,7 @@
   "description": "ils",
   "version": "1.0.0",
   "private": false,
-  "author": "Evgeny Bogdanov",
+  "author": "Na Li",
   "engines": {
     "node": "0.10.x",
     "npm": "1.2.x"

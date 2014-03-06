@@ -35,9 +35,17 @@ ils =
   # return: ILS in callback
   getIls: (cb) ->
     osapi.context.get().execute (space) ->
-      osapi.spaces.get({ contextId: space.id }).execute (parentSpace) ->
-        osapi.spaces.get({ contextId: parentSpace.parentId }).execute (ils) ->
-          cb(ils)
+      osapi.spaces.get({ contextId: space.contextId }).execute (parentSpace) ->
+        osapi.spaces.get({ contextId: parentSpace.parentId }).execute (parentIls) ->
+          cb(parentIls)
+
+  # return: Vault in callback
+  getVault: (cb) ->
+    ils.getIls (parentIls) ->
+      console.log parentIls.id
+      osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute (subspaces) ->
+        vault = (item for item in subspaces.list when JSON.parse(item.metadata).type == "Vault")
+        cb(vault[0])
 
   # return: phase in callback
   getParentInquiryPhase: (cb) ->
@@ -56,7 +64,7 @@ ils =
 
   # return: notification client object
   getNotificationClient: (cb) ->
-    osapi.context.get().execute: (space) ->
+    osapi.context.get().execute(space) ->
       cb(new ude.commons.NotificationClient(space.id))
 
 # attache ils to the window object

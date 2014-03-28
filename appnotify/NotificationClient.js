@@ -2,9 +2,10 @@ window.ude = window.ude || {};
 window.ude.commons = window.ude.commons || {};
 
 ude.commons.NotificationClient = (function() {
-    NotificationClient = function(clientId) {
+    NotificationClient = function(metadataHandler) {
         this.listeners = [];
-        this._initServerConnection(clientId);
+        this.clientId = metadataHandler.getProvider().id + metadataHandler.getActor().id + metadataHandler.getGenerator().id;
+        this._initServerConnection(this.clientId);
     };
 
     NotificationClient.prototype = {
@@ -27,12 +28,12 @@ ude.commons.NotificationClient = (function() {
             });
         },
 
-        _initServerConnection: function(clientID) {
-            var socket = io.connect('http://localhost:8899');
-            socket.on(clientID, function(data) {
+        _initServerConnection: function(socketId) {
+            var socket = io.connect('http://golab.collide.info');
+            socket.on(socketId, function(data) {
                 this.processNotification(data);
             }.bind(this));
-        },
+        }
     };
 
     return NotificationClient;

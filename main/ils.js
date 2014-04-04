@@ -53,17 +53,38 @@ ILS Library for Go-Lab
         });
       });
     },
+    // getIls: function(cb) {
+    //   return osapi.context.get().execute(function(space) {
+    //     return osapi.spaces.get({
+    //       contextId: space.contextId
+    //     }).execute(function(parentSpace) {
+    //       return osapi.spaces.get({
+    //         contextId: parentSpace.parentId
+    //       }).execute(function(parentIls) {
+    //         return cb(parentIls);
+    //       });
+    //     });
+    //   });
+    // },
     getIls: function(cb) {
-      return osapi.context.get().execute(function(space) {
-        return osapi.spaces.get({
-          contextId: space.contextId
-        }).execute(function(parentSpace) {
-          return osapi.spaces.get({
-            contextId: parentSpace.parentId
-          }).execute(function(parentIls) {
-            return cb(parentIls);
+      osapi.context.get().execute(function(space) {
+        if (!space.error) {
+          console.log("print context");
+          console.log(space);
+          osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
+            if(!parentSpace.error){
+              console.log("print parent space");
+              console.log(parentSpace);
+              osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
+                if(!parentIls.error){
+                  console.log("print ils space");
+                  console.log(parentIls);
+                  return cb(parentIls);
+                }
+              });
+            }
           });
-        });
+        }
       });
     },
     getVault: function(cb) {

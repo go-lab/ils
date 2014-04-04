@@ -13,22 +13,25 @@
  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.0/jquery.min.js"></script>
  <script type="text/javascript" src="../main/ils.js"></script>
  <script type="text/javascript">
+  var getData = function() {
+  debugger
+  ils.getIls(function(ils_space){
+    debugger
+    console.log(ils_space);
+    $('#get_ils').append("ILS id " + ils_space.id);
+  });
 
 
-  function getData() {
-    ils.getIls(function(ils_space){
-      console.log(ils_space);
-      $('#get_ils').append("ILS id " + ils_space.id);
-    });
-    ils.getVault(function(vault){
-      console.log(vault);
+    //ils.getVault(function(vault){
+      //console.log(vault);
       
-      $('#get_vault').append("Vault id " + vault.id);
-    });
+      //$('#get_vault').append("Vault id " + vault.id);
+    //});
   };
 
   // console.log(gadgets);
   gadgets.util.registerOnLoadHandler(getData);
+
   </script>
   <div id="get_ils"><b>ils.getIls:</b> </div>
   <div id="get_vault"><b>ils.getVault:</b> </div>

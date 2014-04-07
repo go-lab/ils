@@ -34,7 +34,7 @@ ILS Library for Go-Lab
         });
       });
     },
-    readVault: function(docId, cb) {
+    readResource: function(docId, cb) {
       return osapi.documents.get({
         contextId: docId,
         size: "-1"
@@ -42,7 +42,7 @@ ILS Library for Go-Lab
         return cb(document);
       });
     },
-    createVault: function() {},
+    createResource: function() {},
     listVault: function(cb) {
       return getVault(function(vault) {
         return osapi.documents.get({

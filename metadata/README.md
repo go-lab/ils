@@ -1,4 +1,1 @@
-metadata
-========
-
-A library to handle metadata in Go-Lab client-side apps/gadgets.
+Documentation can be found in the [Wiki](https://github.com/go-lab/ils/wiki/MetadataHandler)

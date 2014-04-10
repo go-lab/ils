@@ -43,11 +43,25 @@
       });
     });
 
-    //read a resource in the Vault
+    // read a resource in the Vault
     ils.readResource(15628, function(resource){
       console.log("print the resource");
       console.log(resource);
       $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);
+    });
+
+    // get parent space
+    ils.getParent(function(parent){
+      console.log("print parent");
+      console.log(parent);
+      $('#get_parent').append("parent id and name: " + parent.id + " " + parent.displayName);
+    });
+
+    // get parent inquiry phase
+    ils.getParentInquiryPhase(function(phase){
+      console.log("print parent phase");
+      console.log(phase);
+      $('#get_parent_phase').append(phase);
     });
   };
 
@@ -60,6 +74,8 @@
   <div id="get_vault"><b>ils.getVault:</b> </div>
   <div id="list_vault"><b>ils.listVault:</b> </div>
   <div id="read_resource"><b>ils.readResource:</b> </div>
+  <div id="get_parent"><b>ils.getParent:</b> </div>
+  <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
   <br />
   ]]>
   </Content>

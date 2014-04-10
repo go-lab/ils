@@ -13,10 +13,8 @@ ILS Library for Go-Lab
       return cb(username);
     },
     getParent: function(cb) {
-      return osapi.context.get().execute(function(space) {
-        return osapi.spaces.get({
-          contextId: space.id
-        }).execute(function(parent) {
+      osapi.context.get().execute(function(context_space) {
+        osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
           return cb(parent);
         });
       });
@@ -82,16 +80,7 @@ ILS Library for Go-Lab
     },
     getParentInquiryPhase: function(cb) {
       return this.getParent(function(parent) {
-        return cb(parent.metadata.type);
-      });
-    },
-    getParentInquiryPhase: function(cb) {
-      return osapi.context.get().execute(function(space) {
-        return osapi.spaces.get({
-          contextId: space.id
-        }).execute(function(parent) {
-          return cb(parent.metadata.type);
-        });
+        return cb(JSON.parse(parent.metadata).type);
       });
     },
     getActionLogger: function(metadataHandler, cb) {

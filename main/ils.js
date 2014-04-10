@@ -21,12 +21,9 @@ ILS Library for Go-Lab
         });
       });
     },
-    readResource: function(docId, cb) {
-      return osapi.documents.get({
-        contextId: docId,
-        size: "-1"
-      }).execute(function(document) {
-        return cb(document);
+    readResource: function(resourceId, cb) {
+      osapi.documents.get({contextId: resourceId}).execute(function(resource){
+        return cb(resource);
       });
     },
     createResource: function() {},

@@ -42,6 +42,13 @@
         $('#list_vault').append("<div>" + value.id + " " + value.displayName + "</div>");
       });
     });
+
+    //read a resource in the Vault
+    ils.readResource(15628, function(resource){
+      console.log("print the resource");
+      console.log(resource);
+      $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);
+    });
   };
 
   // console.log(gadgets);
@@ -52,6 +59,7 @@
   <div id="get_ils"><b>ils.getIls:</b> </div>
   <div id="get_vault"><b>ils.getVault:</b> </div>
   <div id="list_vault"><b>ils.listVault:</b> </div>
+  <div id="read_resource"><b>ils.readResource:</b> </div>
   <br />
   ]]>
   </Content>

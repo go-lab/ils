@@ -14,6 +14,19 @@
  <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery.cookie.js"></script>
  <script type="text/javascript" src="../main/ils.js"></script>
  <script type="text/javascript">
+
+  var getQueryVariable = function(variable) {
+    var query = window.location.search.substring(1);
+    var vars = query.split('&');
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split('=');
+        if (decodeURIComponent(pair[0]) == variable) {
+            return decodeURIComponent(pair[1]);
+        }
+    }
+    console.log('Query variable %s not found', variable);
+  };
+
   var getData = function() {
     // get current user and print it
     ils.getCurrentUser(function(current_user){
@@ -63,6 +76,28 @@
       console.log(phase);
       $('#get_parent_phase').append(phase);
     });
+
+    // create resource in Vault
+    var action = "/rpc?method=documents.create&id=documents.create";
+    action = action + "&st=" + getQueryVariable("st");
+    
+    var form = document.getElementById('file_form');
+    form.setAttribute("action", action);
+    var request={"method":"documents.create",
+      "params": {
+        "document": {
+          "displayName": "test_file3",
+          "parentId": 9569,
+          "mimeType": "txt",
+          "fileName": "my file",
+          "content": "adfakdjfljlksdjfl"
+        }
+      },
+      "id":"documents.create"
+    }
+    // add request payload to the form
+    $('#request').val(JSON.stringify(request));
+    form.submit();
   };
 
   // console.log(gadgets);
@@ -76,6 +111,9 @@
   <div id="read_resource"><b>ils.readResource:</b> </div>
   <div id="get_parent"><b>ils.getParent:</b> </div>
   <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
+  <form method="post" action="/" id="file_form" enctype = "multipart/form-data">
+    <input id="request" type="hidden" name="request"></input>
+  </form>
   <br />
   ]]>
   </Content>

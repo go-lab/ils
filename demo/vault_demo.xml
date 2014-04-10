@@ -19,6 +19,7 @@
     ils.getCurrentUser(function(current_user){
       console.log("print current user");
       console.log(current_user);
+      $('#get_current_user').append("Current user nickname: " + current_user);
     });
 
     // get the ILS and print it
@@ -38,6 +39,7 @@
   gadgets.util.registerOnLoadHandler(getData);
 
   </script>
+  <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
   <div id="get_ils"><b>ils.getIls:</b> </div>
   <div id="get_vault"><b>ils.getVault:</b> </div>
   <br />

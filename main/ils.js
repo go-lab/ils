@@ -31,28 +31,13 @@ ILS Library for Go-Lab
     },
     createResource: function() {},
     listVault: function(cb) {
-      return getVault(function(vault) {
-        return osapi.documents.get({
-          contextId: vault.id,
-          contextType: "@space"
-        }).execute(function(documents) {
-          return cb(documents);
+      ils.getVault(function(vault) {
+        osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
+          console.log("print resources");
+          return cb(resources.list);
         });
       });
     },
-    // getIls: function(cb) {
-    //   return osapi.context.get().execute(function(space) {
-    //     return osapi.spaces.get({
-    //       contextId: space.contextId
-    //     }).execute(function(parentSpace) {
-    //       return osapi.spaces.get({
-    //         contextId: parentSpace.parentId
-    //       }).execute(function(parentIls) {
-    //         return cb(parentIls);
-    //       });
-    //     });
-    //   });
-    // },
     getIls: function(cb) {
       osapi.context.get().execute(function(space) {
         if (!space.error) {

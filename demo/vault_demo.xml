@@ -33,6 +33,15 @@
       console.log(vault);
       $('#get_vault').append("Vault id " + vault.id);
     });
+
+    // get all resources in the Vault
+    ils.listVault(function(resources){
+      console.log("resources in the Vault");
+      console.log(resources);
+      $.each(resources, function(index, value) {
+        $('#list_vault').append("<div>" + value.id + " " + value.displayName + "</div>");
+      });
+    });
   };
 
   // console.log(gadgets);
@@ -42,6 +51,7 @@
   <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
   <div id="get_ils"><b>ils.getIls:</b> </div>
   <div id="get_vault"><b>ils.getVault:</b> </div>
+  <div id="list_vault"><b>ils.listVault:</b> </div>
   <br />
   ]]>
   </Content>

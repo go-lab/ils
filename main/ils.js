@@ -8,22 +8,9 @@ ILS Library for Go-Lab
 
   ils = {
     getCurrentUser: function(cb) {
-      var username;
-      username = $.cookie('user_name');
-      return this.getIls(function(ils) {
-        return osapi.appdata.get({
-          userId: prefixContextId,
-          keys: ["users"]
-        }).execute(function(allUsers) {
-          var userId;
-          userId = _.filter(allUsers, username);
-          return osapi.people.get({
-            userId: userId
-          }).execute(function(user) {
-            return cb(user);
-          });
-        });
-      });
+      var username = "";
+      username = $.cookie('graasp_user');
+      return cb(username);
     },
     getParent: function(cb) {
       return osapi.context.get().execute(function(space) {

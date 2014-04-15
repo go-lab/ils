@@ -57,7 +57,7 @@
     });
 
     // read a resource in the Vault
-    ils.readResource(15628, function(resource){
+    ils.readResource(15339, function(resource){
       console.log("print the resource");
       console.log(resource);
       $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);
@@ -77,28 +77,43 @@
       $('#get_parent_phase').append(phase);
     });
 
-    // create resource in Vault
-    var action = "/rpc?method=documents.create&id=documents.create";
-    action = action + "&st=" + getQueryVariable("st");
-    
-    var form = document.getElementById('file_form');
-    form.setAttribute("action", action);
-    var request={"method":"documents.create",
-      "params": {
-        "document": {
-          "displayName": "test_file3",
-          "parentId": 9569,
-          "mimeType": "txt",
-          "fileName": "my file",
-          "content": "adfakdjfljlksdjfl"
+
+    var example_content = {
+       "concepts": [
+          {
+            "x": 297,
+            "y": 188,
+            "content": "energy",
+            "id": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
+            "type": "ut_tools_conceptmapper_conceptSelector",
+            "colorClass": "ut_tools_conceptmapper_blue"
+          },
+          {
+            "x": 652,
+            "y": 238,
+            "content": "thermodynamic temperature",
+            "id": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
+            "type": "ut_tools_conceptmapper_conceptSelector",
+            "colorClass": "ut_tools_conceptmapper_blue"
+          }
+      ],
+      "relations": [
+        {
+            "source": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
+            "target": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
+            "id": "con_71",
+            "content": "influences"
         }
-      },
-      "id":"documents.create"
-    }
-    // add request payload to the form
-    $('#request').val(JSON.stringify(request));
-    form.submit();
-  };
+      ]
+    };
+
+    // create a resource in the Vault
+    ils.createResource("test", example_content, function(resource){
+      console.log(resource);
+      $('#create_resource').append("new resource id and content: " + resource.id);
+    });
+
+  }
 
   // console.log(gadgets);
   gadgets.util.registerOnLoadHandler(getData);
@@ -111,9 +126,7 @@
   <div id="read_resource"><b>ils.readResource:</b> </div>
   <div id="get_parent"><b>ils.getParent:</b> </div>
   <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
-  <form method="post" action="/" id="file_form" enctype = "multipart/form-data">
-    <input id="request" type="hidden" name="request"></input>
-  </form>
+  <div id="create_resource"><b>ils.createResource:</b> </div>
   <br />
   ]]>
   </Content>

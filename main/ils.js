@@ -20,15 +20,35 @@ ILS Library for Go-Lab
       });
     },
     readResource: function(resourceId, cb) {
-      osapi.documents.get({contextId: resourceId}).execute(function(resource){
+      osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
+        // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
+        resource["content"] = JSON.parse(window.atob(resource["data"]));
         return cb(resource);
       });
     },
-    createResource: function() {},
+    createResource: function(resourceName, content, cb) {
+      ils.getVault(function(vault) {
+        ils.getCurrentUser(function(username){
+          var params = {
+            "document": {
+              "parentType": "@space",
+              "parentId": vault.id,
+              "displayName": resourceName,
+              "mimeType": "txt",
+              "fileName": resourceName,
+              "metadata": { "username": username },
+              "content": JSON.stringify(content)
+            }
+          };
+          osapi.documents.create(params).execute(function(resource){
+            cb(resource.entry);
+          });
+        });
+      });
+    },
     listVault: function(cb) {
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          console.log("print resources");
           return cb(resources.list);
         });
       });

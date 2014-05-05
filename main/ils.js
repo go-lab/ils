@@ -77,22 +77,20 @@ ILS Library for Go-Lab
     getVault: function(cb) {
       return ils.getIls(function(parentIls) {
         console.log(parentIls.id);
-        return osapi.spaces.get({
-          contextId: parentIls.id,
-          contextType: "@space"
-        }).execute(function(subspaces) {
+        return osapi.spaces.get({contextId: parentIls.id, contextType: "@space"
+      }).execute(function(subspaces) {
           var item, vault;
           vault = (function() {
-            var _i, _len, _ref, _results;
-            _ref = subspaces.list;
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              item = _ref[_i];
+            var i, len, ref, results;
+            ref = subspaces.list;
+            results = [];
+            for (i = 0, len = ref.length; i < len; i++) {
+              item = ref[i];
               if (JSON.parse(item.metadata).type === "Vault") {
-                _results.push(item);
+                results.push(item);
               }
             }
-            return _results;
+            return results;
           })();
           return cb(vault[0]);
         });

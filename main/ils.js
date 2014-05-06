@@ -60,7 +60,7 @@ ILS Library for Go-Lab
       }else{
           var error = {"error" : "resourceName cannot be null. Cannot create resource."};
           return cb(error);
-      }
+        }
     },
     listVault: function(cb) {
       ils.getVault(function(vault) {
@@ -133,8 +133,20 @@ ILS Library for Go-Lab
     });
     },
     getParentInquiryPhase: function(cb) {
-      return this.getParent(function(parent) {
-        return cb(JSON.parse(parent.metadata).type);
+      var error = '';
+      this.getParent(function(parent) {
+        if(!parent.error){
+          if(JSON.parse(parent.metadata) != null && JSON.parse(parent.metadata) != undefined){
+            return cb(JSON.parse(parent.metadata).type);
+          }
+          else{
+            error = {"error" : "This is not an inquiry phase"};
+            return error;
+          }
+        }else{
+          error = {"error" : "Cannot get parent inquiry phase"};
+          return error;
+        }
       });
     },
     getActionLogger: function(metadataHandler, cb) {

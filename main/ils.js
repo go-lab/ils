@@ -56,10 +56,11 @@ ILS Library for Go-Lab
             cb(resource.entry);
           });
         });
-        });}else{
+        });
+      }else{
           var error = {"error" : "resourceName cannot be null. Cannot create resource."};
           return cb(error);
-        }
+      }
     },
     listVault: function(cb) {
       ils.getVault(function(vault) {

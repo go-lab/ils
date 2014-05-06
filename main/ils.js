@@ -20,11 +20,22 @@ ILS Library for Go-Lab
       });
     },
     readResource: function(resourceId, cb) {
-      osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
-        // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
-        resource["content"] = JSON.parse(window.atob(resource["data"]));
-        return cb(resource);
+      var error = '';
+      if(resourceId > 0){
+        osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
+          if(!resource.error){
+          // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
+          resource["content"] = JSON.parse(window.atob(resource["data"]));
+          return cb(resource);
+        }else{
+          error = 'Cannot get resource';
+          return cb(error);
+        }
       });
+      }else{
+        error = 'resourceId cannot be 0 or negative';
+        return cb(error);
+      }
     },
     createResource: function(resourceName, content, cb) {
       ils.getVault(function(vault) {
@@ -77,23 +88,23 @@ ILS Library for Go-Lab
     getVault: function(cb) {
       return ils.getIls(function(parentIls) {
         console.log(parentIls.id);
-        return osapi.spaces.get({contextId: parentIls.id, contextType: "@space"
-      }).execute(function(subspaces) {
-          var item, vault;
-          vault = (function() {
-            var i, len, ref, results;
-            ref = subspaces.list;
-            results = [];
-            for (i = 0, len = ref.length; i < len; i++) {
-              item = ref[i];
-              if (JSON.parse(item.metadata).type === "Vault") {
-                results.push(item);
+        return osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
+          function(subspaces) {
+            var item, vault;
+            vault = (function() {
+              var i, len, ref, results;
+              ref = subspaces.list;
+              results = [];
+              for (i = 0, len = ref.length; i < len; i++) {
+                item = ref[i];
+                if (JSON.parse(item.metadata).type === "Vault") {
+                  results.push(item);
+                }
               }
-            }
-            return results;
-          })();
-          return cb(vault[0]);
-        });
+              return results;
+            })();
+            return cb(vault[0]);
+          });
       });
     },
     getParentInquiryPhase: function(cb) {

@@ -9,14 +9,26 @@ ILS Library for Go-Lab
   ils = {
     getCurrentUser: function(cb) {
       var username = "";
+      var error = {"error" : "Cannot get username"};
       username = $.cookie('graasp_user');
-      return cb(username);
+      if (username != undefined && username != null && username != "")
+        return cb(username);
+      else
+        return cb(error);
     },
     getParent: function(cb) {
+      var error = {"error" : "Connot get parent space"};
       osapi.context.get().execute(function(context_space) {
-        osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
-          return cb(parent);
-        });
+        if(context_space != undefined && context_space != null && !context_space.error){
+          osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
+            if(!parent.error)
+              return cb(parent);
+            else
+              return cb(error);
+         });
+        }else{
+          return cb(error);
+        }
       });
     },
     readResource: function(resourceId, cb) {
@@ -28,12 +40,12 @@ ILS Library for Go-Lab
           resource["content"] = JSON.parse(window.atob(resource["data"]));
           return cb(resource);
         }else{
-          error = 'Cannot get resource';
+          error = {"error" : "Cannot get resource"};
           return cb(error);
         }
       });
       }else{
-        error = 'resourceId cannot be 0 or negative';
+        error = {"error" : "resourceId cannot be 0 or negative"};
         return cb(error);
       }
     },
@@ -63,9 +75,13 @@ ILS Library for Go-Lab
         }
     },
     listVault: function(cb) {
+      var error = {"error" : "Cannot get the resources in the Vault"};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          return cb(resources.list);
+          if(resources.list.length > 0) 
+            return cb(resources.list);
+          else
+            return cb(error);
         });
       });
     },
@@ -141,11 +157,11 @@ ILS Library for Go-Lab
           }
           else{
             error = {"error" : "This is not an inquiry phase"};
-            return error;
+            return cb(error);
           }
         }else{
           error = {"error" : "Cannot get parent inquiry phase"};
-          return error;
+          return cb(error);
         }
       });
     },

@@ -66,7 +66,7 @@ ILS Library for Go-Lab
                 if(!parentIls.error){
                   console.log("print ils space");
                   console.log(parentIls);
-                  return cb(parentIls);
+                  return cb(parentIls, parentSpace);
                 }
               });
             }

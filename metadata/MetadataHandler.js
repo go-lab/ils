@@ -25,6 +25,7 @@
       "objectType": "ils",
       "url": "http://graasp.epfl.ch/metawidget/1/b387b6f...",
       "id": "0f8184db-53ba-4868-9208-896c3d7c25bb",
+      "inquiryPhase": "orientation"
       "displayName": "name-of-ils"
     }
   }
@@ -44,20 +45,20 @@
 
   window.golab.ils.metadata.MetadataHandler = (function() {
     function MetadataHandler(metadata, cb) {
+      var _this = this;
       console.log("Initializing MetadataHandler.");
       if (metadata) {
         this._metadata = JSON.parse(JSON.stringify(metadata));
       } else {
-        throw "MetadataHandler needs a initial metadata at construction!";
-      }
-      if (window["sessionId"]) {
-        this._metadata.provider.id = window["sessionId"];
+        throw "MetadataHandler needs an initial set of metadata at construction!";
       }
       setTimeout(function() {
         if (cb) {
-          return cb(null, this);
+          return cb(null, _this);
         }
       }, 0);
+      console.log("using metadata:");
+      console.log(this._metadata);
       this;
     }
 
@@ -66,13 +67,12 @@
       return this;
     };
 
-    MetadataHandler.prototype.mergeMetadata = function(newMetadata) {
-      throw "not implemented yet.";
-      return this;
-    };
-
     MetadataHandler.prototype.getMetadata = function() {
       return this._metadata;
+    };
+
+    MetadataHandler.prototype.setActor = function(newActor) {
+      return this._metadata.actor = newActor;
     };
 
     MetadataHandler.prototype.getActor = function() {
@@ -81,6 +81,10 @@
 
     MetadataHandler.prototype.getTarget = function() {
       return this._metadata.target;
+    };
+
+    MetadataHandler.prototype.setTarget = function(newTarget) {
+      return this._metadata.target = JSON.parse(JSON.stringify(newTarget));
     };
 
     MetadataHandler.prototype.getGenerator = function() {
@@ -107,29 +111,36 @@
     __extends(GoLabMetadataHandler, _super);
 
     function GoLabMetadataHandler(metadata, cb) {
-      var _this = this;
-      if (metadata.provider == null) {
-        metadata.provider = {
-          objectType: 'ils'
-        };
-      }
-      if (metadata.actor == null) {
-        metadata.actor = {
-          objectType: 'person'
-        };
-      }
+      var error,
+        _this = this;
       if (typeof osapi !== "undefined" && osapi !== null) {
-        osapi.context.get().execute(function(result) {
-          metadata.provider.id = result.contextId;
-          return osapi.people.getViewer().execute(function(viewer) {
-            metadata.actor.id = viewer.id;
-            metadata.displayName = viewer.displayName;
-            GoLabMetadataHandler.__super__.constructor.call(_this, metadata);
-            return cb(null, _this);
+        console.log("Retrieving metadata from osapi/ils.");
+        try {
+          metadata.actor.displayName = $.cookie('graasp_user');
+          if (!ils) {
+            throw new Error("ILS library needs to be present before using the (GoLab)MetadataHandler.");
+          }
+          ils.getIls(function(ilsSpace, phaseSpace) {
+            var actorId;
+            metadata.generator.url = gadgets.util.getUrlParameters().url;
+            metadata.provider.objectType = ilsSpace.spaceType;
+            metadata.provider.id = ilsSpace.objectId;
+            metadata.provider.displayName = ilsSpace.displayName;
+            metadata.provider.url = ilsSpace.profileUrl;
+            metadata.provider.inquiryPhase = phaseSpace.displayName;
+            actorId = metadata.actor.displayName + "@" + metadata.provider.id;
+            return metadata.actor.id = actorId;
           });
-        });
+        } catch (_error) {
+          error = _error;
+          console.warn("error during metadata retrieval:");
+          console.warn(error);
+        } finally {
+          GoLabMetadataHandler.__super__.constructor.call(this, metadata);
+          cb(null, this);
+        }
       } else {
-        console.warn("Could not get infos from osapi, using given metadata.");
+        console.log("Using given metadata.");
         GoLabMetadataHandler.__super__.constructor.call(this, metadata);
         cb(null, this);
       }

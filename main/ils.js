@@ -32,7 +32,7 @@ ILS Library for Go-Lab
       });
     },
     readResource: function(resourceId, cb) {
-      var error = '';
+      var error = {};
       if(resourceId > 0){
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if(!resource.error){
@@ -114,7 +114,7 @@ ILS Library for Go-Lab
       });
     },
     getVault: function(cb) {
-      var error = '';
+      var error = {};
       ils.getIls(function(parentIls) {
         if(!parentIls.error){
         console.log(parentIls.id);
@@ -149,18 +149,11 @@ ILS Library for Go-Lab
     });
     },
     getParentInquiryPhase: function(cb) {
-      var error = '';
+      var error = {"error" : "Cannot get parent inquiry phase"};
       this.getParent(function(parent) {
-        if(!parent.error){
-          if(JSON.parse(parent.metadata) != null && JSON.parse(parent.metadata) != undefined){
-            return cb(JSON.parse(parent.metadata).type);
-          }
-          else{
-            error = {"error" : "This is not an inquiry phase"};
-            return cb(error);
-          }
+        if(!parent.error && parent.metadata != null && parent.metadata != undefined){
+          return cb(JSON.parse(parent.metadata).type);
         }else{
-          error = {"error" : "Cannot get parent inquiry phase"};
           return cb(error);
         }
       });

@@ -24,6 +24,7 @@
       "objectType": "ils",
       "url": "http://graasp.epfl.ch/metawidget/1/b387b6f...",
       "id": "0f8184db-53ba-4868-9208-896c3d7c25bb",
+      "inquiryPhase": "orientation"
       "displayName": "name-of-ils"
     }
   }
@@ -43,12 +44,12 @@ class window.golab.ils.metadata.MetadataHandler
       # cloning the parameter to avoid side-effects
       @_metadata = JSON.parse(JSON.stringify(metadata))
     else
-      throw "MetadataHandler needs a initial metadata at construction!"
-    if window["sessionId"]
-      @_metadata.provider.id = window["sessionId"]
-    setTimeout(->
+      throw "MetadataHandler needs an initial set of metadata at construction!"
+    setTimeout(=>
       cb(null, @) if cb
     , 0)
+    console.log "using metadata:"
+    console.log @_metadata
     @
 
   setMetadata: (newMetadata) ->
@@ -56,19 +57,20 @@ class window.golab.ils.metadata.MetadataHandler
     @_metadata = JSON.parse(JSON.stringify(newMetadata))
     @
 
-  mergeMetadata: (newMetadata) ->
-    # todo
-    throw("not implemented yet.")
-    @
-
   getMetadata: () ->
     @_metadata
+
+  setActor:(newActor) ->
+    @_metadata.actor = newActor
 
   getActor: () ->
     @_metadata.actor
 
   getTarget: () ->
     @_metadata.target
+
+  setTarget: (newTarget) ->
+    @_metadata.target = JSON.parse(JSON.stringify(newTarget))
 
   getGenerator: () ->
     @_metadata.generator
@@ -86,18 +88,30 @@ class window.golab.ils.metadata.MetadataHandler
 class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 
   constructor: (metadata, cb) ->
-    metadata.provider ?= { objectType: 'ils' }
-    metadata.actor ?= { objectType: 'person'}
     if osapi?
-      osapi.context.get().execute (result) =>
-        metadata.provider.id = result.contextId
-        # TODO: This could be changed to ils.getCurrentUser() in the future.
-        osapi.people.getViewer().execute (viewer) =>
-          metadata.actor.id = viewer.id;
-          metadata.displayName = viewer.displayName;
-          super metadata
-          cb(null, @)
+      # we in an OpenSocial context, try to get information from there...
+      console.log "Retrieving metadata from osapi/ils."
+      try
+        metadata.actor.displayName = $.cookie('graasp_user')
+        if not ils
+          throw new Error "ILS library needs to be present before using the (GoLab)MetadataHandler."
+        ils.getIls (ilsSpace, phaseSpace) =>
+          metadata.generator.url = gadgets.util.getUrlParameters().url
+          metadata.provider.objectType = ilsSpace.spaceType
+          metadata.provider.id = ilsSpace.objectId
+          metadata.provider.displayName = ilsSpace.displayName
+          metadata.provider.url = ilsSpace.profileUrl
+          # TODO: use ils.getParentInquiryPhase()
+          metadata.provider.inquiryPhase = phaseSpace.displayName
+          actorId = metadata.actor.displayName+"@"+metadata.provider.id
+          metadata.actor.id = actorId
+      catch error
+         console.warn "error during metadata retrieval:"
+         console.warn error
+      finally
+        super metadata
+        cb(null, @)
     else
-      console.warn "Could not get infos from osapi, using given metadata."
+      console.log "Using given metadata."
       super metadata
       cb(null, @)

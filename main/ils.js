@@ -105,7 +105,7 @@ ILS Library for Go-Lab
                 if(!parentIls.error && parentIls.spacetype == 'ils'){
                   console.log("print ils space");
                   console.log(parentIls);
-                  return cb(parentIls);
+                  return cb(parentIls, parentSpace);
                 }else{
                   return cb(error);
                 }

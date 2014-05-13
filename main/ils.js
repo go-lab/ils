@@ -50,6 +50,7 @@ ILS Library for Go-Lab
       }
     },
     createResource: function(resourceName, content, cb) {
+      var error = {};
       if(resourceName != null && resourceName != undefined){
         ils.getVault(function(vault) {
           ils.getCurrentUser(function(username){
@@ -65,12 +66,17 @@ ILS Library for Go-Lab
             }
           };
           osapi.documents.create(params).execute(function(resource){
-            cb(resource.entry);
+            if(!resource.error && resource != null & resource != undefined)
+              cb(resource.entry);
+            else{
+              error = {"error" : "Couldn't create resource"};
+              cb(error);
+            }
           });
         });
         });
       }else{
-          var error = {"error" : "resourceName cannot be null. Cannot create resource."};
+          error = {"error" : "resourceName cannot be null. Cannot create resource."};
           return cb(error);
         }
     },

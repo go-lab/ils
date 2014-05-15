@@ -163,14 +163,6 @@ ILS Library for Go-Lab
           return cb(error);
         }
       });
-    },
-    getActionLogger: function(metadataHandler, cb) {
-      return cb(new ut.commons.actionlogging.ActionLogger(metaDataHandler));
-    },
-    getNotificationClient: function(cb) {
-      return osapi.context.get().execute(space)(function() {
-        return cb(new ude.commons.NotificationClient(space.id));
-      });
     }
   };
 

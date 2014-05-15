@@ -61,24 +61,32 @@ ILS Library for Go-Lab
               "displayName": resourceName,
               "mimeType": "txt",
               "fileName": resourceName,
-              "metadata": "{\"username\": \"" + username + "\"}",
               "content": JSON.stringify(content)
-            }
-          };
-          osapi.documents.create(params).execute(function(resource){
-            if(!resource.error && resource != null & resource != undefined)
-              cb(resource.entry);
-            else{
-              error = {"error" : "Couldn't create resource"};
-              cb(error);
-            }
+              }
+            };
+            osapi.documents.create(params).execute(function(resource){
+              if(!resource.error && resource != null & resource != undefined){
+                ils.getApp(function(app){
+                  ils.logAction(username, resource.entry.id, app.id, function(response){
+                    if(!response.error){
+                      return cb(resource.entry);
+                    }else{
+                      return cb(response.error);
+                    }
+                  });
+                });
+              }
+              else{
+                error = {"error" : "Couldn't create resource"};
+                return cb(error);
+              }
+            });
           });
         });
-        });
       }else{
-          error = {"error" : "resourceName cannot be null. Cannot create resource."};
-          return cb(error);
-        }
+        error = {"error" : "resourceName cannot be null. Cannot create resource."};
+        return cb(error);
+      }
     },
     listVault: function(cb) {
       var error = {"error" : "Cannot get the resources in the Vault"};
@@ -154,6 +162,82 @@ ILS Library for Go-Lab
       }
     });
     },
+    getApp: function(cb) {
+      osapi.apps.get({contextId: "@self"}).execute(function(response){
+        if (!response.error){
+          return cb(response);
+        }else{
+          var error = {"error": "Cannot get app"};
+          return cb(error);
+        }
+      });
+    },
+    logAction: function(userName, resourceId, appId, cb) {
+      var params = {
+        userId: "@viewer",
+        groupId: "@self",
+        activity: {
+          verb: "add"
+        }
+      };
+      params.activity.actor = {
+        id: userName,
+        type: "person",
+        name: userName
+      };
+      params.activity.object = {
+        id: resourceId.toString(),
+        objectType: "Asset",
+        graasp_object: "true"
+      };
+      params.activity.generator = {
+        id: appId,
+        objectType: "Widget",
+        graasp_object: "true"
+      };
+      osapi.activitystreams.create(params).execute(function(response){
+        if (!response.error){
+          return cb(response);
+        }else{
+          var error = {"error": "Cannot create activity"};
+          return cb(error);
+        }
+      });
+    },
+    getAction: function(cb) {
+      var params = {
+        count: 1,
+        fields: "id,actor,verb,object,target,published,updated",
+        filterBy: "object.id",
+        filterOp: "equals",
+        filterValue:
+      };
+      osapi.activitystreams.get(params).execute(function(response){
+
+      });
+    },
+
+// example metadata
+// {
+//    "actor":{
+//        "objectType":"person",
+//        "id":"lars@9468",
+//        "displayName":"lars"},
+//    "target":{
+//        "objectType":"questions",
+//        "id":"2151388e-d918-f9dc-ece3-fcadfa99a96c",
+//        "displayName":"unnamed questions"},
+//    "generator":{
+//        "objectType":"application",
+//        "url":"http://go-lab.gw.utwente.nl/sources-metadata-test/tools/questioning/src/main/webapp/questioning_v1.xml",
+//        "id":"6bcb5428-1936-9eed-f9d4-a1a3b96b1b9c",
+//        "displayName":"ut.tools.questioning"},
+//    "provider":{
+//        "url":"http://graasp.epfl.ch/#item=space_9468",
+//        "id":9468,
+//        "inquiryPhase":"Conclusion",
+//        "displayName":"Methyl Orange"}
+// }
     getParentInquiryPhase: function(cb) {
       var error = {"error" : "Cannot get parent inquiry phase"};
       this.getParent(function(parent) {

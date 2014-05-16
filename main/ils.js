@@ -67,7 +67,7 @@ ILS Library for Go-Lab
             osapi.documents.create(params).execute(function(resource){
               if(!resource.error && resource != null & resource != undefined){
                 ils.getApp(function(app){
-                  ils.logAction(username, resource.entry.id, app.id, function(response){
+                  ils.logAction(username, vault.id, resource.entry.id, app.id, function(response){
                     if(!response.error){
                       return cb(resource.entry);
                     }else{
@@ -172,7 +172,7 @@ ILS Library for Go-Lab
         }
       });
     },
-    logAction: function(userName, resourceId, appId, cb) {
+    logAction: function(userName, spaceId, resourceId, appId, cb) {
       var params = {
         userId: "@viewer",
         groupId: "@self",
@@ -190,6 +190,11 @@ ILS Library for Go-Lab
         objectType: "Asset",
         graasp_object: "true"
       };
+      params.activity.target = {
+        id: spaceId.toString(),
+        objectType: "Space",
+        graasp_object: "true"
+      };
       params.activity.generator = {
         id: appId,
         objectType: "Widget",
@@ -204,16 +209,24 @@ ILS Library for Go-Lab
         }
       });
     },
-    getAction: function(cb) {
+    getAction: function(resourceId, cb) {
       var params = {
-        count: 1,
+        contextId: 9577,
+        contextType: "@space",
+        count: 10,
         fields: "id,actor,verb,object,target,published,updated",
         filterBy: "object.id",
-        filterOp: "equals",
-        filterValue:
+        filterOp: "contains",
+        filterValue: window.btoa(unescape(encodeURIComponent("assets/" + resourceId.toString()))),
+        ext: true
       };
       osapi.activitystreams.get(params).execute(function(response){
-
+        if(!response.error){
+          return cb(response);
+        }else{
+          var error = {"error": "Cannot get activity"};
+          return cb(error);
+        }
       });
     },
 

@@ -58,6 +58,7 @@
       content = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
       metadata.published = (new Date()).toISOString();
+      this.metadataHandler.setTargetId(id);
       return {
         id: id,
         metadata: metadata,
@@ -292,19 +293,6 @@
       }, 0);
     };
 
-    ObjectStorageHandler.prototype._listResourceMetaDatas = function(cb) {
-      var id, metadatas, resource, _ref;
-      metadatas = {};
-      _ref = this.storeObject;
-      for (id in _ref) {
-        resource = _ref[id];
-        metadatas[id] = JSON.parse(JSON.stringify(resource.metadata));
-      }
-      return setTimeout(function() {
-        return cb(null, metadatas);
-      }, 0);
-    };
-
     ObjectStorageHandler.prototype.listResourceMetaDatas = function(cb) {
       var id, metadatas, resource, _ref;
       metadatas = [];
@@ -474,26 +462,6 @@
       }, 0);
     };
 
-    LocalStorageHandler.prototype._listResourceMetaDatas = function(cb) {
-      var id, metadatas, resource, resourceString, _ref;
-      metadatas = {};
-      _ref = this.localStorage;
-      for (id in _ref) {
-        resourceString = _ref[id];
-        if (!(this.isGoLabKey(id))) {
-          continue;
-        }
-        resource = JSON.parse(resourceString);
-        metadatas[resource.id] = {
-          id: resource.id,
-          metadata: resource.metadata
-        };
-      }
-      return setTimeout(function() {
-        return cb(null, metadatas);
-      }, 0);
-    };
-
     LocalStorageHandler.prototype.listResourceMetaDatas = function(cb) {
       var id, metadatas, resource, resourceString, _ref;
       metadatas = [];
@@ -515,6 +483,116 @@
     };
 
     return LocalStorageHandler;
+
+  })(window.golab.ils.storage.StorageHandler);
+
+  /*
+    Implementation of a Vault (Graasp/ILS) storage handler.
+  */
+
+
+  window.golab.ils.storage.VaultStorageHandler = (function(_super) {
+    __extends(VaultStorageHandler, _super);
+
+    function VaultStorageHandler(metadataHandler) {
+      this.createResource = __bind(this.createResource, this);
+      VaultStorageHandler.__super__.constructor.apply(this, arguments);
+      console.log("Initializing VaultStorageHandler.");
+      if (!ils) {
+        throw "The ILS library needs to be present for the VaultStorageHandler";
+      } else {
+        return this;
+      }
+    }
+
+    VaultStorageHandler.prototype.readResource = function(resourceId, cb) {
+      var error,
+        _this = this;
+      try {
+        console.log("trying to load resource " + resourceId + " from the vault.");
+        return ils.readResource(resourceId, function(result) {
+          if (result.error) {
+            throw error;
+          } else {
+            console.log("returned result from the vault:");
+            console.log(result);
+            return cb(null, result.content);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("something went wrong when trying to load from the vault:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    VaultStorageHandler.prototype.resourceExists = function(resourceId, cb) {
+      throw "Not yet implemented.";
+    };
+
+    VaultStorageHandler.prototype.createResource = function(content, cb) {
+      var error, resource,
+        _this = this;
+      try {
+        resource = this.getResourceBundle(content);
+        resource.id = "";
+        return ils.createResource(this.metadataHandler.getTargetDisplayName(), resource, function(result) {
+          if (result.error) {
+            throw result.error;
+          } else {
+            resource.id = result.id;
+            console.log("Resource created in Vault, result:");
+            console.log(result);
+            return cb(null, resource);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.log("Vault resource creation unsuccessful: ");
+        console.error(error);
+        return cb(error);
+      }
+    };
+
+    VaultStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
+      throw "Not yet implemented.";
+    };
+
+    VaultStorageHandler.prototype.listResourceIds = function(cb) {
+      throw "Not yet implemented.";
+    };
+
+    VaultStorageHandler.prototype.listResourceMetaDatas = function(cb) {
+      var _this = this;
+      return ils.listVault(function(result) {
+        var entry, metadatas, _i, _len;
+        if (result.error) {
+          return cb(result.error);
+        } else {
+          metadatas = [];
+          for (_i = 0, _len = result.length; _i < _len; _i++) {
+            entry = result[_i];
+            metadatas.push({
+              id: entry.id,
+              metadata: {
+                target: {
+                  displayName: entry.displayName,
+                  objectType: "hypotheses"
+                },
+                generator: {
+                  displayName: "dummy toolname"
+                },
+                published: entry.updated
+              }
+            });
+          }
+          return cb(null, metadatas);
+        }
+      });
+    };
+
+    return VaultStorageHandler;
 
   })(window.golab.ils.storage.StorageHandler);
 

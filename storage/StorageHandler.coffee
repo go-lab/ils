@@ -36,6 +36,8 @@ class window.golab.ils.storage.StorageHandler
     content = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
     metadata.published = (new Date()).toISOString()
+    # potentially a new id has been created, set it in the metadataHandler
+    @metadataHandler.setTargetId(id)
     {
       id: id,
       metadata: metadata,
@@ -199,14 +201,6 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
       cb(null, ids)
     , 0)
 
-  _listResourceMetaDatas: (cb) ->
-    metadatas = {}
-    for id, resource of @storeObject
-      metadatas[id] = JSON.parse(JSON.stringify(resource.metadata))
-    setTimeout(->
-      cb(null, metadatas)
-    , 0)
-
   listResourceMetaDatas: (cb) ->
     metadatas = []
     for id, resource of @storeObject
@@ -312,18 +306,6 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       cb(null, ids)
     , 0)
 
-  _listResourceMetaDatas: (cb) ->
-    metadatas = {}
-    for id, resourceString of @localStorage when @isGoLabKey(id)
-      resource = JSON.parse(resourceString)
-      metadatas[resource.id] = {
-        id: resource.id
-        metadata: resource.metadata
-      }
-    setTimeout(->
-      cb(null, metadatas)
-    , 0)
-
   listResourceMetaDatas: (cb) ->
     metadatas = []
     for id, resourceString of @localStorage when @isGoLabKey(id)
@@ -335,3 +317,85 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
     setTimeout(->
       cb(null, metadatas)
     , 0)
+
+###
+  Implementation of a Vault (Graasp/ILS) storage handler.
+###
+class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.storage.StorageHandler
+  constructor: (metadataHandler) ->
+    super
+    console.log "Initializing VaultStorageHandler."
+    if not ils
+      throw "The ILS library needs to be present for the VaultStorageHandler"
+    else
+      return @
+
+  readResource: (resourceId, cb) ->
+    try
+      console.log "trying to load resource #{resourceId} from the vault."
+      ils.readResource resourceId, (result) =>
+        if result.error
+          throw error
+        else
+          console.log "returned result from the vault:"
+          console.log result
+          cb null, result.content
+    catch error
+      console.warn "something went wrong when trying to load from the vault:"
+      console.warn error
+      cb error
+
+  resourceExists: (resourceId, cb) ->
+    throw "Not yet implemented."
+
+  createResource: (content, cb) =>
+    try
+      # create resource with id, metadata and content
+      resource = @getResourceBundle(content)
+      # remove the resource.id, because it's stored differently in the vault
+      # (see result.id below)
+      resource.id = ""
+      ils.createResource @metadataHandler.getTargetDisplayName(), resource, (result) =>
+        if result.error
+          throw result.error
+        else
+          resource.id = result.id
+          console.log "Resource created in Vault, result:"
+          console.log result
+          cb null, resource
+    catch error
+      console.log "Vault resource creation unsuccessful: "
+      console.error error
+      cb error
+
+  updateResource: (resourceId, content, cb) ->
+    throw "Not yet implemented."
+
+  listResourceIds: (cb) ->
+    throw "Not yet implemented."
+
+  listResourceMetaDatas: (cb) ->
+    ils.listVault (result) =>
+      if result.error
+        cb result.error
+      else
+        metadatas = []
+        for entry in result
+          metadatas.push {
+            id: entry.id
+            # the following metadata is the minimum currently needed
+            # TODO
+            # in future "metadata: entry.metadata" should be possible
+            metadata: {
+              target: {
+                displayName: entry.displayName
+                objectType: "hypotheses"
+              }
+              generator: {
+                displayName: "dummy toolname"
+              }
+              published: entry.updated
+            }
+
+          }
+        cb null, metadatas

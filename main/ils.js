@@ -61,7 +61,7 @@ ILS Library for Go-Lab
               "displayName": resourceName,
               "mimeType": "txt",
               "fileName": resourceName,
-              "metadata": "{\"username\": \"" + username + "\"}",
+              "metadata": JSON.stringify({"username" : username}),
               "content": JSON.stringify(content)
             }
           };

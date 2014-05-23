@@ -217,10 +217,11 @@ ILS Library for Go-Lab
         fields: "id,actor,verb,object,target,published,updated",
         filterBy: "object.id",
         filterOp: "contains",
-        filterValue: window.btoa(unescape(encodeURIComponent("assets/" + resourceId.toString()))),
+        filterValue: "assets/" + resourceId.toString(),
         ext: true
       };
       osapi.activitystreams.get(params).execute(function(response){
+        debugger
         if(!response.error){
           return cb(response);
         }else{

@@ -45,10 +45,15 @@
     });
 
     // read a resource in the Vault
-    ils.readResource(15339, function(resource){
+    ils.readResource(15357, function(resource){
       console.log("print the resource");
       console.log(resource);
       $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);
+    });
+
+    //ils.getAction(9577, 15353, function(response){
+      console.log("print this activity");
+      console.log(response);
     });
 
     // get parent space
@@ -98,7 +103,7 @@
     // create a resource in the Vault
     ils.createResource("test", example_content, function(resource){
       console.log(resource);
-      $('#create_resource').append("new resource id and content: " + resource.id);
+      $('#create_resource').append("new resource id: " + resource.id);
     });
 
   }

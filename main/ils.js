@@ -36,19 +36,48 @@ ILS Library for Go-Lab
       if(resourceId > 0){
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if(!resource.error){
-          // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
-          resource["content"] = JSON.parse(window.atob(resource["data"]));
-          return cb(resource);
-        }else{
-          error = {"error" : "Cannot get resource"};
-          return cb(error);
-        }
-      });
+            // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
+            resource["content"] = JSON.parse(window.atob(resource["data"]));
+            ils.getIls(function(parentIls) {
+              ils.getVault(function(vault) {
+                // get the associated activity of this resource
+                // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000 
+                ils.getAction(vault.id, resourceId, function(action) {
+                  var metadata = {};
+                  metadata.actor = action.actor;
+                  metadata.target = {
+                    objectType: action.object.objectType,
+                    id: action.object.id,
+                    displayName: action.object.displayName
+                  };
+                  metadata.generator = {
+                    objectType: action.generator.objectType,
+                    url: action.generator.url,
+                    id: action.generator.id,
+                    displayName: action.generator.displayName
+                  };
+                  metadata.provider = {
+                    url: parentIls.profileUrl,
+                    id: parentIls.id,
+                    displayName: parentIls.displayName
+                  };
+                  // append the metadata to the resource object
+                  resource["metadata"] = metadata;
+                  return cb(resource);
+                });
+              });
+            });
+          }else{
+            error = {"error" : "Cannot get resource"};
+            return cb(error);
+          }
+        });
       }else{
         error = {"error" : "resourceId cannot be 0 or negative"};
         return cb(error);
       }
     },
+
     createResource: function(resourceName, content, cb) {
       var error = {};
       if(resourceName != null && resourceName != undefined){
@@ -67,7 +96,8 @@ ILS Library for Go-Lab
             osapi.documents.create(params).execute(function(resource){
               if(!resource.error && resource != null & resource != undefined){
                 ils.getApp(function(app){
-                  ils.logAction(username, vault.id, resource.entry.id, app.id, function(response){
+                  //log the action of adding this resource
+                  ils.logAction(username, vault, resource.entry.id, app, function(response){
                     if(!response.error){
                       return cb(resource.entry);
                     }else{
@@ -110,7 +140,7 @@ ILS Library for Go-Lab
               console.log("print parent space");
               console.log(parentSpace);
               osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                if(!parentIls.error && parentIls.spacetype == 'ils'){
+                if(!parentIls.error && parentIls.spacetype === 'ils'){
                   console.log("print ils space");
                   console.log(parentIls);
                   return cb(parentIls, parentSpace);
@@ -172,7 +202,7 @@ ILS Library for Go-Lab
         }
       });
     },
-    logAction: function(userName, spaceId, resourceId, appId, cb) {
+    logAction: function(userName, vault, resourceId, app, cb) {
       var params = {
         userId: "@viewer",
         groupId: "@self",
@@ -181,8 +211,8 @@ ILS Library for Go-Lab
         }
       };
       params.activity.actor = {
-        id: userName,
-        type: "person",
+        id: userName + "@" + vault.parentId.toString(), //the id of the ILS
+        objectType: "person",
         name: userName
       };
       params.activity.object = {
@@ -191,13 +221,14 @@ ILS Library for Go-Lab
         graasp_object: "true"
       };
       params.activity.target = {
-        id: spaceId.toString(),
+        id: vault.id.toString(),
         objectType: "Space",
         graasp_object: "true"
       };
       params.activity.generator = {
-        id: appId,
+        id: app.id.toString(),
         objectType: "Widget",
+        ur: app.appUrl,
         graasp_object: "true"
       };
       osapi.activitystreams.create(params).execute(function(response){
@@ -209,21 +240,20 @@ ILS Library for Go-Lab
         }
       });
     },
-    getAction: function(resourceId, cb) {
+    getAction: function(vaultId, resourceId, cb) {
       var params = {
-        contextId: 9577,
+        contextId: vaultId,
         contextType: "@space",
-        count: 10,
-        fields: "id,actor,verb,object,target,published,updated",
+        count: 1,
+        fields: "id,actor,verb,object,target,published,updated,generator",
         filterBy: "object.id",
         filterOp: "contains",
         filterValue: "assets/" + resourceId.toString(),
         ext: true
       };
       osapi.activitystreams.get(params).execute(function(response){
-        debugger
-        if(!response.error){
-          return cb(response);
+        if(!response.error && (response.totalResults > 0 )){
+          return cb(response.entry[0]);
         }else{
           var error = {"error": "Cannot get activity"};
           return cb(error);
@@ -231,27 +261,7 @@ ILS Library for Go-Lab
       });
     },
 
-// example metadata
-// {
-//    "actor":{
-//        "objectType":"person",
-//        "id":"lars@9468",
-//        "displayName":"lars"},
-//    "target":{
-//        "objectType":"questions",
-//        "id":"2151388e-d918-f9dc-ece3-fcadfa99a96c",
-//        "displayName":"unnamed questions"},
-//    "generator":{
-//        "objectType":"application",
-//        "url":"http://go-lab.gw.utwente.nl/sources-metadata-test/tools/questioning/src/main/webapp/questioning_v1.xml",
-//        "id":"6bcb5428-1936-9eed-f9d4-a1a3b96b1b9c",
-//        "displayName":"ut.tools.questioning"},
-//    "provider":{
-//        "url":"http://graasp.epfl.ch/#item=space_9468",
-//        "id":9468,
-//        "inquiryPhase":"Conclusion",
-//        "displayName":"Methyl Orange"}
-// }
+
     getParentInquiryPhase: function(cb) {
       var error = {"error" : "Cannot get parent inquiry phase"};
       this.getParent(function(parent) {

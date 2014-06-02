@@ -1,5 +1,7 @@
 /*
 ILS Library for Go-Lab
+author: Na Li, Wissam Halimi
+contact: na.li@epfl.ch
 */
 
 
@@ -7,6 +9,7 @@ ILS Library for Go-Lab
   var ils;
 
   ils = {
+    // get the nickname of the student who is currently using the ils
     getCurrentUser: function(cb) {
       var username = "";
       var error = {"error" : "Cannot get username"};
@@ -16,26 +19,30 @@ ILS Library for Go-Lab
       else
         return cb(error);
     },
+
+    // get the parent space of the widget 
     getParent: function(cb) {
       var error = {"error" : "Connot get parent space"};
       osapi.context.get().execute(function(context_space) {
-        if(context_space != undefined && context_space != null && !context_space.error){
+        if (context_space != undefined && context_space != null && !context_space.error) {
           osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
-            if(!parent.error)
+            if (!parent.error)
               return cb(parent);
             else
               return cb(error);
          });
-        }else{
+        } else {
           return cb(error);
         }
       });
     },
+
+    // read a resource by the resourceId, the result is the combination of resource content and the metadata
     readResource: function(resourceId, cb) {
       var error = {};
-      if(resourceId > 0){
+      if (resourceId > 0) {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
-          if(!resource.error){
+          if (!resource.error) {
             // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
             resource["content"] = JSON.parse(window.atob(resource["data"]));
             ils.getIls(function(parentIls) {
@@ -67,20 +74,22 @@ ILS Library for Go-Lab
                 });
               });
             });
-          }else{
+          } else {
             error = {"error" : "Cannot get resource"};
             return cb(error);
           }
         });
-      }else{
+      } else {
         error = {"error" : "resourceId cannot be 0 or negative"};
         return cb(error);
       }
     },
 
+    // create a resource in the Vault, resourceName and content need to be passed
+    // resourceName should be in string format, content should be in JSON format
     createResource: function(resourceName, content, cb) {
       var error = {};
-      if(resourceName != null && resourceName != undefined){
+      if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
           ils.getCurrentUser(function(username){
             var params = {
@@ -94,41 +103,44 @@ ILS Library for Go-Lab
               }
             };
             osapi.documents.create(params).execute(function(resource){
-              if(!resource.error && resource != null & resource != undefined){
+              if (!resource.error && resource != null & resource != undefined) {
                 ils.getApp(function(app){
                   //log the action of adding this resource
                   ils.logAction(username, vault, resource.entry.id, app, function(response){
-                    if(!response.error){
+                    if (!response.error) {
                       return cb(resource.entry);
-                    }else{
+                    } else {
                       return cb(response.error);
                     }
                   });
                 });
-              }
-              else{
+              } else {
                 error = {"error" : "Couldn't create resource"};
                 return cb(error);
               }
             });
           });
         });
-      }else{
+      } else {
         error = {"error" : "resourceName cannot be null. Cannot create resource."};
         return cb(error);
       }
     },
+
+    // get a list of all resources in the Vault
     listVault: function(cb) {
       var error = {"error" : "Cannot get the resources in the Vault"};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if(resources.list.length > 0) 
+          if (resources.list.length > 0) 
             return cb(resources.list);
           else
             return cb(error);
         });
       });
     },
+
+    // get the current ILS of the app
     getIls: function(cb) {
       var error = {"error" : "Cannot get ILS"};
       osapi.context.get().execute(function(space) {
@@ -136,35 +148,37 @@ ILS Library for Go-Lab
           console.log("print context");
           console.log(space);
           osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
-            if(!parentSpace.error){
+            if (!parentSpace.error) {
               console.log("print parent space");
               console.log(parentSpace);
               osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                if(!parentIls.error && parentIls.spacetype === 'ils'){
+                if (!parentIls.error && parentIls.spacetype === 'ils') {
                   console.log("print ils space");
                   console.log(parentIls);
                   return cb(parentIls, parentSpace);
-                }else{
+                } else {
                   return cb(error);
                 }
               });
-            }else{
+            } else {
               return cb(error);
             }
           });
-        }else{
+        } else {
           return cb(error);
         }
       });
     },
+
+    // get the Vault of the current ILS
     getVault: function(cb) {
       var error = {};
       ils.getIls(function(parentIls) {
-        if(!parentIls.error){
+        if (!parentIls.error) {
         console.log(parentIls.id);
         osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
           function(subspaces) {
-            if(subspaces.totalResults != 0){
+            if (subspaces.totalResults != 0) {
               var item, vault;
               vault = (function() {
                 var i, len, ref, results;
@@ -172,7 +186,7 @@ ILS Library for Go-Lab
                 results = [];
                 for (i = 0, len = ref.length; i < len; i++) {
                   item = ref[i];
-                  if(JSON.parse(item.metadata) != null && JSON.parse(item.metadata) != undefined){
+                  if (JSON.parse(item.metadata) != null && JSON.parse(item.metadata) != undefined) {
                     if (JSON.parse(item.metadata).type === "Vault") {
                       results.push(item);
                   }
@@ -181,27 +195,31 @@ ILS Library for Go-Lab
               return results;
             })();
             return cb(vault[0]);
-          }else{
+          } else {
             error = {"error" : "No subspaces in current ILS"};
             return cb(error);
           }
         });
-      }else{
+      } else {
         error = {"error" : "Cannot get the vault"};
         return cb(error);
       }
     });
     },
+
+    // get the info of the current app
     getApp: function(cb) {
       osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error){
+        if (!response.error) {
           return cb(response);
-        }else{
+        } else {
           var error = {"error": "Cannot get app"};
           return cb(error);
         }
       });
     },
+
+    // log the action of adding a resource in the Vault
     logAction: function(userName, vault, resourceId, app, cb) {
       var params = {
         userId: "@viewer",
@@ -232,14 +250,16 @@ ILS Library for Go-Lab
         graasp_object: "true"
       };
       osapi.activitystreams.create(params).execute(function(response){
-        if (!response.error){
+        if (!response.error) {
           return cb(response);
-        }else{
+        } else {
           var error = {"error": "Cannot create activity"};
           return cb(error);
         }
       });
     },
+
+    // get the action of adding the resource in the Vault based on resourceId and vaultId
     getAction: function(vaultId, resourceId, cb) {
       var params = {
         contextId: vaultId,
@@ -252,22 +272,22 @@ ILS Library for Go-Lab
         ext: true
       };
       osapi.activitystreams.get(params).execute(function(response){
-        if(!response.error && (response.totalResults > 0 )){
+        if (!response.error && (response.totalResults > 0 )) {
           return cb(response.entry[0]);
-        }else{
+        } else {
           var error = {"error": "Cannot get activity"};
           return cb(error);
         }
       });
     },
 
-
+  // get the type of inquiry phase where the app is running in
     getParentInquiryPhase: function(cb) {
       var error = {"error" : "Cannot get parent inquiry phase"};
       this.getParent(function(parent) {
-        if(!parent.error && parent.metadata != null && parent.metadata != undefined){
+        if (!parent.error && parent.metadata != null && parent.metadata != undefined) {
           return cb(JSON.parse(parent.metadata).type);
-        }else{
+        } else {
           return cb(error);
         }
       });

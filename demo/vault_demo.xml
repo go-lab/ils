@@ -13,6 +13,7 @@
  <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery-1.8.0.min.js"></script>
  <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery.cookie.js"></script>
  <script type="text/javascript" src="http://graasp.epfl.ch/ils_lib/main/ils.js"></script>
+ 
  <script type="text/javascript">
 
   var getData = function() {
@@ -45,15 +46,10 @@
     });
 
     // read a resource in the Vault
-    ils.readResource(15357, function(resource){
+    ils.readResource(16207, function(resource){
       console.log("print the resource");
       console.log(resource);
       $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);
-    });
-
-    //ils.getAction(9577, 15353, function(response){
-      console.log("print this activity");
-      console.log(response);
     });
 
     // get parent space
@@ -69,7 +65,6 @@
       console.log(phase);
       $('#get_parent_phase').append(phase);
     });
-
 
     var example_content = {
        "concepts": [

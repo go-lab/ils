@@ -46,7 +46,7 @@
     });
 
     // read a resource in the Vault
-    ils.readResource(16207, function(resource){
+    ils.readResource(16385, function(resource){
       console.log("print the resource");
       console.log(resource);
       $('#read_resource').append("resource id and name: " + resource.id + " " + resource.displayName);

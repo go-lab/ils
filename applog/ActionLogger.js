@@ -53,16 +53,33 @@
     };
 
     ActionLogger.prototype.log = function(verb, object) {
-      var activityStreamObject;
-      activityStreamObject = {};
-      activityStreamObject.published = new Date().toISOString();
-      activityStreamObject.actor = this.metadataHandler.getActor();
-      activityStreamObject.verb = verb;
-      activityStreamObject.object = object;
-      activityStreamObject.target = this.metadataHandler.getTarget();
-      activityStreamObject.generator = this.metadataHandler.getGenerator();
-      activityStreamObject.provider = this.metadataHandler.getProvider();
-      return this.loggingTarget(activityStreamObject);
+      var activityStreamObject, error, verbAccepted, verbKey, verbValue, _ref;
+      verbAccepted = false;
+      _ref = this.verbs;
+      for (verbKey in _ref) {
+        verbValue = _ref[verbKey];
+        if (verb === verbValue) {
+          verbAccepted = true;
+        }
+      }
+      if (!verbAccepted) {
+        console.warn("ActionLogger: unknown verb: " + verb);
+      }
+      try {
+        activityStreamObject = {};
+        activityStreamObject.published = new Date().toISOString();
+        activityStreamObject.actor = this.metadataHandler.getActor();
+        activityStreamObject.verb = verb;
+        activityStreamObject.object = object;
+        activityStreamObject.target = this.metadataHandler.getTarget();
+        activityStreamObject.generator = this.metadataHandler.getGenerator();
+        activityStreamObject.provider = this.metadataHandler.getProvider();
+        return this.loggingTarget(activityStreamObject);
+      } catch (_error) {
+        error = _error;
+        console.warn("something went wrong during logging:");
+        return console.warn(error);
+      }
     };
 
     ActionLogger.prototype.nullLogging = function(action) {};
@@ -98,19 +115,34 @@
     };
 
     ActionLogger.prototype.dufftownLogging = function(activityStreamObject) {
-      console.log("ActionLogger: logging to go-lab.collide.info: " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);
+      var url;
+      url = "http://go-lab.collide.info/activity";
+      console.log("ActionLogger: logging to " + url + ": " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);
       return $.ajax({
         type: "POST",
-        url: "http://go-lab.collide.info/activity",
+        url: url,
         data: JSON.stringify(activityStreamObject),
         contentType: "application/json",
         success: function(responseData, textStatus, jqXHR) {
-          return console.log("POST actionlog success, response: " + responseData.statusText);
+          return console.log("POST actionlog success, response: " + responseData);
         },
         error: function(responseData, textStatus, errorThrown) {
-          return console.log("POST actionlog failed, response: " + responseData.statusText);
+          console.log("POST actionlog failed, response:");
+          return console.log(responseData);
         }
       });
+    };
+
+    ActionLogger.prototype.verbs = {
+      application_started: "application_started",
+      access: "access",
+      create: "create",
+      add: "add",
+      update: "update",
+      "delete": "delete",
+      load: "read",
+      save: "save",
+      phase_changed: "phase_changed"
     };
 
     return ActionLogger;

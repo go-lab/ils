@@ -84,6 +84,9 @@ class window.golab.ils.metadata.MetadataHandler
   setTargetDisplayName: (newName) ->
     @_metadata.target.displayName = newName
 
+  setTargetId: (newId) ->
+    @_metadata.target.id = newId
+
 
 class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 
@@ -92,26 +95,38 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
       # we in an OpenSocial context, try to get information from there...
       console.log "Retrieving metadata from osapi/ils."
       try
-        metadata.actor.displayName = $.cookie('graasp_user')
+        if not $.cookie
+          throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library)."
         if not ils
-          throw new Error "ILS library needs to be present before using the (GoLab)MetadataHandler."
-        ils.getIls (ilsSpace, phaseSpace) =>
-          metadata.generator.url = gadgets.util.getUrlParameters().url
-          metadata.provider.objectType = ilsSpace.spaceType
-          metadata.provider.id = ilsSpace.objectId
-          metadata.provider.displayName = ilsSpace.displayName
-          metadata.provider.url = ilsSpace.profileUrl
-          # TODO: use ils.getParentInquiryPhase()
-          metadata.provider.inquiryPhase = phaseSpace.displayName
-          actorId = metadata.actor.displayName+"@"+metadata.provider.id
-          metadata.actor.id = actorId
+          throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
+        ils.getCurrentUser (userResult) =>
+          if userResult.error
+            console.warn "error reading username:"
+            console.warn userResult.error
+            metadata.actor.displayName = "unknown"
+          else
+            metadata.actor.displayName = userResult
+          ils.getIls (ilsSpace, phaseSpace) =>
+            console.log "GoLab-MetadataHandler: ilsSpace, phaseSpace:"
+            console.log ilsSpace
+            console.log phaseSpace
+            metadata.generator.url = gadgets.util.getUrlParameters().url
+            if ilsSpace?
+              metadata.provider.objectType = ilsSpace.spaceType
+              metadata.provider.id = ilsSpace.objectId
+              metadata.provider.displayName = ilsSpace.displayName
+            metadata.provider.url = ilsSpace.profileUrl
+            # TODO: use ils.getParentInquiryPhase() in future
+            if phaseSpace?
+              metadata.provider.inquiryPhase = phaseSpace.displayName
+            actorId = metadata.actor.displayName+"@"+metadata.provider.id
+            metadata.actor.id = actorId
+            super metadata
+            cb(null, @)
       catch error
-         console.warn "error during metadata retrieval:"
-         console.warn error
-      finally
-        super metadata
-        cb(null, @)
+       console.warn "error during metadata retrieval:"
+       console.warn error
     else
-      console.log "Using given metadata."
+      console.log "Running outside osapi/ils, using given metadata."
       super metadata
       cb(null, @)

@@ -103,6 +103,10 @@
       return this._metadata.target.displayName = newName;
     };
 
+    MetadataHandler.prototype.setTargetId = function(newId) {
+      return this._metadata.target.id = newId;
+    };
+
     return MetadataHandler;
 
   })();
@@ -116,31 +120,48 @@
       if (typeof osapi !== "undefined" && osapi !== null) {
         console.log("Retrieving metadata from osapi/ils.");
         try {
-          metadata.actor.displayName = $.cookie('graasp_user');
-          if (!ils) {
-            throw new Error("ILS library needs to be present before using the (GoLab)MetadataHandler.");
+          if (!$.cookie) {
+            throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library).";
           }
-          ils.getIls(function(ilsSpace, phaseSpace) {
-            var actorId;
-            metadata.generator.url = gadgets.util.getUrlParameters().url;
-            metadata.provider.objectType = ilsSpace.spaceType;
-            metadata.provider.id = ilsSpace.objectId;
-            metadata.provider.displayName = ilsSpace.displayName;
-            metadata.provider.url = ilsSpace.profileUrl;
-            metadata.provider.inquiryPhase = phaseSpace.displayName;
-            actorId = metadata.actor.displayName + "@" + metadata.provider.id;
-            return metadata.actor.id = actorId;
+          if (!ils) {
+            throw "ILS library needs to be present before using the (GoLab)MetadataHandler.";
+          }
+          ils.getCurrentUser(function(userResult) {
+            if (userResult.error) {
+              console.warn("error reading username:");
+              console.warn(userResult.error);
+              metadata.actor.displayName = "unknown";
+            } else {
+              metadata.actor.displayName = userResult;
+            }
+            return ils.getIls(function(ilsSpace, phaseSpace) {
+              var actorId;
+              console.log("GoLab-MetadataHandler: ilsSpace, phaseSpace:");
+              console.log(ilsSpace);
+              console.log(phaseSpace);
+              metadata.generator.url = gadgets.util.getUrlParameters().url;
+              if (ilsSpace != null) {
+                metadata.provider.objectType = ilsSpace.spaceType;
+                metadata.provider.id = ilsSpace.objectId;
+                metadata.provider.displayName = ilsSpace.displayName;
+              }
+              metadata.provider.url = ilsSpace.profileUrl;
+              if (phaseSpace != null) {
+                metadata.provider.inquiryPhase = phaseSpace.displayName;
+              }
+              actorId = metadata.actor.displayName + "@" + metadata.provider.id;
+              metadata.actor.id = actorId;
+              GoLabMetadataHandler.__super__.constructor.call(_this, metadata);
+              return cb(null, _this);
+            });
           });
         } catch (_error) {
           error = _error;
           console.warn("error during metadata retrieval:");
           console.warn(error);
-        } finally {
-          GoLabMetadataHandler.__super__.constructor.call(this, metadata);
-          cb(null, this);
         }
       } else {
-        console.log("Using given metadata.");
+        console.log("Running outside osapi/ils, using given metadata.");
         GoLabMetadataHandler.__super__.constructor.call(this, metadata);
         cb(null, this);
       }

@@ -10,6 +10,13 @@ ude.commons.NotificationClient = (function() {
 
     NotificationClient.prototype = {
         register: function(premise, callback) {
+            if (typeof premise === 'string') {
+                var type = premise;
+                premise = function(notification) {
+                    return notification.type === type;
+                };
+            }
+
             this.listeners.push({
                 premise: premise,
                 callback: callback
@@ -29,10 +36,22 @@ ude.commons.NotificationClient = (function() {
         },
 
         _initServerConnection: function(socketId) {
-            var socket = io.connect('http://golab.collide.info');
-            socket.on(socketId, function(data) {
-                this.processNotification(data);
-            }.bind(this));
+            // initialize the server connection only if http
+            // (to prevent browser from blocking "unsecure content")
+            if (window.location.protocol == "http:") {
+                console.log("Initializing socket.io connection to notification service:");
+                try {
+                    var socket = io.connect('http://golab.collide.info:80');
+                    socket.on(socketId, function (data) {
+                        this.processNotification(data);
+                    }.bind(this));
+                } catch (error) {
+                    console.warn("Could not initialize notification client. Notification service will not be available for "+socketId);
+                    console.warn(error)
+                }
+            } else {
+                console.warn("Notification client has not been started due to http/https issues.");
+            }
         }
     };
 

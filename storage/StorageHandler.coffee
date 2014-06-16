@@ -37,7 +37,9 @@ class window.golab.ils.storage.StorageHandler
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
     metadata.published = (new Date()).toISOString()
     # potentially a new id has been created, set it in the metadataHandler
-    @metadataHandler.setTargetId(id)
+    # TODO better not set a new target id, it's up to the tools to decide this
+    # (other than the resource id!)
+    # @metadataHandler.setTargetId(id)
     {
       id: id,
       metadata: metadata,
@@ -339,7 +341,18 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
         else
           console.log "returned result from the vault:"
           console.log result
-          cb null, result.content
+          content = JSON.parse result.content
+          # TODO once the vault metadata retrieval is solved, change this
+          # metadata = JSON.parse result.metadata
+          metadata = @metadataHandler.getMetadata()
+          resource = {
+            id: result.id
+            metadata: metadata
+            content: content
+          }
+          console.log "returning resource:"
+          console.log resource
+          cb null, resource
     catch error
       console.warn "something went wrong when trying to load from the vault:"
       console.warn error
@@ -379,13 +392,21 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       if result.error
         cb result.error
       else
+        console.log "listResourceMetaDatas:"
+        console.log result
         metadatas = []
         for entry in result
+          ###
           metadatas.push {
             id: entry.id
-            # the following metadata is the minimum currently needed
-            # TODO
-            # in future "metadata: entry.metadata" should be possible
+            metadata: JSON.parse entry.metadata
+          }
+          ###
+          metadatas.push {
+            id: entry.id
+          # the following metadata is the minimum currently needed
+          # TODO
+          # in future "metadata: entry.metadata" should be possible
             metadata: {
               target: {
                 displayName: entry.displayName
@@ -399,3 +420,107 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
 
           }
         cb null, metadatas
+
+###
+  Implementation of a MongoDB storage handler.
+###
+class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.storage.StorageHandler
+  constructor: (metadataHandler, @urlPrefix) ->
+    super
+    if @urlPrefix?
+      console.log "Initializing MongoStorageHandler."
+      @
+    else
+      console.error "I need an urlPrefix as second parameter."
+
+  readResource: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "GET",
+        url: "#{@urlPrefix}/readResource/"+resourceId,
+        success: (resource) ->
+          console.log("GET success, response:")
+          console.log resource
+          cb null, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET failed, response:"
+          console.warn errorThrown
+          cb errorThrown
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the resource:"
+      console.warn error
+      cb error
+
+  resourceExists: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "GET",
+        url: "#{@urlPrefix}/resourceExists/"+resourceId,
+        success: (result) ->
+          console.log("GET success, response:")
+          console.log result
+          cb undefined, true
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET failed, response:"
+          console.warn responseData
+          if responseData.status is 500
+            cb errorThrown
+          else if responseData.status is 410
+            cb undefined, false
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the resource:"
+      console.warn error
+      cb error
+
+  createResource: (content, cb) =>
+    try
+    # create resource with id, metadata and content
+      resource = @getResourceBundle(content)
+      $.ajax({
+        type: "POST",
+        url: "#{@urlPrefix}/storeResource",
+        data: JSON.stringify(resource),
+        contentType: "application/json",
+        success: (responseData, textStatus, jqXHR) ->
+          console.log("POST success, response:")
+          console.log responseData
+          cb undefined, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST failed, response:"
+          console.warn responseData
+          cb responseData
+      })
+    catch error
+      console.log "Something went wrong when writing to Mongo:"
+      console.error error
+      cb error
+
+  updateResource: (resourceId, content, cb) ->
+    throw "Not yet implemented."
+
+  listResourceMetaDatas: (cb) ->
+    try
+      $.ajax({
+        type: "GET",
+        #url: "http://localhost:8080/listResourceMetaDatas",
+        url: "#{@urlPrefix}/listResourceMetaDatas/#{@metadataHandler.getProvider().id}",
+        success: (responseData) ->
+          console.log("GET success, response:")
+          console.log responseData
+          cb undefined, responseData
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET failed, response:"
+          console.warn responseData
+          #console.warn textStatus
+          #console.warn errorThrown
+          cb responseData
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the metedatas:"
+      console.warn error
+      cb error
+
+  listResourceIds: (cb) ->
+    throw "Not yet implemented."

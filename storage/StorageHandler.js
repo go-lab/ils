@@ -58,7 +58,6 @@
       content = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
       metadata.published = (new Date()).toISOString();
-      this.metadataHandler.setTargetId(id);
       return {
         id: id,
         metadata: metadata,
@@ -511,12 +510,22 @@
       try {
         console.log("trying to load resource " + resourceId + " from the vault.");
         return ils.readResource(resourceId, function(result) {
+          var content, metadata, resource;
           if (result.error) {
             throw error;
           } else {
             console.log("returned result from the vault:");
             console.log(result);
-            return cb(null, result.content);
+            content = JSON.parse(result.content);
+            metadata = _this.metadataHandler.getMetadata();
+            resource = {
+              id: result.id,
+              metadata: metadata,
+              content: content
+            };
+            console.log("returning resource:");
+            console.log(resource);
+            return cb(null, resource);
           }
         });
       } catch (_error) {
@@ -570,9 +579,18 @@
         if (result.error) {
           return cb(result.error);
         } else {
+          console.log("listResourceMetaDatas:");
+          console.log(result);
           metadatas = [];
           for (_i = 0, _len = result.length; _i < _len; _i++) {
             entry = result[_i];
+            /*
+            metadatas.push {
+              id: entry.id
+              metadata: JSON.parse entry.metadata
+            }
+            */
+
             metadatas.push({
               id: entry.id,
               metadata: {
@@ -593,6 +611,145 @@
     };
 
     return VaultStorageHandler;
+
+  })(window.golab.ils.storage.StorageHandler);
+
+  /*
+    Implementation of a MongoDB storage handler.
+  */
+
+
+  window.golab.ils.storage.MongoStorageHandler = (function(_super) {
+    __extends(MongoStorageHandler, _super);
+
+    function MongoStorageHandler(metadataHandler, urlPrefix) {
+      this.urlPrefix = urlPrefix;
+      this.createResource = __bind(this.createResource, this);
+      MongoStorageHandler.__super__.constructor.apply(this, arguments);
+      if (this.urlPrefix != null) {
+        console.log("Initializing MongoStorageHandler.");
+        this;
+      } else {
+        console.error("I need an urlPrefix as second parameter.");
+      }
+    }
+
+    MongoStorageHandler.prototype.readResource = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "GET",
+          url: ("" + this.urlPrefix + "/readResource/") + resourceId,
+          success: function(resource) {
+            console.log("GET success, response:");
+            console.log(resource);
+            return cb(null, resource);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET failed, response:");
+            console.warn(errorThrown);
+            return cb(errorThrown);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoStorageHandler.prototype.resourceExists = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "GET",
+          url: ("" + this.urlPrefix + "/resourceExists/") + resourceId,
+          success: function(result) {
+            console.log("GET success, response:");
+            console.log(result);
+            return cb(void 0, true);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET failed, response:");
+            console.warn(responseData);
+            if (responseData.status === 500) {
+              return cb(errorThrown);
+            } else if (responseData.status === 410) {
+              return cb(void 0, false);
+            }
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoStorageHandler.prototype.createResource = function(content, cb) {
+      var error, resource;
+      try {
+        resource = this.getResourceBundle(content);
+        return $.ajax({
+          type: "POST",
+          url: "" + this.urlPrefix + "/storeResource",
+          data: JSON.stringify(resource),
+          contentType: "application/json",
+          success: function(responseData, textStatus, jqXHR) {
+            console.log("POST success, response:");
+            console.log(responseData);
+            return cb(void 0, resource);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("POST failed, response:");
+            console.warn(responseData);
+            return cb(responseData);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.log("Something went wrong when writing to Mongo:");
+        console.error(error);
+        return cb(error);
+      }
+    };
+
+    MongoStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
+      throw "Not yet implemented.";
+    };
+
+    MongoStorageHandler.prototype.listResourceMetaDatas = function(cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "GET",
+          url: "" + this.urlPrefix + "/listResourceMetaDatas/" + (this.metadataHandler.getProvider().id),
+          success: function(responseData) {
+            console.log("GET success, response:");
+            console.log(responseData);
+            return cb(void 0, responseData);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET failed, response:");
+            console.warn(responseData);
+            return cb(responseData);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the metedatas:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoStorageHandler.prototype.listResourceIds = function(cb) {
+      throw "Not yet implemented.";
+    };
+
+    return MongoStorageHandler;
 
   })(window.golab.ils.storage.StorageHandler);
 

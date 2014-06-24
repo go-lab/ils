@@ -508,24 +508,11 @@
       var error,
         _this = this;
       try {
-        console.log("trying to load resource " + resourceId + " from the vault.");
-        return ils.readResource(resourceId, function(result) {
-          var content, metadata, resource;
+        return ils.readResource(resourceId, function(error, result) {
           if (result.error) {
-            throw error;
+            return cb(error);
           } else {
-            console.log("returned result from the vault:");
-            console.log(result);
-            content = JSON.parse(result.content);
-            metadata = _this.metadataHandler.getMetadata();
-            resource = {
-              id: result.id,
-              metadata: metadata,
-              content: content
-            };
-            console.log("returning resource:");
-            console.log(resource);
-            return cb(null, resource);
+            return cb(null, result);
           }
         });
       } catch (_error) {
@@ -546,13 +533,11 @@
       try {
         resource = this.getResourceBundle(content);
         resource.id = "";
-        return ils.createResource(this.metadataHandler.getTargetDisplayName(), resource, function(result) {
-          if (result.error) {
-            throw result.error;
+        return ils.createResource(resource, function(error, result) {
+          if (error) {
+            return cb(error);
           } else {
             resource.id = result.id;
-            console.log("Resource created in Vault, result:");
-            console.log(result);
             return cb(null, resource);
           }
         });
@@ -572,40 +557,15 @@
       throw "Not yet implemented.";
     };
 
-    VaultStorageHandler.prototype.listResourceMetaDatas = function(cb) {
+    VaultStorageHandler.prototype.listResourceMetaDatas = function(callback) {
       var _this = this;
-      return ils.listVault(function(result) {
-        var entry, metadatas, _i, _len;
-        if (result.error) {
-          return cb(result.error);
+      return ils.listVault(function(error, result) {
+        if (error) {
+          return callback(error);
         } else {
           console.log("listResourceMetaDatas:");
           console.log(result);
-          metadatas = [];
-          for (_i = 0, _len = result.length; _i < _len; _i++) {
-            entry = result[_i];
-            /*
-            metadatas.push {
-              id: entry.id
-              metadata: JSON.parse entry.metadata
-            }
-            */
-
-            metadatas.push({
-              id: entry.id,
-              metadata: {
-                target: {
-                  displayName: entry.displayName,
-                  objectType: "hypotheses"
-                },
-                generator: {
-                  displayName: "dummy toolname"
-                },
-                published: entry.updated
-              }
-            });
-          }
-          return cb(null, metadatas);
+          return callback(null, result);
         }
       });
     };
@@ -725,7 +685,7 @@
       try {
         return $.ajax({
           type: "GET",
-          url: "" + this.urlPrefix + "/listResourceMetaDatas/" + (this.metadataHandler.getProvider().id),
+          url: "" + this.urlPrefix + "/listResourceMetaDatas/" + (encodeURIComponent(this.metadataHandler.getProvider().id)) + "/" + (encodeURIComponent(this.metadataHandler.getActor().id)),
           success: function(responseData) {
             console.log("GET success, response:");
             console.log(responseData);

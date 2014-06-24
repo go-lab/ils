@@ -38,104 +38,85 @@ contact: na.li@epfl.ch
     },
 
     // read a resource by the resourceId, the result is the combination of resource content and the metadata
-    readResource: function(resourceId, cb) {
+    readResource: function(resourceId, callback) {
       var error = {};
       if (resourceId > 0) {
-        osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
-          if (!resource.error) {
-            // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
-            resource["content"] = JSON.parse(window.atob(resource["data"]));
-            ils.getIls(function(parentIls) {
-              ils.getVault(function(vault) {
-                // get the associated activity of this resource
-                // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000 
-                ils.getAction(vault.id, resourceId, function(action) {
-                  var metadata = {};
-                  metadata.actor = action.actor;
-                  metadata.target = {
-                    objectType: action.object.objectType,
-                    id: action.object.id,
-                    displayName: action.object.displayName
-                  };
-                  metadata.generator = {
-                    objectType: action.generator.objectType,
-                    url: action.generator.url,
-                    id: action.generator.id,
-                    displayName: action.generator.displayName
-                  };
-                  metadata.provider = {
-                    url: parentIls.profileUrl,
-                    id: parentIls.id,
-                    displayName: parentIls.displayName
-                  };
-                  // append the metadata to the resource object
-                  resource["metadata"] = metadata;
-                  return cb(resource);
-                });
-              });
-            });
+        osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(result){
+          if (!result.error) {
+              console.log("osapi returned resource:");
+              console.log(result);
+
+              // building the resource:
+              var resource = {};
+              resource.id = result.id;
+              resource.published = result.updated;
+              resource.metadata = JSON.parse(result.metadata);
+              // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
+              resource.content = JSON.parse(window.atob(result.data));
+              callback(null, resource);
           } else {
-            error = {"error" : "Cannot get resource"};
-            return cb(error);
+            return callback({"error" : "Cannot get resource"});
           }
         });
       } else {
-        error = {"error" : "resourceId cannot be 0 or negative"};
-        return cb(error);
+        return callback({"error" : "resourceId cannot be 0 or negative"});
       }
     },
 
     // create a resource in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, content should be in JSON format
-    createResource: function(resourceName, content, cb) {
+    createResource: function(resource, callback) {
       var error = {};
-      if (resourceName != null && resourceName != undefined) {
+      console.log("trying to save resource: ");
+      console.log(resource);
+      if (resource != null && resource != undefined) {
         ils.getVault(function(vault) {
-          ils.getCurrentUser(function(username){
             var params = {
               "document": {
-              "parentType": "@space",
-              "parentId": vault.id,
-              "displayName": resourceName,
-              "mimeType": "txt",
-              "fileName": resourceName,
-              "content": JSON.stringify(content)
+                  "parentType": "@space",
+                  "parentId": vault.id,
+                  "displayName": resource.metadata.target.displayName,
+                  "mimeType": "text/plain",
+                  "fileName": resource.metadata.target.displayName,
+                  "metadata": JSON.stringify(resource.metadata),
+                  "content": JSON.stringify(resource.content)
               }
             };
-            osapi.documents.create(params).execute(function(resource){
-              if (!resource.error && resource != null & resource != undefined) {
-                ils.getApp(function(app){
-                  //log the action of adding this resource
-                  ils.logAction(username, vault, resource.entry.id, app, function(response){
-                    if (!response.error) {
-                      return cb(resource.entry);
-                    } else {
-                      return cb(response.error);
-                    }
-                  });
-                });
+            osapi.documents.create(params).execute(function(result){
+              console.log("Returning from osapi:");
+              console.log(result)
+              if (!result.error && result != null && result != undefined) {
+                callback(null, result);
               } else {
-                error = {"error" : "Couldn't create resource"};
-                return cb(error);
+                error = {"error": "Couldn't create resource"};
+                return callback(error);
               }
             });
-          });
         });
       } else {
-        error = {"error" : "resourceName cannot be null. Cannot create resource."};
-        return cb(error);
+        error = {"error": "Resource cannot be null. Cannot create resource."};
+        return callback(error);
       }
     },
 
-    // get a list of all resources in the Vault
-    listVault: function(cb) {
-      var error = {"error" : "Cannot get the resources in the Vault"};
+    // get a list of all resources' metadata in the Vault
+    listVault: function(callback) {
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if (resources.list.length > 0) 
-            return cb(resources.list);
-          else
-            return cb(error);
+          console.log("osapi returned:");
+          console.log(resources);
+          if (resources.list.length > 0) {
+              metadatas = [];
+              for (var i = 0; i < resources.list.length; i++) {
+                  var entry = {};
+                  entry.metadata = JSON.parse(resources.list[i].metadata);
+                  entry.id = resources.list[i].id;
+                  metadatas.push(entry);
+              }
+              return callback(null, metadatas);
+          } else {
+              return callback({"error" : "Cannot get the resources in the Vault"});
+          }
         });
       });
     },
@@ -214,68 +195,6 @@ contact: na.li@epfl.ch
           return cb(response);
         } else {
           var error = {"error": "Cannot get app"};
-          return cb(error);
-        }
-      });
-    },
-
-    // log the action of adding a resource in the Vault
-    logAction: function(userName, vault, resourceId, app, cb) {
-      var params = {
-        userId: "@viewer",
-        groupId: "@self",
-        activity: {
-          verb: "add"
-        }
-      };
-      params.activity.actor = {
-        id: userName + "@" + vault.parentId.toString(), //the id of the ILS
-        objectType: "person",
-        name: userName
-      };
-      params.activity.object = {
-        id: resourceId.toString(),
-        objectType: "Asset",
-        graasp_object: "true"
-      };
-      params.activity.target = {
-        id: vault.id.toString(),
-        objectType: "Space",
-        graasp_object: "true"
-      };
-      params.activity.generator = {
-        id: app.id.toString(),
-        objectType: "Widget",
-        ur: app.appUrl,
-        graasp_object: "true"
-      };
-      osapi.activitystreams.create(params).execute(function(response){
-        if (!response.error) {
-          return cb(response);
-        } else {
-          var error = {"error": "Cannot create activity"};
-          return cb(error);
-        }
-      });
-    },
-
-    // get the action of adding the resource in the Vault based on resourceId and vaultId
-    getAction: function(vaultId, resourceId, cb) {
-      var params = {
-        contextId: vaultId,
-        contextType: "@space",
-        count: 1,
-        fields: "id,actor,verb,object,target,published,updated,generator",
-        filterBy: "object.id",
-        filterOp: "contains",
-        filterValue: "assets/" + resourceId.toString(),
-        ext: true
-      };
-      osapi.activitystreams.get(params).execute(function(response){
-        if (!response.error && (response.totalResults > 0 )) {
-          return cb(response.entry[0]);
-        } else {
-          var error = {"error": "Cannot get activity"};
           return cb(error);
         }
       });

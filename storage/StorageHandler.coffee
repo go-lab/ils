@@ -35,11 +35,8 @@ class window.golab.ils.storage.StorageHandler
     # cloning the objects!
     content = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
+    # TODO move resource.metadata.published to resource.published
     metadata.published = (new Date()).toISOString()
-    # potentially a new id has been created, set it in the metadataHandler
-    # TODO better not set a new target id, it's up to the tools to decide this
-    # (other than the resource id!)
-    # @metadataHandler.setTargetId(id)
     {
       id: id,
       metadata: metadata,
@@ -333,26 +330,13 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       return @
 
   readResource: (resourceId, cb) ->
+    # this function only relays the call to the ILS library and does some error catching
     try
-      console.log "trying to load resource #{resourceId} from the vault."
-      ils.readResource resourceId, (result) =>
+      ils.readResource resourceId, (error, result) =>
         if result.error
-          throw error
+          cb error
         else
-          console.log "returned result from the vault:"
-          console.log result
-          content = JSON.parse result.content
-          # TODO once the vault metadata retrieval is solved, change this
-          # metadata = JSON.parse result.metadata
-          metadata = @metadataHandler.getMetadata()
-          resource = {
-            id: result.id
-            metadata: metadata
-            content: content
-          }
-          console.log "returning resource:"
-          console.log resource
-          cb null, resource
+          cb null, result
     catch error
       console.warn "something went wrong when trying to load from the vault:"
       console.warn error
@@ -365,16 +349,14 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     try
       # create resource with id, metadata and content
       resource = @getResourceBundle(content)
-      # remove the resource.id, because it's stored differently in the vault
+      # remove the resource.id (if present...), because the Vault will set its own id
       # (see result.id below)
       resource.id = ""
-      ils.createResource @metadataHandler.getTargetDisplayName(), resource, (result) =>
-        if result.error
-          throw result.error
+      ils.createResource resource, (error, result) =>
+        if error
+          cb error
         else
           resource.id = result.id
-          console.log "Resource created in Vault, result:"
-          console.log result
           cb null, resource
     catch error
       console.log "Vault resource creation unsuccessful: "
@@ -387,39 +369,14 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
   listResourceIds: (cb) ->
     throw "Not yet implemented."
 
-  listResourceMetaDatas: (cb) ->
-    ils.listVault (result) =>
-      if result.error
-        cb result.error
+  listResourceMetaDatas: (callback) ->
+    ils.listVault (error, result) =>
+      if error
+        callback error
       else
         console.log "listResourceMetaDatas:"
         console.log result
-        metadatas = []
-        for entry in result
-          ###
-          metadatas.push {
-            id: entry.id
-            metadata: JSON.parse entry.metadata
-          }
-          ###
-          metadatas.push {
-            id: entry.id
-          # the following metadata is the minimum currently needed
-          # TODO
-          # in future "metadata: entry.metadata" should be possible
-            metadata: {
-              target: {
-                displayName: entry.displayName
-                objectType: "hypotheses"
-              }
-              generator: {
-                displayName: "dummy toolname"
-              }
-              published: entry.updated
-            }
-
-          }
-        cb null, metadatas
+        callback null, result
 
 ###
   Implementation of a MongoDB storage handler.
@@ -504,8 +461,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
     try
       $.ajax({
         type: "GET",
-        #url: "http://localhost:8080/listResourceMetaDatas",
-        url: "#{@urlPrefix}/listResourceMetaDatas/#{@metadataHandler.getProvider().id}",
+        url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
         success: (responseData) ->
           console.log("GET success, response:")
           console.log responseData

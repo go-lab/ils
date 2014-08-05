@@ -18,6 +18,7 @@
     function ActionLogger(metadataHandler) {
       this.log = __bind(this.log, this);
       var error;
+      this._debug = true;
       console.log("Initializing ActionLogger.");
       console.log("...setting default logging target: nullLogging.");
       try {
@@ -28,14 +29,57 @@
         throw "ActionLogger needs a MetadataHandler at construction!";
       }
       this.loggingTarget = this.nullLogging;
+      this.loggingUrl = null;
+      this.loggedApplicationStarted = false;
+      this.logListeners = [];
     }
 
+    ActionLogger.prototype.addLogListener = function(logListener) {
+      return this.logListeners.push(logListener);
+    };
+
+    ActionLogger.prototype.removeLogListener = function(logListener) {
+      var index;
+      index = this.logListeners.indexOf(logListener);
+      if (index >= 0) {
+        return this.logListeners.splice(index, 1);
+      }
+    };
+
     ActionLogger.prototype.setLoggingTarget = function(newLoggingTarget) {
-      return this.loggingTarget = newLoggingTarget;
+      if (typeof newLoggingTarget === "string") {
+        if (this._debug) {
+          console.log("setLoggingTarget(" + newLoggingTarget + ")");
+        }
+        return this.loggingTarget = (function() {
+          switch (newLoggingTarget.toLowerCase()) {
+            case "null":
+              return this.nullLogging;
+            case "console":
+              return this.consoleLogging;
+            case "consoleshort":
+              return this.consoleLoggingShort;
+            case "consoleobject":
+              return this.consoleLoggingObject;
+            case "dufftown":
+              this.loggingUrl = "http://go-lab.collide.info/activity";
+              return this.httpPostLogging;
+            case "opensocial":
+              return this.opensocialLogging;
+            default:
+              this.loggingUrl = newLoggingTarget;
+              return this.httpPostLogging;
+          }
+        }).call(this);
+      } else {
+        return this.loggingTarget = newLoggingTarget;
+      }
     };
 
     ActionLogger.prototype.setLoggingTargetByName = function(newLoggingTargetName) {
-      console.log("ActionLogger: setting logging target (by name) to " + newLoggingTargetName);
+      if (this._debug) {
+        console.log("ActionLogger: setting logging target (by name) to " + newLoggingTargetName);
+      }
       if (newLoggingTargetName === "null") {
         return this.loggingTarget = this.nullLogging;
       } else if (newLoggingTargetName === "console") {
@@ -47,13 +91,13 @@
       } else if (newLoggingTargetName === "opensocial") {
         return this.loggingTarget = this.opensocialLogging;
       } else {
-        console.log("ActionLogger: unknown logging target, setting to 'null'.");
+        console.warn("ActionLogger: unknown logging target, setting to 'null'.");
         return this.loggingTarget = this.nullLogging;
       }
     };
 
     ActionLogger.prototype.log = function(verb, object) {
-      var activityStreamObject, error, verbAccepted, verbKey, verbValue, _ref;
+      var activityStreamObject, error, logListener, verbAccepted, verbKey, verbValue, _i, _len, _ref, _ref1;
       verbAccepted = false;
       _ref = this.verbs;
       for (verbKey in _ref) {
@@ -65,8 +109,8 @@
       if (!verbAccepted) {
         console.warn("ActionLogger: unknown verb: " + verb);
       }
+      activityStreamObject = {};
       try {
-        activityStreamObject = {};
         activityStreamObject.published = new Date().toISOString();
         activityStreamObject.actor = this.metadataHandler.getActor();
         activityStreamObject.verb = verb;
@@ -74,12 +118,18 @@
         activityStreamObject.target = this.metadataHandler.getTarget();
         activityStreamObject.generator = this.metadataHandler.getGenerator();
         activityStreamObject.provider = this.metadataHandler.getProvider();
-        return this.loggingTarget(activityStreamObject);
+        this.loggingTarget(activityStreamObject);
       } catch (_error) {
         error = _error;
         console.warn("something went wrong during logging:");
-        return console.warn(error);
+        console.warn(error);
       }
+      _ref1 = this.logListeners;
+      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+        logListener = _ref1[_i];
+        logListener.logAction(activityStreamObject);
+      }
+      return activityStreamObject;
     };
 
     ActionLogger.prototype.nullLogging = function(action) {};
@@ -90,6 +140,10 @@
 
     ActionLogger.prototype.consoleLoggingShort = function(activityStreamObject) {
       return console.log("ActionLogger: " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);
+    };
+
+    ActionLogger.prototype.consoleLoggingObject = function(activityStreamObject) {
+      return console.log("ActionLogger: " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id + ", object: " + (JSON.stringify(activityStreamObject.object, void 0, 2)));
     };
 
     ActionLogger.prototype.opensocialLogging = function(activityStreamObject) {
@@ -114,35 +168,172 @@
       }
     };
 
-    ActionLogger.prototype.dufftownLogging = function(activityStreamObject) {
-      var url;
-      url = "http://go-lab.collide.info/activity";
-      console.log("ActionLogger: logging to " + url + ": " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);
+    ActionLogger.prototype.httpPostLogging = function(activityStreamObject) {
+      var _this = this;
+      if (this._debug) {
+        console.log("ActionLogger: logging to " + this.loggingUrl + ": " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);
+      }
       return $.ajax({
         type: "POST",
-        url: url,
+        url: this.loggingUrl,
         data: JSON.stringify(activityStreamObject),
         contentType: "application/json",
         success: function(responseData, textStatus, jqXHR) {
-          return console.log("POST actionlog success, response: " + responseData);
+          if (_this._debug) {
+            return console.log("POST actionlog success, response: " + responseData);
+          }
         },
         error: function(responseData, textStatus, errorThrown) {
-          console.log("POST actionlog failed, response:");
-          return console.log(responseData);
+          console.log("POST actionlog failed: " + responseData.status + " (" + responseData.statusText + "), response:");
+          return console.log(JSON.stringify(responseData));
         }
       });
     };
 
+    ActionLogger.prototype.logApplicationStarted = function() {
+      var object;
+      if (!this.loggedApplicationStarted) {
+        object = {
+          objectType: "application",
+          content: {
+            device: {
+              navigator: {
+                appCodeName: navigator.appCodeName,
+                appName: navigator.appName,
+                appVersion: navigator.appVersion,
+                geoLocation: navigator.geolocation,
+                language: navigator.language,
+                oscpu: navigator.oscpu,
+                platform: navigator.platform,
+                product: navigator.product,
+                userAgent: navigator.userAgent
+              },
+              browser: head.browser,
+              screen: head.screen,
+              features: {
+                mobile: head.mobile,
+                desktop: head.desktop,
+                touch: head.touch,
+                portrait: head.portrait,
+                landscape: head.landscape,
+                retina: head.retina,
+                transitions: head.transitions,
+                transforms: head.transforms,
+                gradients: head.gradients,
+                multiplebgs: head.multiplebgs,
+                boxshadow: head.boxshadow,
+                borderimage: head.borderimage,
+                borderradius: head.borderradius,
+                cssreflections: head.cssreflections,
+                fontface: head.fontface,
+                rgba: head.rgba
+              }
+            }
+          }
+        };
+        this.log(this.verbs.application_started, object);
+        return this.loggedApplicationStarted = true;
+      }
+    };
+
+    /*
+      content-oriented
+    */
+
+
+    ActionLogger.prototype.logAdd = function(object) {
+      return this.log(this.verbs.add, object);
+    };
+
+    ActionLogger.prototype.logRemove = function(object) {
+      return this.log(this.verbs.remove, object);
+    };
+
+    ActionLogger.prototype.logChange = function(object) {
+      return this.log(this.verbs.change, object);
+    };
+
+    ActionLogger.prototype.logClear = function(object) {
+      return this.log(this.verbs.clear, object);
+    };
+
+    /*
+     process-oriented
+    */
+
+
+    ActionLogger.prototype.logAccess = function(object) {
+      return this.log(this.verbs.access, object);
+    };
+
+    ActionLogger.prototype.logStart = function(object) {
+      return this.log(this.verbs.start, object);
+    };
+
+    ActionLogger.prototype.logCancel = function(object) {
+      return this.log(this.verbs.cancel, object);
+    };
+
+    ActionLogger.prototype.logSend = function(object) {
+      return this.log(this.verbs.send, object);
+    };
+
+    ActionLogger.prototype.logReceive = function(object) {
+      return this.log(this.verbs.receive, object);
+    };
+
+    /*
+      storage-oriented
+    */
+
+
+    ActionLogger.prototype.logNew = function(resource) {
+      return this._logStorageAction(this.verbs.open, resource);
+    };
+
+    ActionLogger.prototype.logLoad = function(resource) {
+      return this._logStorageAction(this.verbs.open, resource);
+    };
+
+    ActionLogger.prototype.logSaveAs = function(resource) {
+      return this._logStorageAction(this.verbs.create, resource);
+    };
+
+    ActionLogger.prototype.logSave = function(resource) {
+      return this._logStorageAction(this.verbs.update, resource);
+    };
+
+    ActionLogger.prototype.logDelete = function(resource) {
+      return this._logStorageAction(this.verbs["delete"], resource);
+    };
+
+    ActionLogger.prototype._logStorageAction = function(verb, resource) {
+      var object;
+      object = {
+        objectType: "resource",
+        id: resource.metadata.id,
+        content: resource.metadata.target
+      };
+      return this.log(verb, object);
+    };
+
     ActionLogger.prototype.verbs = {
-      application_started: "application_started",
-      access: "access",
-      create: "create",
       add: "add",
+      remove: "remove",
+      change: "change",
+      clear: "clear",
+      access: "access",
+      start: "start",
+      cancel: "cancel",
+      send: "send",
+      receive: "receive",
+      "new": "new",
+      open: "open",
+      create: "create",
       update: "update",
       "delete": "delete",
-      load: "read",
-      save: "save",
-      phase_changed: "phase_changed"
+      application_started: "access",
+      phase_changed: "access"
     };
 
     return ActionLogger;

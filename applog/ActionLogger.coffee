@@ -7,6 +7,7 @@ window.ut.commons.actionlogging = window.ut.commons.actionlogging|| {}
 class window.ut.commons.actionlogging.ActionLogger
 
   constructor: (metadataHandler) ->
+    @_debug = true
     console.log("Initializing ActionLogger.")
     console.log("...setting default logging target: nullLogging.")
     try
@@ -16,19 +17,50 @@ class window.ut.commons.actionlogging.ActionLogger
       throw "ActionLogger needs a MetadataHandler at construction!"
     # the defaults...
     @loggingTarget = @nullLogging
+    @loggingUrl = null
+    @loggedApplicationStarted = false
+    @logListeners = []
+
+  addLogListener: (logListener)->
+    @logListeners.push(logListener)
+
+  removeLogListener: (logListener)->
+    index = @logListeners.indexOf(logListener)
+    if (index>=0)
+      @logListeners.splice(index,1)
 
   setLoggingTarget: (newLoggingTarget) ->
-    @loggingTarget = newLoggingTarget
+    if (typeof newLoggingTarget == "string")
+      console.log("setLoggingTarget(#{newLoggingTarget})") if @_debug
+      @loggingTarget = switch newLoggingTarget.toLowerCase()
+        when "null"
+          @nullLogging
+        when "console"
+          @consoleLogging
+        when "consoleshort"
+          @consoleLoggingShort
+        when "consoleobject"
+          @consoleLoggingObject
+        when "dufftown"
+          @loggingUrl = "http://go-lab.collide.info/activity"
+          @httpPostLogging
+        when "opensocial"
+          @opensocialLogging
+        else
+          @loggingUrl = newLoggingTarget
+          @httpPostLogging
+    else
+      @loggingTarget = newLoggingTarget
 
   setLoggingTargetByName: (newLoggingTargetName) ->
-    console.log "ActionLogger: setting logging target (by name) to #{newLoggingTargetName}"
+    console.log("ActionLogger: setting logging target (by name) to #{newLoggingTargetName}") if @_debug
     if newLoggingTargetName is "null" then @loggingTarget = @nullLogging
     else if newLoggingTargetName is "console" then @loggingTarget = @consoleLogging
     else if newLoggingTargetName is "consoleShort" then @loggingTarget = @consoleLoggingShort
     else if newLoggingTargetName is "dufftown" then @loggingTarget = @dufftownLogging
     else if newLoggingTargetName is "opensocial" then @loggingTarget = @opensocialLogging
     else
-      console.log "ActionLogger: unknown logging target, setting to 'null'."
+      console.warn "ActionLogger: unknown logging target, setting to 'null'."
       @loggingTarget = @nullLogging
 
   log: (verb, object) =>
@@ -39,9 +71,9 @@ class window.ut.commons.actionlogging.ActionLogger
         verbAccepted = true
     if not verbAccepted
       console.warn "ActionLogger: unknown verb: #{verb}"
+    activityStreamObject = {}
     try
       # building ActivityStream object
-      activityStreamObject = {}
       activityStreamObject.published = new Date().toISOString()
       activityStreamObject.actor = @metadataHandler.getActor()
       activityStreamObject.verb = verb
@@ -54,6 +86,14 @@ class window.ut.commons.actionlogging.ActionLogger
     catch error
       console.warn "something went wrong during logging:"
       console.warn error
+    for logListener in @logListeners
+      logListener.logAction(activityStreamObject)
+#      try
+#        logListener.logAction(activityStreamObject)
+#      catch error
+#        console.warn("something went wrong during logListener.logAction:")
+#        console.warn(error)
+    activityStreamObject
 
   nullLogging: (action) ->
     return
@@ -63,6 +103,9 @@ class window.ut.commons.actionlogging.ActionLogger
 
   consoleLoggingShort: (activityStreamObject) ->
     console.log "ActionLogger: #{activityStreamObject.verb} #{activityStreamObject.object.objectType}, id: #{activityStreamObject.object.id}"
+
+  consoleLoggingObject: (activityStreamObject) ->
+    console.log "ActionLogger: #{activityStreamObject.verb} #{activityStreamObject.object.objectType}, id: #{activityStreamObject.object.id}, object: #{JSON.stringify(activityStreamObject.object, undefined, 2)}"
 
   opensocialLogging: (activityStreamObject) ->
     if osapi isnt undefined
@@ -81,53 +124,157 @@ class window.ut.commons.actionlogging.ActionLogger
     else
       console.log "ActionLogger: can't log, osapi is undefined."
 
-  dufftownLogging: (activityStreamObject) ->
-    #url = "http://130.89.159.190/activity"
-    #url = "http://dufftown.inf.uni-due.de/activity"
-    url = "http://go-lab.collide.info/activity"
-    console.log "ActionLogger: logging to #{url}: #{activityStreamObject.verb} #{activityStreamObject.object.objectType}, id: #{activityStreamObject.object.id}"
+  httpPostLogging: (activityStreamObject) ->
+    console.log("ActionLogger: logging to #{@loggingUrl}: #{activityStreamObject.verb} #{activityStreamObject.object.objectType}, id: #{activityStreamObject.object.id}")  if @_debug
     $.ajax({
       type: "POST",
-      url: url,
+      url: @loggingUrl,
       data: JSON.stringify(activityStreamObject),
       contentType: "application/json",
-      success: (responseData, textStatus, jqXHR) ->
-        console.log("POST actionlog success, response: #{responseData}")
-      error: (responseData, textStatus, errorThrown) ->
-        console.log "POST actionlog failed, response:"
-        console.log responseData
+      success: (responseData, textStatus, jqXHR) =>
+        console.log("POST actionlog success, response: #{responseData}") if @_debug
+      error: (responseData, textStatus, errorThrown) =>
+        console.log "POST actionlog failed: #{responseData.status} (#{responseData.statusText}), response:"
+        console.log(JSON.stringify(responseData))
     })
 
+  logApplicationStarted: () ->
+    if (!@loggedApplicationStarted)
+      object = {
+        objectType: "application"
+        content: {
+          device: {
+            navigator: {
+              appCodeName: navigator.appCodeName
+              appName: navigator.appName
+              appVersion: navigator.appVersion
+              geoLocation: navigator.geolocation
+              language: navigator.language
+              oscpu: navigator.oscpu
+              platform: navigator.platform
+              product: navigator.product
+              userAgent: navigator.userAgent
+            }
+            browser: head.browser
+            screen: head.screen
+            features: {
+              mobile: head.mobile
+              desktop: head.desktop
+              touch: head.touch
+              portrait: head.portrait
+              landscape: head.landscape
+              retina: head.retina
+              transitions: head.transitions
+              transforms: head.transforms
+              gradients: head.gradients
+              multiplebgs: head.multiplebgs
+              boxshadow: head.boxshadow
+              borderimage: head.borderimage
+              borderradius: head.borderradius
+              cssreflections: head.cssreflections
+              fontface: head.fontface
+              rgba: head.rgba
+
+            }
+          }
+        }
+      }
+      @log(@verbs.application_started, object)
+      @loggedApplicationStarted = true
+
+  ###
+    content-oriented
+  ###
+  logAdd: (object) ->
+    @log(@verbs.add, object)
+
+  logRemove: (object) ->
+    @log(@verbs.remove, object)
+
+  logChange: (object) ->
+    @log(@verbs.change, object)
+
+  logClear: (object)->
+    @log(@verbs.clear, object)
+
+  ###
+   process-oriented
+  ###
+  logAccess: (object) ->
+    @log(@verbs.access, object)
+
+  logStart: (object) ->
+    @log(@verbs.start, object)
+
+  logCancel: (object) ->
+    @log(@verbs.cancel, object)
+
+  logSend: (object) ->
+    @log(@verbs.send, object)
+
+  logReceive: (object) ->
+    @log(@verbs.receive, object)
+
+  ###
+    storage-oriented
+  ###
+  # use the resource as the object for logging
+  logNew: (resource) ->
+    @_logStorageAction(@verbs.open, resource)
+
+  # use the resource as the object for logging
+  logLoad: (resource) ->
+    @_logStorageAction(@verbs.open, resource)
+
+  # use the resource as the object for logging
+  logSaveAs: (resource) ->
+    @_logStorageAction(@verbs.create, resource)
+
+  # use the resource as the object for logging
+  logSave: (resource) ->
+    @_logStorageAction(@verbs.update, resource)
+
+  # use the resource as the object for logging
+  logDelete: (resource) ->
+    @_logStorageAction(@verbs.delete, resource)
+
+  _logStorageAction: (verb, resource) ->
+    object = {
+      objectType: "resource"
+      id: resource.metadata.id
+      content: resource.metadata.target
+    }
+    @log(verb, object)
+
   verbs: {
+    # content-oriented verbs
+    # indicate that the content/model of a tool has changed
+    add: "add"
+    remove: "remove"
+    change: "change"
+    clear: "clear"
+
+    # process-oriented verbs
+    # no change to the content/model of a tool has been made,
+    # but still the user has made a meaningful action
+    access: "access"
+    start: "start"
+    cancel: "cancel"
+    send: "send"
+    receive: "receive"
+
+    # storage-oriented verbs
+    # the user has stored or retrieved something, or created a new resource from scratch
+    new: "new"
+    open: "open"
+    create: "create"
+    update: "update"
+    delete: "delete"
+
     # used to indicate the start of a tool, lab, ils, etc.
     # the object specifies 'what' has been started
     # - in the case of a tool or lab, the object should contain metadata.generator
     # - in the case of an ILS, the object should contain metadata.provider
-    application_started: "application_started"
-    # proposal:
-    # application_started: "access"
-    access: "access"
-
-    # used when a new artefact/document (e.g. a new concept map) is created
-    # used in contrast to "add", when only a new part of a document is created (e.g. a concept)
-    # the object should contain metadata.target (with a new id and displayName)
-    create: "create"
-
-    add: "add"
-    update: "update"
-    delete: "delete"
-
-    # used to indicate that a resource has been retrieved,
-    # e.g. a concept map has been loaded
-    # the object should contain metadata.target
-    load: "read"
-
-    # used to indicate that a resource has been stored
-    # the object should contain metadata.target
-    save: "save"
-
-    # indicates that the ILS phase has been changed
-    # the object contains metadata.provider (with the new value of provider.inquiryPhase)
-    phase_changed: "phase_changed"
-    # proposal: use "access" here, too
+    application_started: "access"
+    phase_changed: "access"
   }

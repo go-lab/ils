@@ -151,15 +151,19 @@ contact: na.li@epfl.ch
             if (!parentSpace.error) {
               console.log("print parent space");
               console.log(parentSpace);
-              osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                if (!parentIls.error && parentIls.spacetype === 'ils') {
-                  console.log("print ils space");
-                  console.log(parentIls);
-                  return cb(parentIls, parentSpace);
-                } else {
-                  return cb(error);
-                }
-              });
+              if(parentSpace.spacetype === 'ils'){
+                return cb(parentSpace, parentSpace);
+              }else{
+                osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
+                  if (!parentIls.error && parentIls.spacetype === 'ils') {
+                    console.log("print ils space");
+                    console.log(parentIls);
+                    return cb(parentIls, parentSpace);
+                  } else {
+                    return cb(error);
+                  }
+                });
+              }
             } else {
               return cb(error);
             }

@@ -194,7 +194,12 @@ class window.ut.commons.actionlogging.ActionLogger
   logChange: (object) ->
     @log(@verbs.change, object)
 
+  # the clear-action indicates the removal of all content,
+  # typically the object is the current target ->
+  # if now object is given, the current target is used
   logClear: (object)->
+    if (not object?)
+      object = @metadataHandler.getTarget()
     @log(@verbs.clear, object)
 
   ###
@@ -220,7 +225,7 @@ class window.ut.commons.actionlogging.ActionLogger
   ###
   # use the resource as the object for logging
   logNew: (resource) ->
-    @_logStorageAction(@verbs.open, resource)
+    @_logStorageAction(@verbs.new, resource)
 
   # use the resource as the object for logging
   logLoad: (resource) ->

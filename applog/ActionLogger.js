@@ -254,6 +254,9 @@
     };
 
     ActionLogger.prototype.logClear = function(object) {
+      if (object == null) {
+        object = this.metadataHandler.getTarget();
+      }
       return this.log(this.verbs.clear, object);
     };
 
@@ -288,7 +291,7 @@
 
 
     ActionLogger.prototype.logNew = function(resource) {
-      return this._logStorageAction(this.verbs.open, resource);
+      return this._logStorageAction(this.verbs["new"], resource);
     };
 
     ActionLogger.prototype.logLoad = function(resource) {

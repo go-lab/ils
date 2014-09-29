@@ -1,5 +1,7 @@
 ### example metadata
   {
+    "id": "f25d7eff-8859-49ed-85e9-e7c1f92bc111",
+    "published": "2014-06-05T13:15:30Z",
     "actor":
     {
       "objectType": "person",
@@ -130,3 +132,60 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
       console.log "Running outside osapi/ils, using given metadata."
       super metadata
       cb(null, @)
+
+
+class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.metadata.MetadataHandler
+
+  constructor: (metadata, cb) ->
+    getIdentifyingUrl = ->
+      path = window.location.pathname
+      subPaths = window.location.pathname.split("/")
+      if (subPaths.length>0)
+        switch subPaths[0].toLocaleLowerCase()
+          when "production"
+            path = subPaths[0]
+          when "experiments"
+            path = subPaths[0]
+            if subPaths.length>1
+              path += "/"+subPaths[0]
+          else
+            path = ""
+      "#{window.location.protocol}//#{window.location.host}#{path}".toLowerCase()
+
+    # overriding some default values with the correct values for the "local" context
+    metadata.provider.id = getIdentifyingUrl()
+    # if present as URL, take from there
+    if (@getParameterFromUrl("provider")?)
+      metadata.provider.id = @getParameterFromUrl("provider")
+    # if we have a name of the ILS, we can set it here
+    metadata.provider.displayName = "unnamed"
+
+    # if that goes wrong, call the callback with an error
+    userNickname = localStorage.getItem('goLabNickName')
+    if (!userNickname)
+      # if no nickname is stored, try to get one from the URL
+      if (@getParameterFromUrl("username")?)
+        userNickname = @getParameterFromUrl("username")
+      else
+        # if all fails, set to "unknown"
+        userNickname = "unknown user"
+    metadata.actor.displayName = userNickname
+    actorId = metadata.actor.displayName+"@"+metadata.provider.id
+    metadata.actor.id = actorId
+
+    # set the metadata in the super-constructor
+    # and return it via callback
+    super metadata
+    cb(null, @)
+
+  getParameterFromUrl: (key) ->
+    key = key.toLowerCase()
+    parameter = null
+    queryPart = location.search.trim().toLowerCase()
+    if (queryPart && queryPart[0] == "?")
+      parts = queryPart.substring(1).split("&")
+      for part in parts
+        partParts = part.split("=")
+        if (partParts.length == 2 && partParts[0] == key)
+          parameter = partParts[1]
+    parameter

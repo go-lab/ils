@@ -145,19 +145,13 @@ contact: na.li@epfl.ch
       var error = {"error" : "Cannot get ILS"};
       osapi.context.get().execute(function(space) {
         if (!space.error) {
-          console.log("print context");
-          console.log(space);
           osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
             if (!parentSpace.error) {
-              console.log("print parent space");
-              console.log(parentSpace);
               if(parentSpace.spaceType === 'ils'){
                 return cb(parentSpace, parentSpace);
               }else{
                 osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
                   if (!parentIls.error && parentIls.spaceType === 'ils') {
-                    console.log("print ils space");
-                    console.log(parentIls);
                     return cb(parentIls, parentSpace);
                   } else {
                     return cb(error);
@@ -179,7 +173,6 @@ contact: na.li@epfl.ch
       var error = {};
       ils.getIls(function(parentIls) {
         if (!parentIls.error) {
-        console.log(parentIls.id);
         osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
           function(subspaces) {
             if (subspaces.totalResults != 0) {

@@ -102,6 +102,7 @@ contact: na.li@epfl.ch
               "content": JSON.stringify(content)
               }
             };
+
             osapi.documents.create(params).execute(function(resource){
               if (!resource.error && resource != null & resource != undefined) {
                 ils.getApp(function(app){
@@ -183,8 +184,8 @@ contact: na.li@epfl.ch
                 results = [];
                 for (i = 0, len = ref.length; i < len; i++) {
                   item = ref[i];
-                  if (JSON.parse(item.metadata) != null && JSON.parse(item.metadata) != undefined) {
-                    if (JSON.parse(item.metadata).type === "Vault") {
+                   if (item.hasOwnProperty("metadata") && item.metadata != undefined) {
+                    if (item.metadata.type === "Vault") {
                       results.push(item);
                   }
                 }
@@ -282,8 +283,8 @@ contact: na.li@epfl.ch
     getParentInquiryPhase: function(cb) {
       var error = {"error" : "Cannot get parent inquiry phase"};
       this.getParent(function(parent) {
-        if (!parent.error && parent.metadata != null && parent.metadata != undefined) {
-          return cb(JSON.parse(parent.metadata).type);
+        if (!parent.error && parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
+          return cb(parent.metadata.type);
         } else {
           return cb(error);
         }

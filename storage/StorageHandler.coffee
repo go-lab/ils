@@ -11,36 +11,70 @@ window.golab.ils.storage.memory = window.golab.ils.storage.memory || {}
 ###
 class window.golab.ils.storage.StorageHandler
 
-  constructor: (metadataHandler) ->
+  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = false, @_filterForProvider = true) ->
     console.log "Initializing StorageHandler."
-    @_debug = true
+    @_debug = false
+    @_lastResourceId = undefined
     try
       metadataHandler.getMetadata()
       @metadataHandler = metadataHandler
     catch error
       throw "StorageHandler needs a MetadataHandler at construction!"
 
+  # the three different filters can be activated or deactivated by setting them to true or false
+  # the filter value is fetched from the metadataHandler
+  # e.g. the default setting
+  # configureFilters(true, false, true)
+  # returns only resources that match the resource type and provider id from all users
+  configureFilters: (filterForResourceType, filterForUser, filterForProvider) ->
+    @_filterForResourceType = filterForResourceType
+    @_filterForUser = filterForUser
+    @_filterForProvider = filterForProvider
+
   getMetadataHandler: ->
     @metadataHandler
 
+  # bundles and returns the most important/interesting features of a resource (for load/save dialogs)
+  # for convenience only
   getResourceDescription: (resource)->
     {
-    id: resource.id
+    id: resource.metadata.id
     title: resource.metadata.target.displayName
+    type: resource.metadata.target.objectType
     tool: resource.metadata.generator.displayName
+    author: resource.metadata.actor.displayName
     modified: new Date(resource.metadata.published)
     }
 
+  # internal function, typically not used external
+  applyFilters: (metadatas) =>
+    if @_debug
+      console.log "StorageHandler.applyFilters:"
+      console.log "filter for type, user, provider:"
+      console.log @_filterForResourceType, @_filterForUser, @_filterForProvider
+      console.log metadatas
+    # it's important to filter provider before user, since the userId contains the providerId, and therefore we then filter for user displayName
+    if @_filterForResourceType
+      metadatas = metadatas.filter (entry) => entry.metadata.target.objectType is @metadataHandler.getTarget().objectType
+    if @_filterForProvider
+      metadatas = metadatas.filter (entry) => entry.metadata.provider.id is @metadataHandler.getProvider().id
+    if @_filterForUser
+      metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
+    if @_debug
+      console.log "after: "
+      console.log metadatas
+    return metadatas
+
+  # internal function, typically not used external
   getResourceBundle: (content, id = ut.commons.utils.generateUUID()) =>
     # cloning the objects!
-    content = JSON.parse(JSON.stringify(content))
+    thisContent = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
-    # TODO move resource.metadata.published to resource.published
     metadata.published = (new Date()).toISOString()
+    metadata.id = id
     {
-      id: id,
       metadata: metadata,
-      content: content
+      content: thisContent
     }
 
   readLatestResource: (objectType, cb) =>
@@ -79,7 +113,7 @@ class window.golab.ils.storage.StorageHandler
     any error occured. It is an error if there is no resource with given id.
   ###
   readResource: (resourceId, cb) ->
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function readResource - implement in subclass."
 
   ###
     Checks if there is a resource with given id.
@@ -88,7 +122,7 @@ class window.golab.ils.storage.StorageHandler
     error if any error occured.
   ###
   resourceExists: (resourceId, cb) ->
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function resourceExists - implement in subclass."
 
   ###
     Creates a resource with the given content.
@@ -96,7 +130,7 @@ class window.golab.ils.storage.StorageHandler
     resource. err is null or contains the error if any error occured.
   ###
   createResource: (content, cb) =>
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function createResource - implement in subclass."
 
   ###
     Updates an existing resource with new content.
@@ -104,7 +138,17 @@ class window.golab.ils.storage.StorageHandler
     resource. err is null or contains the error if any error occured.
   ###
   updateResource: (resourceId, content, cb) ->
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function updateResource - implement in subclass."
+
+  ###
+    Deletes an existing resource.
+    Requires the resourceId of the resource to be deleted,
+    and a callback that returns an error if something went wrong,
+    or is null on success.
+    resource. err is null or contains the error if any error occured.
+  ###
+  deleteResource: (resourceId, cb) ->
+    throw "Abstract function deleteResource - implement in subclass."
 
   ###
     Calls back with the ids of all existing resources.
@@ -112,16 +156,16 @@ class window.golab.ils.storage.StorageHandler
     error occured.
   ###
   listResourceIds: (cb) ->
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function listResourceIds - implement in subclass."
 
   ###
     Calls back with the metadata of all existing resources.
     Takes a callback with (err, metadatas), where metadatas is an Array of
     { id, metadata: {} } objects. err is null or contains the error if any error
-    occured.
+    occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
   ###
   listResourceMetaDatas: (cb) ->
-    throw "Abstract function - implement in subclass."
+    throw "Abstract function listResourceMetaDatas - implement in subclass."
 
 
 ###
@@ -158,14 +202,14 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
     try
       # create resource with id, metadata and content
       resource = @getResourceBundle(content)
-      if @storeObject[resource.id]
-        error = new Error "MemoryStorage: resource already exists! #{resource.id}"
+      if @storeObject[resource.metadata.id]
+        error = new Error "MemoryStorage: resource already exists! #{resource.metadata.id}"
         if @_debug then console.log error
         setTimeout(->
           cb(error)
         , 0)
       else
-        @storeObject[resource.id] = resource
+        @storeObject[resource.metadata.id] = resource
         if @_debug then console.log "MemoryStorage: resource created: #{resource}"
         if @_debug then console.log resource
         setTimeout(->
@@ -200,13 +244,14 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
       cb(null, ids)
     , 0)
 
-  listResourceMetaDatas: (cb) ->
+  listResourceMetaDatas: (cb) =>
     metadatas = []
     for id, resource of @storeObject
       metadatas.push {
         id: id
         metadata: JSON.parse(JSON.stringify(resource.metadata))
       }
+    metadatas = @applyFilters(metadatas)
     setTimeout(->
       cb(null, metadatas)
     , 0)
@@ -254,13 +299,24 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       cb(null, exists)
     , 0)
 
+  deleteResource: (resourceId, cb) ->
+    if @localStorage[goLabLocalStorageKey + resourceId]?
+      delete @localStorage[goLabLocalStorageKey + resourceId]
+      setTimeout(->
+        cb null
+      , 0)
+    else
+      setTimeout(->
+        cb "Can't delete resource - doesn't exist."
+      , 0)
+
   createResource: (content, cb) =>
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
-      resourceId = resource.id
+      resourceId = resource.metadata.id
       if @localStorage[goLabLocalStorageKey + resourceId]
-        error = new Error "LocalStorageHandler: resource already exists! #{resource.id}"
+        error = new Error "LocalStorageHandler: resource already exists! #{resourceId}"
         if @_debug then console.log error
         setTimeout(->
           cb(error)
@@ -305,14 +361,15 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       cb(null, ids)
     , 0)
 
-  listResourceMetaDatas: (cb) ->
+  listResourceMetaDatas: (cb) =>
     metadatas = []
     for id, resourceString of @localStorage when @isGoLabKey(id)
       resource = JSON.parse(resourceString)
       metadatas.push {
-        id: resource.id
+        id: resource.metadata.id
         metadata: resource.metadata
       }
+    metadatas = @applyFilters(metadatas)
     setTimeout(->
       cb(null, metadatas)
     , 0)
@@ -324,7 +381,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
   constructor: (metadataHandler) ->
     super
     console.log "Initializing VaultStorageHandler."
-    if not ils
+    if not ils?
       throw "The ILS library needs to be present for the VaultStorageHandler"
     else
       return @
@@ -333,12 +390,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     # this function only relays the call to the ILS library and does some error catching
     try
       ils.readResource resourceId, (error, result) =>
-        if result.error
+        if error?
           cb error
         else
           cb null, result
     catch error
-      console.warn "something went wrong when trying to load from the vault:"
+      console.warn "Something went wrong when trying to load from the vault:"
       console.warn error
       cb error
 
@@ -349,14 +406,15 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     try
       # create resource with id, metadata and content
       resource = @getResourceBundle(content)
-      # remove the resource.id (if present...), because the Vault will set its own id
+      # remove the resource.metadata.id (if present...), because the Vault will set its own id
       # (see result.id below)
-      resource.id = ""
+      # TODO
+      resource.metadata.id = ""
       ils.createResource resource, (error, result) =>
-        if error
+        if error?
           cb error
         else
-          resource.id = result.id
+          resource.metadata.id = result.id
           cb null, resource
     catch error
       console.log "Vault resource creation unsuccessful: "
@@ -371,7 +429,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
 
   listResourceMetaDatas: (callback) ->
     ils.listVault (error, result) =>
-      if error
+      if error?
         callback error
       else
         console.log "listResourceMetaDatas:"
@@ -383,7 +441,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
 ###
 class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @urlPrefix) ->
-    super
+    super metadataHandler, true, false, true
     if @urlPrefix?
       console.log "Initializing MongoStorageHandler."
       @
@@ -395,12 +453,14 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       $.ajax({
         type: "GET",
         url: "#{@urlPrefix}/readResource/"+resourceId,
+        contentType: "text/plain"
+        crossDomain: true,
         success: (resource) ->
-          console.log("GET success, response:")
+          console.log("GET readResource success, response:")
           console.log resource
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
-          console.warn "GET failed, response:"
+          console.warn "GET readResource failed, response:"
           console.warn errorThrown
           cb errorThrown
       })
@@ -409,17 +469,39 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       console.warn error
       cb error
 
+  deleteResource: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "POST",
+        url: "#{@urlPrefix}/deleteResource/"+resourceId,
+        crossDomain: true,
+        success: (response) ->
+          console.log("POST deleteResource success, response:")
+          console.log response
+          cb null
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST deleteResource failed, response:"
+          console.warn errorThrown
+          cb errorThrown
+      })
+    catch error
+      console.warn "Something went wrong when deleting the resource:"
+      console.warn error
+      cb error
+
   resourceExists: (resourceId, cb) ->
     try
       $.ajax({
         type: "GET",
         url: "#{@urlPrefix}/resourceExists/"+resourceId,
+        crossDomain: true,
+        contentType: "text/plain"
         success: (result) ->
-          console.log("GET success, response:")
+          console.log("GET resourceExists success, response:")
           console.log result
           cb undefined, true
         error: (responseData, textStatus, errorThrown) ->
-          console.warn "GET failed, response:"
+          console.warn "GET resourceExists failed, response:"
           console.warn responseData
           if responseData.status is 500
             cb errorThrown
@@ -435,17 +517,23 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
+      # do not use Mongo's ObjectId mechanism, but use your own id
+      # ... makes a couple of things easier
+      resource._id = resource.metadata.id
       $.ajax({
         type: "POST",
         url: "#{@urlPrefix}/storeResource",
         data: JSON.stringify(resource),
-        contentType: "application/json",
+        contentType: "text/plain"
+        crossDomain: true,
         success: (responseData, textStatus, jqXHR) ->
-          console.log("POST success, response:")
+          console.log("POST createResource success, response:")
           console.log responseData
+          # remove that mongo-internal id again
+          delete resource._id
           cb undefined, resource
         error: (responseData, textStatus, errorThrown) ->
-          console.warn "POST failed, response:"
+          console.warn "POST createResource failed, response:"
           console.warn responseData
           cb responseData
       })
@@ -455,22 +543,54 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   updateResource: (resourceId, content, cb) ->
-    throw "Not yet implemented."
-
-  listResourceMetaDatas: (cb) ->
     try
+      @resourceExists resourceId, (error, result) =>
+        if error?
+          cb error
+        else
+          # creating a resource with a give id
+          resource = @getResourceBundle(content, resourceId)
+          # adding the mongo specific id
+          resource._id = resource.metadata.id
+          $.ajax({
+            type: "POST",
+            url: "#{@urlPrefix}/updateResource",
+            data: JSON.stringify(resource),
+            contentType: "text/plain"
+            crossDomain: true,
+            success: (responseData, textStatus, jqXHR) ->
+              console.log("POST updateResource success, response:")
+              console.log responseData
+              delete resource._id
+              cb null, resource
+            error: (responseData, textStatus, errorThrown) ->
+              console.warn "POST updateResource failed, response:"
+              console.warn responseData
+              cb responseData
+          })
+    catch error
+      console.log "Something went wrong when updating to Mongo:"
+      console.error error
+      cb error
+
+  listResourceMetaDatas: (cb) =>
+    try
+      $.support.cors = true;
       $.ajax({
         type: "GET",
-        url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
-        success: (responseData) ->
-          console.log("GET success, response:")
+        crossDomain: true
+        contentType: "text/plain"
+        # TODO active filters can already be applied here in the URL
+        url: "#{@urlPrefix}/listResourceMetaDatas",
+        #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
+        success: (responseData) =>
+          console.log("GET listResourceMetaDatas success, response (before filters):")
           console.log responseData
+          responseData = @applyFilters(responseData)
           cb undefined, responseData
         error: (responseData, textStatus, errorThrown) ->
-          console.warn "GET failed, response:"
-          console.warn responseData
-          #console.warn textStatus
-          #console.warn errorThrown
+          console.warn "GET listResourceMetaDatas failed, response:"
+          console.warn JSON.stringify(responseData)
           cb responseData
       })
     catch error
@@ -480,3 +600,165 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
 
   listResourceIds: (cb) ->
     throw "Not yet implemented."
+
+
+###
+  Implementation of a MongoDB-IIS storage handler.
+###
+class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.storage.StorageHandler
+  constructor: (metadataHandler, @urlPrefix) ->
+    super metadataHandler, true, false, true
+    if @urlPrefix?
+      console.log "Initializing MongoStorageHandler."
+      @
+    else
+      console.error "I need an urlPrefix as second parameter."
+
+  createResource: (content, cb) =>
+    try
+    # create resource with id, metadata and content
+      resource = @getResourceBundle(content)
+      # do not use Mongo's ObjectId mechanism, but use your own id
+      # ... makes a couple of things easier
+      resource._id = resource.metadata.id
+      $.ajax({
+        type: "POST"
+        url: "#{@urlPrefix}/storeResource.js"
+        contentType: "text/plain"
+        data: JSON.stringify(resource)
+        crossDomain: true
+        success: (responseData, textStatus, jqXHR) ->
+          console.log("POST createResource success, response:")
+          console.log responseData
+          # remove that mongo-internal id again
+          delete resource._id
+          cb undefined, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST createResource failed, response:"
+          console.warn responseData
+          cb responseData
+      })
+    catch error
+      console.log "Something went wrong when writing to Mongo:"
+      console.error error
+      cb error
+
+  updateResource: (resourceId, content, cb) ->
+    try
+      @resourceExists resourceId, (error, result) =>
+        if error?
+          cb error
+        else
+          # creating a resource with a give id
+          resource = @getResourceBundle(content, resourceId)
+          # adding the mongo specific id
+          resource._id = resource.metadata.id
+          $.ajax({
+            type: "POST",
+            url: "#{@urlPrefix}/updateResource.js",
+            data: JSON.stringify(resource),
+            #contentType: "application/json",
+            crossDomain: true,
+            success: (responseData, textStatus, jqXHR) ->
+              console.log("POST updateResource success, response:")
+              console.log responseData
+              console.log textStatus
+              console.log jqXHR
+              delete resource._id
+              cb null, resource
+            error: (responseData, textStatus, errorThrown) ->
+              console.warn "POST updateResource failed, response:"
+              console.warn responseData
+              cb responseData
+          })
+    catch error
+      console.log "Something went wrong when updating to Mongo:"
+      console.error error
+      cb error
+
+  listResourceMetaDatas: (cb) =>
+    try
+      $.ajax({
+        type: "GET",
+        crossDomain: true
+        contentType: "text/plain"
+        #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
+        #TODO active filters can already be applied here as URL parameters
+        url: "#{@urlPrefix}/listMetadatas.js"
+        success: (responseData) =>
+          console.log("GET listResourceMetaDatas success, response (before filters):")
+          console.log responseData
+          metadatas = @applyFilters(responseData)
+          cb undefined, metadatas
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET listResourceMetaDatas failed, response:"
+          console.warn JSON.stringify(responseData)
+          cb responseData
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the metedatas:"
+      console.warn error
+      cb error
+
+  readResource: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "GET",
+        url: "#{@urlPrefix}/readResource.js?id="+resourceId,
+        crossDomain: true,
+        success: (resource) ->
+          console.log("GET readResource success, response:")
+          console.log resource
+          cb null, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET readResource failed, response:"
+          console.warn errorThrown
+          cb errorThrown
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the resource:"
+      console.warn error
+      cb error
+
+  deleteResource: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "POST",
+        url: "#{@urlPrefix}/deleteResource.js?id="+resourceId,
+        crossDomain: true,
+        success: (response) ->
+          console.log("POST deleteResource success, response:")
+          console.log response
+          cb null
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST deleteResource failed, response:"
+          console.warn errorThrown
+          cb errorThrown
+      })
+    catch error
+      console.warn "Something went wrong when deleting the resource:"
+      console.warn error
+      cb error
+
+  resourceExists: (resourceId, cb) ->
+    try
+      $.ajax({
+        type: "GET",
+        url: "#{@urlPrefix}/resourceExists.js?id="+resourceId,
+        crossDomain: true,
+        success: (result) ->
+          console.log("GET resourceExists success, response:")
+          console.log result
+          cb undefined, true
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "GET resourceExists failed, response:"
+          console.warn responseData
+          if responseData.status is 500
+            cb errorThrown
+          else if responseData.status is 410
+            cb undefined, false
+      })
+    catch error
+      console.warn "Something went wrong when retrieving the resource:"
+      console.warn error
+      cb error

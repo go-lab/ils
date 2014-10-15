@@ -21,13 +21,18 @@
 
 
   window.golab.ils.storage.StorageHandler = (function() {
-    function StorageHandler(metadataHandler) {
+    function StorageHandler(metadataHandler, _filterForResourceType, _filterForUser, _filterForProvider) {
+      var error;
+      this._filterForResourceType = _filterForResourceType != null ? _filterForResourceType : true;
+      this._filterForUser = _filterForUser != null ? _filterForUser : false;
+      this._filterForProvider = _filterForProvider != null ? _filterForProvider : true;
       this.createResource = __bind(this.createResource, this);
       this.readLatestResource = __bind(this.readLatestResource, this);
       this.getResourceBundle = __bind(this.getResourceBundle, this);
-      var error;
+      this.applyFilters = __bind(this.applyFilters, this);
       console.log("Initializing StorageHandler.");
-      this._debug = true;
+      this._debug = false;
+      this._lastResourceId = void 0;
       try {
         metadataHandler.getMetadata();
         this.metadataHandler = metadataHandler;
@@ -37,31 +42,69 @@
       }
     }
 
+    StorageHandler.prototype.configureFilters = function(filterForResourceType, filterForUser, filterForProvider) {
+      this._filterForResourceType = filterForResourceType;
+      this._filterForUser = filterForUser;
+      return this._filterForProvider = filterForProvider;
+    };
+
     StorageHandler.prototype.getMetadataHandler = function() {
       return this.metadataHandler;
     };
 
     StorageHandler.prototype.getResourceDescription = function(resource) {
       return {
-        id: resource.id,
+        id: resource.metadata.id,
         title: resource.metadata.target.displayName,
+        type: resource.metadata.target.objectType,
         tool: resource.metadata.generator.displayName,
+        author: resource.metadata.actor.displayName,
         modified: new Date(resource.metadata.published)
       };
     };
 
+    StorageHandler.prototype.applyFilters = function(metadatas) {
+      var _this = this;
+      if (this._debug) {
+        console.log("StorageHandler.applyFilters:");
+        console.log("filter for type, user, provider:");
+        console.log(this._filterForResourceType, this._filterForUser, this._filterForProvider);
+        console.log(metadatas);
+      }
+      if (this._filterForResourceType) {
+        metadatas = metadatas.filter(function(entry) {
+          return entry.metadata.target.objectType === _this.metadataHandler.getTarget().objectType;
+        });
+      }
+      if (this._filterForProvider) {
+        metadatas = metadatas.filter(function(entry) {
+          return entry.metadata.provider.id === _this.metadataHandler.getProvider().id;
+        });
+      }
+      if (this._filterForUser) {
+        metadatas = metadatas.filter(function(entry) {
+          return entry.metadata.actor.displayName === _this.metadataHandler.getActor().displayName;
+        });
+      }
+      if (this._debug) {
+        console.log("after: ");
+        console.log(metadatas);
+      }
+      return metadatas;
+    };
+
     StorageHandler.prototype.getResourceBundle = function(content, id) {
-      var metadata;
+      var metadata, thisContent;
       if (id == null) {
         id = ut.commons.utils.generateUUID();
       }
-      content = JSON.parse(JSON.stringify(content));
+      thisContent = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
       metadata.published = (new Date()).toISOString();
+      metadata.id = id;
       return {
-        id: id,
         metadata: metadata,
-        content: content
+        content: thisContent
       };
     };
 
@@ -112,7 +155,7 @@
 
 
     StorageHandler.prototype.readResource = function(resourceId, cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function readResource - implement in subclass.";
     };
 
     /*
@@ -124,7 +167,7 @@
 
 
     StorageHandler.prototype.resourceExists = function(resourceId, cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function resourceExists - implement in subclass.";
     };
 
     /*
@@ -135,7 +178,7 @@
 
 
     StorageHandler.prototype.createResource = function(content, cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function createResource - implement in subclass.";
     };
 
     /*
@@ -146,7 +189,20 @@
 
 
     StorageHandler.prototype.updateResource = function(resourceId, content, cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function updateResource - implement in subclass.";
+    };
+
+    /*
+      Deletes an existing resource.
+      Requires the resourceId of the resource to be deleted,
+      and a callback that returns an error if something went wrong,
+      or is null on success.
+      resource. err is null or contains the error if any error occured.
+    */
+
+
+    StorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      throw "Abstract function deleteResource - implement in subclass.";
     };
 
     /*
@@ -157,19 +213,19 @@
 
 
     StorageHandler.prototype.listResourceIds = function(cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function listResourceIds - implement in subclass.";
     };
 
     /*
       Calls back with the metadata of all existing resources.
       Takes a callback with (err, metadatas), where metadatas is an Array of
       { id, metadata: {} } objects. err is null or contains the error if any error
-      occured.
+      occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
     */
 
 
     StorageHandler.prototype.listResourceMetaDatas = function(cb) {
-      throw "Abstract function - implement in subclass.";
+      throw "Abstract function listResourceMetaDatas - implement in subclass.";
     };
 
     return StorageHandler;
@@ -185,6 +241,7 @@
     __extends(ObjectStorageHandler, _super);
 
     function ObjectStorageHandler(metadataHandler, storeObject) {
+      this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
       ObjectStorageHandler.__super__.constructor.apply(this, arguments);
       if (typeof storeObject !== "object") {
@@ -225,8 +282,8 @@
       var error, resource;
       try {
         resource = this.getResourceBundle(content);
-        if (this.storeObject[resource.id]) {
-          error = new Error("MemoryStorage: resource already exists! " + resource.id);
+        if (this.storeObject[resource.metadata.id]) {
+          error = new Error("MemoryStorage: resource already exists! " + resource.metadata.id);
           if (this._debug) {
             console.log(error);
           }
@@ -234,7 +291,7 @@
             return cb(error);
           }, 0);
         } else {
-          this.storeObject[resource.id] = resource;
+          this.storeObject[resource.metadata.id] = resource;
           if (this._debug) {
             console.log("MemoryStorage: resource created: " + resource);
           }
@@ -303,6 +360,7 @@
           metadata: JSON.parse(JSON.stringify(resource.metadata))
         });
       }
+      metadatas = this.applyFilters(metadatas);
       return setTimeout(function() {
         return cb(null, metadatas);
       }, 0);
@@ -345,6 +403,7 @@
     __extends(LocalStorageHandler, _super);
 
     function LocalStorageHandler(metadataHandler) {
+      this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
       LocalStorageHandler.__super__.constructor.apply(this, arguments);
       console.log("Initializing LocalStorageHandler.");
@@ -380,13 +439,26 @@
       }, 0);
     };
 
+    LocalStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      if (this.localStorage[goLabLocalStorageKey + resourceId] != null) {
+        delete this.localStorage[goLabLocalStorageKey + resourceId];
+        return setTimeout(function() {
+          return cb(null);
+        }, 0);
+      } else {
+        return setTimeout(function() {
+          return cb("Can't delete resource - doesn't exist.");
+        }, 0);
+      }
+    };
+
     LocalStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource, resourceId;
       try {
         resource = this.getResourceBundle(content);
-        resourceId = resource.id;
+        resourceId = resource.metadata.id;
         if (this.localStorage[goLabLocalStorageKey + resourceId]) {
-          error = new Error("LocalStorageHandler: resource already exists! " + resource.id);
+          error = new Error("LocalStorageHandler: resource already exists! " + resourceId);
           if (this._debug) {
             console.log(error);
           }
@@ -472,10 +544,11 @@
         }
         resource = JSON.parse(resourceString);
         metadatas.push({
-          id: resource.id,
+          id: resource.metadata.id,
           metadata: resource.metadata
         });
       }
+      metadatas = this.applyFilters(metadatas);
       return setTimeout(function() {
         return cb(null, metadatas);
       }, 0);
@@ -497,7 +570,7 @@
       this.createResource = __bind(this.createResource, this);
       VaultStorageHandler.__super__.constructor.apply(this, arguments);
       console.log("Initializing VaultStorageHandler.");
-      if (!ils) {
+      if (typeof ils === "undefined" || ils === null) {
         throw "The ILS library needs to be present for the VaultStorageHandler";
       } else {
         return this;
@@ -509,7 +582,7 @@
         _this = this;
       try {
         return ils.readResource(resourceId, function(error, result) {
-          if (result.error) {
+          if (error != null) {
             return cb(error);
           } else {
             return cb(null, result);
@@ -517,7 +590,7 @@
         });
       } catch (_error) {
         error = _error;
-        console.warn("something went wrong when trying to load from the vault:");
+        console.warn("Something went wrong when trying to load from the vault:");
         console.warn(error);
         return cb(error);
       }
@@ -532,12 +605,12 @@
         _this = this;
       try {
         resource = this.getResourceBundle(content);
-        resource.id = "";
+        resource.metadata.id = "";
         return ils.createResource(resource, function(error, result) {
-          if (error) {
+          if (error != null) {
             return cb(error);
           } else {
-            resource.id = result.id;
+            resource.metadata.id = result.id;
             return cb(null, resource);
           }
         });
@@ -560,7 +633,7 @@
     VaultStorageHandler.prototype.listResourceMetaDatas = function(callback) {
       var _this = this;
       return ils.listVault(function(error, result) {
-        if (error) {
+        if (error != null) {
           return callback(error);
         } else {
           console.log("listResourceMetaDatas:");
@@ -584,8 +657,9 @@
 
     function MongoStorageHandler(metadataHandler, urlPrefix) {
       this.urlPrefix = urlPrefix;
+      this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
-      MongoStorageHandler.__super__.constructor.apply(this, arguments);
+      MongoStorageHandler.__super__.constructor.call(this, metadataHandler, true, false, true);
       if (this.urlPrefix != null) {
         console.log("Initializing MongoStorageHandler.");
         this;
@@ -600,13 +674,15 @@
         return $.ajax({
           type: "GET",
           url: ("" + this.urlPrefix + "/readResource/") + resourceId,
+          contentType: "text/plain",
+          crossDomain: true,
           success: function(resource) {
-            console.log("GET success, response:");
+            console.log("GET readResource success, response:");
             console.log(resource);
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
-            console.warn("GET failed, response:");
+            console.warn("GET readResource failed, response:");
             console.warn(errorThrown);
             return cb(errorThrown);
           }
@@ -619,19 +695,47 @@
       }
     };
 
+    MongoStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "POST",
+          url: ("" + this.urlPrefix + "/deleteResource/") + resourceId,
+          crossDomain: true,
+          success: function(response) {
+            console.log("POST deleteResource success, response:");
+            console.log(response);
+            return cb(null);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("POST deleteResource failed, response:");
+            console.warn(errorThrown);
+            return cb(errorThrown);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when deleting the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
     MongoStorageHandler.prototype.resourceExists = function(resourceId, cb) {
       var error;
       try {
         return $.ajax({
           type: "GET",
           url: ("" + this.urlPrefix + "/resourceExists/") + resourceId,
+          crossDomain: true,
+          contentType: "text/plain",
           success: function(result) {
-            console.log("GET success, response:");
+            console.log("GET resourceExists success, response:");
             console.log(result);
             return cb(void 0, true);
           },
           error: function(responseData, textStatus, errorThrown) {
-            console.warn("GET failed, response:");
+            console.warn("GET resourceExists failed, response:");
             console.warn(responseData);
             if (responseData.status === 500) {
               return cb(errorThrown);
@@ -652,18 +756,21 @@
       var error, resource;
       try {
         resource = this.getResourceBundle(content);
+        resource._id = resource.metadata.id;
         return $.ajax({
           type: "POST",
           url: "" + this.urlPrefix + "/storeResource",
           data: JSON.stringify(resource),
-          contentType: "application/json",
+          contentType: "text/plain",
+          crossDomain: true,
           success: function(responseData, textStatus, jqXHR) {
-            console.log("POST success, response:");
+            console.log("POST createResource success, response:");
             console.log(responseData);
+            delete resource._id;
             return cb(void 0, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
-            console.warn("POST failed, response:");
+            console.warn("POST createResource failed, response:");
             console.warn(responseData);
             return cb(responseData);
           }
@@ -677,23 +784,63 @@
     };
 
     MongoStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
-      throw "Not yet implemented.";
+      var error,
+        _this = this;
+      try {
+        return this.resourceExists(resourceId, function(error, result) {
+          var resource;
+          if (error != null) {
+            return cb(error);
+          } else {
+            resource = _this.getResourceBundle(content, resourceId);
+            resource._id = resource.metadata.id;
+            return $.ajax({
+              type: "POST",
+              url: "" + _this.urlPrefix + "/updateResource",
+              data: JSON.stringify(resource),
+              contentType: "text/plain",
+              crossDomain: true,
+              success: function(responseData, textStatus, jqXHR) {
+                console.log("POST updateResource success, response:");
+                console.log(responseData);
+                delete resource._id;
+                return cb(null, resource);
+              },
+              error: function(responseData, textStatus, errorThrown) {
+                console.warn("POST updateResource failed, response:");
+                console.warn(responseData);
+                return cb(responseData);
+              }
+            });
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.log("Something went wrong when updating to Mongo:");
+        console.error(error);
+        return cb(error);
+      }
     };
 
     MongoStorageHandler.prototype.listResourceMetaDatas = function(cb) {
-      var error;
+      var error,
+        _this = this;
       try {
+        $.support.cors = true;
         return $.ajax({
           type: "GET",
-          url: "" + this.urlPrefix + "/listResourceMetaDatas/" + (encodeURIComponent(this.metadataHandler.getProvider().id)) + "/" + (encodeURIComponent(this.metadataHandler.getActor().id)),
+          crossDomain: true,
+          contentType: "text/plain",
+          url: "" + this.urlPrefix + "/listResourceMetaDatas",
           success: function(responseData) {
-            console.log("GET success, response:");
+            console.log("GET listResourceMetaDatas success, response (before filters):");
             console.log(responseData);
+            responseData = _this.applyFilters(responseData);
             return cb(void 0, responseData);
           },
           error: function(responseData, textStatus, errorThrown) {
-            console.warn("GET failed, response:");
-            console.warn(responseData);
+            console.warn("GET listResourceMetaDatas failed, response:");
+            console.warn(JSON.stringify(responseData));
             return cb(responseData);
           }
         });
@@ -710,6 +857,214 @@
     };
 
     return MongoStorageHandler;
+
+  })(window.golab.ils.storage.StorageHandler);
+
+  /*
+    Implementation of a MongoDB-IIS storage handler.
+  */
+
+
+  window.golab.ils.storage.MongoIISStorageHandler = (function(_super) {
+    __extends(MongoIISStorageHandler, _super);
+
+    function MongoIISStorageHandler(metadataHandler, urlPrefix) {
+      this.urlPrefix = urlPrefix;
+      this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
+      this.createResource = __bind(this.createResource, this);
+      MongoIISStorageHandler.__super__.constructor.call(this, metadataHandler, true, false, true);
+      if (this.urlPrefix != null) {
+        console.log("Initializing MongoStorageHandler.");
+        this;
+      } else {
+        console.error("I need an urlPrefix as second parameter.");
+      }
+    }
+
+    MongoIISStorageHandler.prototype.createResource = function(content, cb) {
+      var error, resource;
+      try {
+        resource = this.getResourceBundle(content);
+        resource._id = resource.metadata.id;
+        return $.ajax({
+          type: "POST",
+          url: "" + this.urlPrefix + "/storeResource.js",
+          contentType: "text/plain",
+          data: JSON.stringify(resource),
+          crossDomain: true,
+          success: function(responseData, textStatus, jqXHR) {
+            console.log("POST createResource success, response:");
+            console.log(responseData);
+            delete resource._id;
+            return cb(void 0, resource);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("POST createResource failed, response:");
+            console.warn(responseData);
+            return cb(responseData);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.log("Something went wrong when writing to Mongo:");
+        console.error(error);
+        return cb(error);
+      }
+    };
+
+    MongoIISStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
+      var error,
+        _this = this;
+      try {
+        return this.resourceExists(resourceId, function(error, result) {
+          var resource;
+          if (error != null) {
+            return cb(error);
+          } else {
+            resource = _this.getResourceBundle(content, resourceId);
+            resource._id = resource.metadata.id;
+            return $.ajax({
+              type: "POST",
+              url: "" + _this.urlPrefix + "/updateResource.js",
+              data: JSON.stringify(resource),
+              crossDomain: true,
+              success: function(responseData, textStatus, jqXHR) {
+                console.log("POST updateResource success, response:");
+                console.log(responseData);
+                console.log(textStatus);
+                console.log(jqXHR);
+                delete resource._id;
+                return cb(null, resource);
+              },
+              error: function(responseData, textStatus, errorThrown) {
+                console.warn("POST updateResource failed, response:");
+                console.warn(responseData);
+                return cb(responseData);
+              }
+            });
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.log("Something went wrong when updating to Mongo:");
+        console.error(error);
+        return cb(error);
+      }
+    };
+
+    MongoIISStorageHandler.prototype.listResourceMetaDatas = function(cb) {
+      var error,
+        _this = this;
+      try {
+        return $.ajax({
+          type: "GET",
+          crossDomain: true,
+          contentType: "text/plain",
+          url: "" + this.urlPrefix + "/listMetadatas.js",
+          success: function(responseData) {
+            var metadatas;
+            console.log("GET listResourceMetaDatas success, response (before filters):");
+            console.log(responseData);
+            metadatas = _this.applyFilters(responseData);
+            return cb(void 0, metadatas);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET listResourceMetaDatas failed, response:");
+            console.warn(JSON.stringify(responseData));
+            return cb(responseData);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the metedatas:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoIISStorageHandler.prototype.readResource = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "GET",
+          url: ("" + this.urlPrefix + "/readResource.js?id=") + resourceId,
+          crossDomain: true,
+          success: function(resource) {
+            console.log("GET readResource success, response:");
+            console.log(resource);
+            return cb(null, resource);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET readResource failed, response:");
+            console.warn(errorThrown);
+            return cb(errorThrown);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoIISStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "POST",
+          url: ("" + this.urlPrefix + "/deleteResource.js?id=") + resourceId,
+          crossDomain: true,
+          success: function(response) {
+            console.log("POST deleteResource success, response:");
+            console.log(response);
+            return cb(null);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("POST deleteResource failed, response:");
+            console.warn(errorThrown);
+            return cb(errorThrown);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when deleting the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    MongoIISStorageHandler.prototype.resourceExists = function(resourceId, cb) {
+      var error;
+      try {
+        return $.ajax({
+          type: "GET",
+          url: ("" + this.urlPrefix + "/resourceExists.js?id=") + resourceId,
+          crossDomain: true,
+          success: function(result) {
+            console.log("GET resourceExists success, response:");
+            console.log(result);
+            return cb(void 0, true);
+          },
+          error: function(responseData, textStatus, errorThrown) {
+            console.warn("GET resourceExists failed, response:");
+            console.warn(responseData);
+            if (responseData.status === 500) {
+              return cb(errorThrown);
+            } else if (responseData.status === 410) {
+              return cb(void 0, false);
+            }
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when retrieving the resource:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    return MongoIISStorageHandler;
 
   })(window.golab.ils.storage.StorageHandler);
 

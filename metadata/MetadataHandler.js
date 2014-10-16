@@ -34,6 +34,78 @@
 */
 
 
+/* example ils and space data
+old graasp
+//////////
+ils:
+	description: ""
+	displayName: "ILS test"
+	id: "19122"
+	metadata: null
+	objectId: 19122
+	parentId: 934
+	parentType: "@person"
+	profileUrl: "http://graasp.epfl.ch/#item=space_19122"
+	spacetype: "ils"
+	updated: "2014-10-16T11:33:33+02:00"
+	visibilityLevel: "public"
+
+phase:
+	description: "<div id="hypo-graasp-ch" class="wiki_widget"><iframe name="9190" src="http://graasp.epfl.ch/sharedapp/fb3f1a00319782d2b306b7d3920dbc62c83ae21c" width="800" height="600"></iframe></div>
+	"displayName: "MyOrientation"
+	id: "19123"
+  // metadata might be null if it's a manually added space
+	metadata: "{"type":"Orientation"}"
+	objectId: 19123
+	parentId: 19122
+	parentType: "@space"
+	profileUrl: "http://graasp.epfl.ch/#item=space_19123"
+	spacetype: "folder"
+	updated: "2014-10-16T11:33:33+02:00"
+	visibilityLevel: "public"
+
+
+new graasp
+//////////
+ils:
+	created: "2014-10-15T13:02:16.612Z"
+	description: ""
+	displayName: "test graasp-eu-library"
+	id: "543e7058ab0f540000e58217"
+	ilsRef: Object
+		__v: 0
+		_id: "543e70582e2c55fc49b62595"
+		lang: "en"
+		modified: "2014-10-15T13:02:16.680Z"
+		spaceRef: "543e7058ab0f540000e58217"
+		userRef: "5405e1e0da3a95cf9050e5f2"
+  metadata: Object
+		type: "ils"
+	parentId: "5405e1ada5ecce255b4a7222"
+	parentType: "@space"
+	profileUrl: "http://graasp.eu/spaces/543e7058ab0f540000e58217"
+	spaceType: "ils"
+	updated: "2014-10-15T13:02:16.865Z"
+	visibilityLevel: "public"
+
+phase:
+	created: "2014-10-15T13:02:16.678Z"
+	description: "Welcome to the Orientation phase. You can describe here what students have to do in the Orientation phase."
+	displayName: "MyOrientation"
+	id: "543e7058ab0f540000e5821c"
+	// metadata might be missing if it's a manually added phase space
+  metadata:
+		type: "Orientation"
+	parentId: "543e7058ab0f540000e58217"
+	parentType: "@space"
+	profileUrl: "http://graasp.eu/spaces/543e7058ab0f540000e5821c"
+	spaceType: "folder"
+	updated: "2014-10-15T13:02:45.001Z"
+	visibilityLevel: "public"Z"
+	visibilityLevel: "public"
+*/
+
+
 (function() {
   "use strict";
   var __hasProp = {}.hasOwnProperty,
@@ -59,7 +131,7 @@
           return cb(null, _this);
         }
       }, 0);
-      console.log("using metadata:");
+      console.log("MetadataHandler construction complete. Using the following metadata:");
       console.log(this._metadata);
       this;
     }
@@ -136,20 +208,49 @@
             } else {
               metadata.actor.displayName = userResult;
             }
-            return ils.getIls(function(ilsSpace, phaseSpace) {
+            return ils.getIls(function(ils, phase) {
               var actorId;
               console.log("GoLab-MetadataHandler: ilsSpace, phaseSpace:");
-              console.log(ilsSpace);
-              console.log(phaseSpace);
-              metadata.generator.url = gadgets.util.getUrlParameters().url;
-              if (ilsSpace != null) {
-                metadata.provider.objectType = ilsSpace.spaceType;
-                metadata.provider.id = ilsSpace.objectId;
-                metadata.provider.displayName = ilsSpace.displayName;
-              }
-              metadata.provider.url = ilsSpace.profileUrl;
-              if (phaseSpace != null) {
-                metadata.provider.inquiryPhase = phaseSpace.displayName;
+              console.log(ils);
+              console.log(phase);
+              if (ils.objectId != null) {
+                metadata.provider.objectType = ils.spaceType;
+                metadata.provider.id = ils.id;
+                metadata.provider.displayName = ils.displayName;
+                metadata.provider.url = ils.profileUrl;
+                if ((phase != null) && phase.spaceType === "folder") {
+                  console.log("MetadataHandler: old Graasp, phase space.");
+                  metadata.generator.url = gadgets.util.getUrlParameters().url;
+                  if (phase.metadata) {
+                    metadata.provider.inquiryPhase = JSON.parse(phase.metadata).type;
+                  } else {
+                    metadata.provider.inquiryPhase = "unknown";
+                  }
+                } else {
+                  console.log("MetadataHandler: old Graasp, ILS space.");
+                  metadata.provider.inquiryPhase = "ils";
+                  metadata.generator = metadata.provider;
+                  metadata.target = metadata.provider;
+                }
+              } else {
+                metadata.provider.objectType = ils.spaceType;
+                metadata.provider.id = ils.id;
+                metadata.provider.displayName = ils.displayName;
+                metadata.provider.url = ils.profileUrl;
+                if ((phase != null) && phase.spaceType === "folder") {
+                  console.log("MetadataHandler: new Graasp, phase space.");
+                  metadata.generator.url = gadgets.util.getUrlParameters().url;
+                  if (phase.metadata) {
+                    metadata.provider.inquiryPhase = phase.metadata.type;
+                  } else {
+                    metadata.provider.inquiryPhase = "unknown";
+                  }
+                } else {
+                  console.log("MetadataHandler: new Graasp, ILS space.");
+                  metadata.provider.inquiryPhase = "ils";
+                  metadata.generator = metadata.provider;
+                  metadata.target = metadata.provider;
+                }
               }
               actorId = metadata.actor.displayName + "@" + metadata.provider.id;
               metadata.actor.id = actorId;

@@ -40,7 +40,7 @@ contact: na.li@epfl.ch
     // read a resource by the resourceId, the result is the combination of resource content and the metadata
     readResource: function(resourceId, cb) {
       var error = {};
-      if (resourceId > 0) {
+      if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if (!resource.error) {
             // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
@@ -80,7 +80,7 @@ contact: na.li@epfl.ch
           }
         });
       } else {
-        error = {"error" : "resourceId cannot be 0 or negative"};
+        error = {"error" : "resourceId cannot be empty"};
         return cb(error);
       }
     },

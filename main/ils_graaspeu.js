@@ -43,8 +43,6 @@ contact: na.li@epfl.ch
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if (!resource.error) {
-            // decode Base64 file: supported by chrome, firefox, safari, IE 10, opera
-            resource["content"] = JSON.parse(window.atob(resource["data"]));
             ils.getIls(function(parentIls) {
               ils.getVault(function(vault) {
                 // get the associated activity of this resource

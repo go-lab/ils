@@ -152,6 +152,7 @@
         logObject = {
           "userId": "@viewer",
           "groupId": "@self",
+          "appId": activityStreamObject.provider.id,
           activity: activityStreamObject
         };
         console.log("ActionLogger: logging to Graasp: " + activityStreamObject.verb + " " + activityStreamObject.object.objectType + ", id: " + activityStreamObject.object.id);

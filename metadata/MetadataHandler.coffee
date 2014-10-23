@@ -26,7 +26,9 @@
       "objectType": "ils",
       "url": "http://graasp.epfl.ch/metawidget/1/b387b6f...",
       "id": "0f8184db-53ba-4868-9208-896c3d7c25bb",
-      "inquiryPhase": "orientation"
+      "inquiryPhase": "Orientation"
+      "inquiryPhaseId": "543e7058ab0f540000e5821c"
+      "inquiryPhaseName": "MyOrientation"
       "displayName": "name-of-ils"
     }
   }
@@ -217,8 +219,12 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                 metadata.generator.url = gadgets.util.getUrlParameters().url
                 if phase.metadata
                   metadata.provider.inquiryPhase = phase.metadata.type
+                  metadata.provider.inquiryPhaseId = phase.id
+                  metadata.provider.inquiryPhaseName = phase.displayName
                 else
                   metadata.provider.inquiryPhase = "unknown"
+                  metadata.provider.inquiryPhaseId = "unknown"
+                  metadata.provider.inquiryPhaseName = "unknown"
               else
                 # we have the new graasp and are in an ILS space
                 console.log "MetadataHandler: new Graasp, ILS space."

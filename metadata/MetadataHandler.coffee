@@ -101,7 +101,6 @@ phase:
 	profileUrl: "http://graasp.eu/spaces/543e7058ab0f540000e5821c"
 	spaceType: "folder"
 	updated: "2014-10-15T13:02:45.001Z"
-	visibilityLevel: "public"Z"
 	visibilityLevel: "public"
 ###
 
@@ -123,7 +122,7 @@ class window.golab.ils.metadata.MetadataHandler
     setTimeout(=>
       cb(null, @) if cb
     , 0)
-    console.log "MetadataHandler construction complete. Using the following metadata:"
+    console.log "MetadataHandler construction for #{@_metadata.generator.displayName} complete. Using the following metadata:"
     console.log @_metadata
     @
 
@@ -252,17 +251,17 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
     getIdentifyingUrl = ->
       path = window.location.pathname
       subPaths = window.location.pathname.split("/")
-      if (subPaths.length>0)
-        switch subPaths[0].toLocaleLowerCase()
+      if (subPaths.length>1)
+        switch subPaths[1].toLocaleLowerCase()
           when "production"
-            path = subPaths[0]
+            path = subPaths[1]
           when "experiments"
-            path = subPaths[0]
-            if subPaths.length>1
-              path += "/"+subPaths[0]
+            path = subPaths[1]
+            if subPaths.length>2
+              path += "/"+subPaths[2]
           else
             path = ""
-      "#{window.location.protocol}//#{window.location.host}#{path}".toLowerCase()
+      "#{window.location.protocol}//#{window.location.host}/#{path}".toLowerCase()
 
     # overriding some default values with the correct values for the "local" context
     metadata.provider.id = getIdentifyingUrl()
@@ -280,7 +279,7 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
         userNickname = @getParameterFromUrl("username")
       else
         # if all fails, set to "unknown"
-        userNickname = "unknown user"
+        userNickname = "unknown_user"
     metadata.actor.displayName = userNickname
     actorId = metadata.actor.displayName+"@"+metadata.provider.id
     metadata.actor.id = actorId

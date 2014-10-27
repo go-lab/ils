@@ -93,8 +93,7 @@ contact: na.li@epfl.ch
             var params = {
               "document": {
               "parentType": "@space",
-              "parentId": vault.id,
-              "displayName": resourceName,
+              "parentSpaceId": vault.id,
               "mimeType": "txt",
               "fileName": resourceName,
               "content": JSON.stringify(content)

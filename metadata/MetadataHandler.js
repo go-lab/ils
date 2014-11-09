@@ -214,7 +214,17 @@ phase:
               console.log("GoLab-MetadataHandler: ilsSpace, phaseSpace:");
               console.log(ils);
               console.log(phase);
-              if (ils.objectId != null) {
+              if (ils.error != null) {
+                console.log("MetadataHandler: golabz.eu preview.");
+                metadata.provider.objectType = "preview";
+                metadata.provider.id = "undefined";
+                metadata.provider.displayName = "undefined";
+                metadata.provider.url = window.location.href;
+                metadata.generator.url = gadgets.util.getUrlParameters().url;
+                metadata.provider.inquiryPhase = "undefined";
+                metadata.provider.inquiryPhaseId = "undefined";
+                metadata.provider.inquiryPhaseName = "undefined";
+              } else if (ils.objectId != null) {
                 metadata.provider.objectType = ils.spaceType;
                 metadata.provider.id = ils.id;
                 metadata.provider.displayName = ils.displayName;
@@ -230,8 +240,12 @@ phase:
                 } else {
                   console.log("MetadataHandler: old Graasp, ILS space.");
                   metadata.provider.inquiryPhase = "ils";
-                  metadata.generator = metadata.provider;
-                  metadata.target = metadata.provider;
+                  metadata.generator = {};
+                  metadata.generator.objectType = metadata.provider.objectType;
+                  metadata.generator.url = metadata.provider.url;
+                  metadata.generator.id = metadata.provider.id;
+                  metadata.generator.displayName = metadata.provider.displayName;
+                  metadata.target = metadata.generator;
                 }
               } else {
                 metadata.provider.objectType = ils.spaceType;
@@ -253,8 +267,12 @@ phase:
                 } else {
                   console.log("MetadataHandler: new Graasp, ILS space.");
                   metadata.provider.inquiryPhase = "ils";
-                  metadata.generator = metadata.provider;
-                  metadata.target = metadata.provider;
+                  metadata.generator = {};
+                  metadata.generator.objectType = metadata.provider.objectType;
+                  metadata.generator.url = metadata.provider.url;
+                  metadata.generator.id = metadata.provider.id;
+                  metadata.generator.displayName = metadata.provider.displayName;
+                  metadata.target = metadata.generator;
                 }
               }
               actorId = metadata.actor.displayName + "@" + metadata.provider.id;
@@ -315,7 +333,7 @@ phase:
         if ((this.getParameterFromUrl("username") != null)) {
           userNickname = this.getParameterFromUrl("username");
         } else {
-          userNickname = "unknown_user";
+          userNickname = "unknown user";
         }
       }
       metadata.actor.displayName = userNickname;

@@ -185,7 +185,18 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
             console.log ils
             console.log phase
             # differentiate between situations:
-            if ils.objectId?
+            if ils.error?
+              # we can't get any information from the ILS, probably we are running as a preview on golabz.eu
+              console.log "MetadataHandler: golabz.eu preview."
+              metadata.provider.objectType = "preview"
+              metadata.provider.id = "undefined"
+              metadata.provider.displayName = "undefined"
+              metadata.provider.url = window.location.href
+              metadata.generator.url = gadgets.util.getUrlParameters().url
+              metadata.provider.inquiryPhase = "undefined"
+              metadata.provider.inquiryPhaseId = "undefined"
+              metadata.provider.inquiryPhaseName = "undefined"
+            else if ils.objectId?
               # we have the old graasp
               metadata.provider.objectType = ils.spaceType
               metadata.provider.id = ils.id
@@ -203,9 +214,14 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                 # we have the old graasp and are in an ILS space
                 console.log "MetadataHandler: old Graasp, ILS space."
                 metadata.provider.inquiryPhase = "ils"
-                # in an ILS space, generator, target, and provider are the same
-                metadata.generator = metadata.provider
-                metadata.target = metadata.provider
+                # in an ILS space, generator, and target share the provider properties
+                metadata.generator = {}
+                metadata.generator.objectType = metadata.provider.objectType
+                metadata.generator.url = metadata.provider.url
+                metadata.generator.id =  metadata.provider.id
+                metadata.generator.displayName = metadata.provider.displayName
+                # this is an initial value and will be overridden with the active phase information
+                metadata.target = metadata.generator
             else
               # we have the new graasp
               metadata.provider.objectType = ils.spaceType
@@ -228,9 +244,14 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                 # we have the new graasp and are in an ILS space
                 console.log "MetadataHandler: new Graasp, ILS space."
                 metadata.provider.inquiryPhase = "ils"
-                # in an ILS space, generator, target, and provider are the same
-                metadata.generator = metadata.provider
-                metadata.target = metadata.provider
+                # in an ILS space, generator, and target share the provider properties
+                metadata.generator = {}
+                metadata.generator.objectType = metadata.provider.objectType
+                metadata.generator.url = metadata.provider.url
+                metadata.generator.id =  metadata.provider.id
+                metadata.generator.displayName = metadata.provider.displayName
+                # this is an initial value and will be overridden with the active phase information
+                metadata.target = metadata.generator
 
             actorId = metadata.actor.displayName+"@"+metadata.provider.id
             metadata.actor.id = actorId
@@ -279,7 +300,7 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
         userNickname = @getParameterFromUrl("username")
       else
         # if all fails, set to "unknown"
-        userNickname = "unknown_user"
+        userNickname = "unknown user"
     metadata.actor.displayName = userNickname
     actorId = metadata.actor.displayName+"@"+metadata.provider.id
     metadata.actor.id = actorId

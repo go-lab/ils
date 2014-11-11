@@ -187,10 +187,10 @@ contact: maria.rodrigueztriana@epfl.ch
             };
 
             osapi.documents.create(params).execute(function(resource){
-              if (resource && !resource.error && resource._id ) {
+              if (resource && !resource.error && resource.id ) {
                 ils.getApp(function(app){
                   //log the action of adding this resource
-                  ils.logAction(username, vault, resource._id, app, "add", function(response){
+                  ils.logAction(username, vault, resource.id, app, "add", function(response){
                     if (!response.error) {
                       return cb(resource);
                     }else{
@@ -248,7 +248,7 @@ contact: maria.rodrigueztriana@epfl.ch
             };
 
             osapi.documents.update(params).execute(function(resource){
-              if (resource && !resource.error && resource._id ) {
+              if (resource && !resource.error && resource.id ) {
                 ils.getApp(function(app){
                   //log the action of adding this resource
                   ils.logAction(username, vault.id, resource.id, app, "add", function(response){

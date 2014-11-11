@@ -103,7 +103,7 @@
             ils.createResource("test", example_content, "", function(resource){
             console.log("Creating a resource in the Vault folder");
             console.log(resource);
-            $('#create_resource').append("New resource id: " + resource._id);
+            $('#create_resource').append("New resource id: " + resource.id);
             });
             
             
@@ -166,7 +166,7 @@
             ils.updateResource("54567c420c3acd201d083865", example_content_2, "", function(response){
             console.log("Updating an existent resource");
             console.log(response);
-            $('#update_resource').append("Resource 54567c420c3acd201d083865 updated? " + response._id);
+            $('#update_resource').append("Resource 54567c420c3acd201d083865 updated? " + response.id);
             });
             
         }

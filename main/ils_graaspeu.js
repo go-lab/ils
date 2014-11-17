@@ -40,33 +40,35 @@ contact: maria.rodrigueztriana@epfl.ch
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {
       var error = {};
-      if (resourceId && resourceId != "") {
-        ils.getVault(function(vault) {
-          ils.getCurrentUser(function(username) {
-            osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
-              if (deleteResponse && !deleteResponse.error) {
-                ils.getApp(function (app) {
-                  //log the action of adding this resource
-                  ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
-                    if (!logResponse.error) {
-                      return cb(true);
-                    } else {
-                      error = {"error": "The resource removal couldn't be logged"};
-                      return cb(error);
-                    }
+      ils.existResource(resourceId, function (exists) {
+        if (exists) {
+          ils.getVault(function (vault) {
+            ils.getCurrentUser(function (username) {
+              osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
+                if (deleteResponse && !deleteResponse.error) {
+                  ils.getApp(function (app) {
+                    //log the action of adding this resource
+                    ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
+                      if (!logResponse.error) {
+                        return cb(true);
+                      } else {
+                        error = {"error": "The resource removal couldn't be logged"};
+                        return cb(error);
+                      }
+                    });
                   });
-                });
-              } else {
-                error = {"error": "Couldn't remove resource"};
-                return cb(error);
-              }
+                } else {
+                  error = {"error": "Couldn't remove resource"};
+                  return cb(error);
+                }
+              });
             });
           });
-        });
-      } else {
-        error = {"error" : "resourceId cannot be empty"};
-        return cb(error);
-      }
+        } else {
+          error = {"error": "The resource to be deleted does not exist"};
+          return cb(error);
+        }
+      });
     },
 
     // verifies whether there is a resource by the resourceId, the result is true/false

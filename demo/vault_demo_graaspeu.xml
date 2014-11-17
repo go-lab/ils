@@ -24,21 +24,21 @@
             console.log(current_user);
             $('#get_current_user').append("Current user nickname: " + current_user);
             });
-            
+
             // get the ILS and print it
             ils.getIls(function(ils_space){
             console.log("Printing ils");
             console.log(ils_space);
             $('#get_ils').append("ILS id " + ils_space.id);
             });
-            
+
             // get the Vault space and print it
             ils.getVault(function(vault){
             console.log("Printing vault");
             console.log(vault);
             $('#get_vault').append("Vault id " + vault.id);
             });
-            
+
             // get all resources in the Vault
             ils.listVault(function(resources){
             console.log("Printing resources in the Vault");
@@ -47,7 +47,7 @@
             $('#list_vault').append("<div>" + value.id + " " + value.displayName + "</div>");
             });
             });
-            
+
             // read a non-existent resource in the Vault
             ils.readResource("5456c9900c3acd201d083a70", function(resource){
             console.log("Trying to read a non existent resource in Vault");
@@ -61,21 +61,21 @@
             console.log(resource);
             $('#read_resource_2').append("Resource id and name: " + resource.id + " " + resource.displayName);
             });
-            
+
             // get parent space
             ils.getParent(function(parent){
             console.log("Printing parent");
             console.log(parent);
             $('#get_parent').append("Parent id and name: " + parent.id + " " + parent.displayName);
             });
-            
+
             // get parent inquiry phase
             ils.getParentInquiryPhase(function(phase){
             console.log("Printing parent phase");
             console.log(phase);
             $('#get_parent_phase').append(phase);
             });
-            
+
             var example_content = {
               "concepts": [
                 {"x": 297,
@@ -98,45 +98,43 @@
                 "id": "con_71",
                 "content": "influences"}]
             };
-            
+
             // create a resource in the Vault
             ils.createResource("test", example_content, "", function(resource){
             console.log("Creating a resource in the Vault folder");
             console.log(resource);
             $('#create_resource').append("New resource id: " + resource.id);
             });
-            
-            
+
             // checks if a non-existent resource exist
             ils.existResource("5456c9900c3acd201d083a70", function(response){
             console.log("Checking existence of a removed resource");
             $('#exist_resource_1').append("Resource 5456c9900c3acd201d083a70 exists? " + response);
             });
-           
+
             // checks if a resource exist
             ils.existResource("54590fada3709c8b88fcb7da", function(response){
             console.log("Checking whether a resource exists");
             $('#exist_resource_2').append("Resource 54590fada3709c8b88fcb7da exists? " + response);
             });
-            
+
             // obtains a metadata from a resource
             ils.getMetadata("54590fada3709c8b88fcb7da", function(metadata){
             console.log("Getting metadata from resource");
             console.log(metadata);
             $('#get_metadata').append("Metadata from 54590fada3709c8b88fcb7da: "+ metadata);
             });
-            
-            
+
             // deletes a resource
             ils.deleteResource("5456c9900c3acd201d083a70", function(response){
             console.log("Trying to delete a non existent resource");
-            $('#delete_resource_1').append("Resource 5456c9900c3acd201d083a70 deleted? " + response);
+            $('#delete_resource_1').append("Resource 5456c9900c3acd201d083a70 deleted? " + response.error);
             });
-            
+
             // deletes a resource
             ils.deleteResource("54590f66a3709c8b88fcb792", function(response){
             console.log("Deleting an existent resource");
-            $('#delete_resource_2').append("Resource 54607fcfc276f5e27d84b0d8 deleted? " + response);
+            $('#delete_resource_2').append("Resource 54590f66a3709c8b88fcb792 deleted? " + response);
             });
             
             var example_content_2 = {
@@ -188,7 +186,7 @@
   <div id="exist_resource_2"><b>ils.existResource(existent):</b> </div>
   <div id="get_metadata"><b>ils.getMetadata:</b> </div>
   <div id="delete_resource_1"><b>ils.deleteResource(nonexistent):</b> </div>
-  <div id="delete_resource_2"><b>ils.deleteResource(existent:</b> </div>
+  <div id="delete_resource_2"><b>ils.deleteResource(existent):</b> </div>
   <div id="update_resource"><b>ils.updateResource:</b> </div>
   <br/>
   ]]>

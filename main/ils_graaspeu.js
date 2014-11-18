@@ -253,13 +253,15 @@ contact: maria.rodrigueztriana@epfl.ch
               if (resource && !resource.error && resource.id ) {
                 ils.getApp(function(app){
                   //log the action of adding this resource
-                  ils.logAction(username, vault.id, resource.id, app, "add", function(response){
-                    if (!response.error) {
-                      return cb(resource);
-                    }else{
-                      error = {"error" : "The resource update couldn't be logged"};
-                      return cb(error);
-                    }
+                  ils.getVault(function(vault) {
+                      ils.logAction(username, vault, resource.id, app, "add", function(response){
+                        if (!response.error) {
+                          return cb(resource);
+                        }else{
+                          error = {"error" : "The resource update couldn't be logged"};
+                          return cb(error);
+                        }
+                      });
                   });
                 });
               } else {

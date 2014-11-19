@@ -118,15 +118,15 @@
                         });
 
                         // get all resources in the Vault
-                        ils.listVault(function(resources){
+                        ils.listVault(function(resources1){
                             console.log("Printing resources in the Vault");
-                            console.log(resources);
-                            if(resources.length>0){
-                                $.each(resources, function(index, value) {
+                            console.log(resources1);
+                            if(resources1.length>0){
+                                $.each(resources1, function(index, value) {
                                     $('#list_vault_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                 });
                             }else{
-                                $('#list_vault_1').append(resources.error);
+                                $('#list_vault_1').append(resources1.error);
                             }
                         });
 
@@ -187,27 +187,27 @@
                                 });
 
 
-                                ils.listVault(function(resources){
+                                ils.listVault(function(resources2){
                                     console.log("Printing resources in the Vault");
-                                    console.log(resources);
-                                    if(resources.length>0){
-                                        $.each(resources, function(index, value) {
-                                            $('#list_vault_2a').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                    console.log(resources2);
+                                    if(resources2.length>0){
+                                        $.each(resources2, function(index, value) {
+                                            $('#list_vault_2').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                         });
                                     }else{
-                                        $('#list_vault_2a').append(resources.error);
+                                        $('#list_vault_2').append(resources2.error);
                                     }
                                 });
                                 // get all resources in the Vault (extended description)
-                                ils.listVaultExtended(function(resources){
+                                ils.listVaultExtended(function(resources3){
                                     console.log("Printing extended version of the resources in the Vault");
-                                    console.log(resources);
-                                    if(resources.length>0){
-                                        $.each(resources, function(index, value) {
-                                            $('#list_vault_2b').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                    console.log(resources3);
+                                    if(resources3.length>0){
+                                        $.each(resources3, function(index, value) {
+                                            $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                         });
                                     }else{
-                                        $('#list_vault_2b').append(resources.error);
+                                        $('#list_vault_3').append(resources3.error);
                                     }
 
                                     // THIRD STEP: UPDATE RESOURCES
@@ -268,15 +268,15 @@
 
                                                     //FIFTH STEP: OBTAIN FINAL STATE
                                                     // get all the remaining resources in the Vault
-                                                    ils.listVault(function(resources){
+                                                    ils.listVault(function(resources4){
                                                         console.log("Printing resources in the Vault");
-                                                        console.log(resources);
-                                                        if(resources.length>0){
-                                                            $.each(resources, function(index, value) {
-                                                                $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                                        console.log(resources4);
+                                                        if(resources4.length>0){
+                                                            $.each(resources4, function(index, value) {
+                                                                $('#list_vault_4').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                                             });
                                                         }else{
-                                                            $('#list_vault_3').append(resources.error);
+                                                            $('#list_vault_4').append(resources4.error);
                                                         }
                                                     });
                                                 });
@@ -321,8 +321,8 @@
           <br/>
           <br/>
           <a>VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
-          <div id="list_vault_2a"><b>ils.listVault(*):</b> </div>
-          <div id="list_vault_2b"><b>ils.listVaultExtended(*):</b> </div>
+          <div id="list_vault_2"><b>ils.listVault(*):</b> </div>
+          <div id="list_vault_3"><b>ils.listVaultExtended(*):</b> </div>
           <br/>
           <br/>
           <a>RESOURCE UPDATE (test1.txt)</a>
@@ -341,7 +341,7 @@
           <br/>
           <br/>
           <a>VAULT CONTENT AFTER REMOVING RESOURCES</a>
-          <div id="list_vault_3"><b>ils.listVault:</b> </div>
+          <div id="list_vault_4"><b>ils.listVault:</b> </div>
           <br/>
         ]]>
 

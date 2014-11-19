@@ -3,7 +3,7 @@
         author_email="mariarodrigueztriana@epfl.ch"
         author="Maria Jesus Rodriguez Triana" 
         description="Shows how to use the new ils javascript library"
-        width="500"
+        width="800"
         height="800">
         <Require feature="opensocial" />
         <Require feature="osapi" />
@@ -16,180 +16,336 @@
             
             <script type="text/javascript">
             
-            var getData = function() {
+                var getData = function() {
+                    // VAR DEFINITION
+                    var example_content = {
+                      "concepts": [
+                        {"x": 297,
+                         "y": 188,
+                         "content": "energy",
+                         "id": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
+                         "type": "ut_tools_conceptmapper_conceptSelector",
+                         "colorClass": "ut_tools_conceptmapper_blue"},
 
-            // get current user and print it
-            ils.getCurrentUser(function(current_user){
-            console.log("Printing current user");
-            console.log(current_user);
-            $('#get_current_user').append("Current user nickname: " + current_user);
-            });
+                        {"x": 652,
+                         "y": 238,
+                         "content": "thermodynamic temperature",
+                         "id": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
+                         "type": "ut_tools_conceptmapper_conceptSelector",
+                         "colorClass": "ut_tools_conceptmapper_blue"}],
 
-            // get the ILS and print it
-            ils.getIls(function(ils_space){
-            console.log("Printing ils");
-            console.log(ils_space);
-            $('#get_ils').append("ILS id " + ils_space.id);
-            });
+                      "relations": [
+                        {"source": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
+                        "target": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
+                        "id": "con_71",
+                        "content": "influences"}]
+                    };
 
-            // get the Vault space and print it
-            ils.getVault(function(vault){
-            console.log("Printing vault");
-            console.log(vault);
-            $('#get_vault').append("Vault id " + vault.id);
-            });
+                    var example_metadata = {
+                      "config": [
+                        {"m1": "metadata1",
+                         "m2": "metadata2"},
 
-            // get all resources in the Vault
-            ils.listVault(function(resources){
-            console.log("Printing resources in the Vault");
-            console.log(resources);
-            $.each(resources, function(index, value) {
-            $('#list_vault').append("<div>" + value.id + " " + value.displayName + "</div>");
-            });
-            });
+                        {"m3": "metadata1",
+                         "m4": "metadata2"}]
+                    };
 
-            // read a non-existent resource in the Vault
-            ils.readResource("5456c9900c3acd201d083a70", function(resource){
-            console.log("Trying to read a non existent resource in Vault");
-            console.log(resource);
-            $('#read_resource_1').append("Resource id and name: " + resource.id + " " + resource.displayName);
-            });
+                    var example_content_2 = {
+                    "concepts": [
+                        {"x": 200,
+                        "y": 100,
+                        "content": "power",
+                        "id": "7f800d79-cd66-2167-724c-6c1cda7abc5f",
+                        "type": "ut_tools_conceptmapper_conceptSelector",
+                        "colorClass": "ut_tools_conceptmapper_blue"},
 
-            // read an exising resource in the Vault
-            ils.readResource("54590fada3709c8b88fcb7da", function(resource){
-            console.log("Read an existent resource in Vault");
-            console.log(resource);
-            $('#read_resource_2').append("Resource id and name: " + resource.id + " " + resource.displayName);
-            });
+                        {"x": 600,
+                        "y": 200,
+                        "content": "speed",
+                        "id": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e4",
+                        "type": "ut_tools_conceptmapper_conceptSelector",
+                        "colorClass": "ut_tools_conceptmapper_blue"}],
 
-            // get parent space
-            ils.getParent(function(parent){
-            console.log("Printing parent");
-            console.log(parent);
-            $('#get_parent').append("Parent id and name: " + parent.id + " " + parent.displayName);
-            });
+                    "relations": [
+                        {"source": "7f800d79-cd66-2167-724c-6c1cda7abc5f",
+                        "target": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e4",
+                        "id": "con_72",
+                        "content": "influences"}]
+                    };
 
-            // get parent inquiry phase
-            ils.getParentInquiryPhase(function(phase){
-            console.log("Printing parent phase");
-            console.log(phase);
-            $('#get_parent_phase').append(phase);
-            });
+                    var example_metadata_2 = {
+                      "config": [
+                        {"m1": "metadata1.1",
+                         "m2": "metadata2.1"},
 
-            var example_content = {
-              "concepts": [
-                {"x": 297,
-                 "y": 188,
-                 "content": "energy",
-                 "id": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
-                 "type": "ut_tools_conceptmapper_conceptSelector",
-                 "colorClass": "ut_tools_conceptmapper_blue"},
+                        {"m3": "metadata1.1",
+                         "m4": "metadata2.1"}]
+                    };
 
-                {"x": 652,
-                 "y": 238,
-                 "content": "thermodynamic temperature",
-                 "id": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
-                 "type": "ut_tools_conceptmapper_conceptSelector",
-                 "colorClass": "ut_tools_conceptmapper_blue"}],
+                    // FIRST STEP: OBTAIN INITIAL STATE
+                    // get current user and print it
+                    ils.getCurrentUser(function(current_user){
+                        console.log("Printing current user");
+                        console.log(current_user);
+                        $('#get_current_user').append(current_user);
 
-              "relations": [
-                {"source": "7f800d79-cd66-2167-724c-6c1cda7abc5e",
-                "target": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e3",
-                "id": "con_71",
-                "content": "influences"}]
-            };
+                        // get the ILS and print it
+                        ils.getIls(function(ils_space){
+                            console.log("Printing ils");
+                            console.log(ils_space);
+                            $('#get_ils').append("id:" + ils_space.id);
+                        });
 
-            // create a resource in the Vault
-            ils.createResource("test", example_content, "", function(resource){
-            console.log("Creating a resource in the Vault folder");
-            console.log(resource);
-            $('#create_resource').append("New resource id: " + resource.id);
-            });
+                        // get parent space
+                        ils.getParent(function(parent){
+                            console.log("Printing parent");
+                            console.log(parent);
+                            $('#get_parent').append("Parent id and name: " + parent.id + " - " + parent.displayName);
+                        });
 
-            // checks if a non-existent resource exist
-            ils.existResource("5456c9900c3acd201d083a70", function(response){
-            console.log("Checking existence of a removed resource");
-            $('#exist_resource_1').append("Resource 5456c9900c3acd201d083a70 exists? " + response);
-            });
+                        // get parent inquiry phase
+                        ils.getParentInquiryPhase(function(phase){
+                            console.log("Printing parent phase");
+                            console.log(phase);
+                            $('#get_parent_phase').append(phase);
+                        });
 
-            // checks if a resource exist
-            ils.existResource("54590fada3709c8b88fcb7da", function(response){
-            console.log("Checking whether a resource exists");
-            $('#exist_resource_2').append("Resource 54590fada3709c8b88fcb7da exists? " + response);
-            });
+                        // get the Vault space and print it
+                        ils.getVault(function(vault){
+                            console.log("Printing vault");
+                            console.log(vault);
+                            $('#get_vault').append("Vault id " + vault.id);
+                        });
 
-            // obtains a metadata from a resource
-            ils.getMetadata("54590fada3709c8b88fcb7da", function(metadata){
-            console.log("Getting metadata from resource");
-            console.log(metadata);
-            $('#get_metadata').append("Metadata from 54590fada3709c8b88fcb7da: "+ metadata);
-            });
+                        // get all resources in the Vault
+                        ils.listVault(function(resources){
+                            console.log("Printing resources in the Vault");
+                            console.log(resources);
+                            if(resources.length>0){
+                                $.each(resources, function(index, value) {
+                                    $('#list_vault_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                });
+                            }else{
+                                $('#list_vault_1').append(resources.error);
+                            }
+                        });
 
-            // deletes a resource
-            ils.deleteResource("5456c9900c3acd201d083a70", function(response){
-            console.log("Trying to delete a non existent resource");
-            $('#delete_resource_1').append("Resource 5456c9900c3acd201d083a70 deleted? " + response.error);
-            });
 
-            // deletes a resource
-            ils.deleteResource("54590f66a3709c8b88fcb792", function(response){
-            console.log("Deleting an existent resource");
-            $('#delete_resource_2').append("Resource 54590f66a3709c8b88fcb792 deleted? " + response);
-            });
-            
-            var example_content_2 = {
-            "concepts": [
-                {"x": 200,
-                "y": 100,
-                "content": "power",
-                "id": "7f800d79-cd66-2167-724c-6c1cda7abc5f",
-                "type": "ut_tools_conceptmapper_conceptSelector",
-                "colorClass": "ut_tools_conceptmapper_blue"},
+                        // SECOND STEP: CREATE NEW RESOURCES
+                        // create a resource in the Vault
+                        ils.createResource("test1", example_content, example_metadata, function(resource1){
+                            var newResourceId = resource1.id;
+                            console.log("Creating a resource (with additional metadata) in the Vault folder");
+                            console.log(resource1);
+                            $('#create_resource_1').append("New resource id: " + resource1.id);
 
-                {"x": 600,
-                "y": 200,
-                "content": "speed",
-                "id": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e4",
-                "type": "ut_tools_conceptmapper_conceptSelector",
-                "colorClass": "ut_tools_conceptmapper_blue"}],
+                            // checks if the first resource exists
+                            ils.existResource(newResourceId, function(response){
+                                console.log("Checking existence of the first resource created (with metadata)");
+                                $('#exist_resource_1').append("Resource "+ newResourceId +" exists? " + response);
+                            });
 
-            "relations": [
-                {"source": "7f800d79-cd66-2167-724c-6c1cda7abc5f",
-                "target": "a1ad6ace-c722-ffa9-f58e-b4169acdb4e4",
-                "id": "con_72",
-                "content": "influences"}]
-            };
+                            // read an existing resource in the Vault (with additional metadata)
+                            ils.readResource(newResourceId, function(resource){
+                                console.log("Read an existent resource in Vault (with additional metadata)");
+                                console.log(resource);
+                                $('#read_resource_1').append("Resource id and name: " + resource.id + " - " + resource.displayName);
+                            });
 
-            // updates a resource
-            ils.updateResource("54567c420c3acd201d083865", example_content_2, "", function(response){
-            console.log("Updating an existent resource");
-            console.log(response);
-            $('#update_resource').append("Resource 54567c420c3acd201d083865 updated? " + response.id);
-            });
-            
-        }
+                            // obtains a metadata from a resource (with additional metadata)
+                            ils.getMetadata(newResourceId, function(metadata){
+                                console.log("Getting metadata from resource (with additional metadata)");
+                                console.log(metadata);
+                                $('#get_metadata_1').append("Key names: " + Object.keys(metadata));
+                            });
 
-  console.log(gadgets);
-  gadgets.util.registerOnLoadHandler(getData);
+                            // create a second resource in the Vault
+                            ils.createResource("test2", example_content, "", function(resource2){
+                                var newResourceId2 = resource2.id;
+                                console.log("Creating a resource (without additional metadata) in the Vault folder");
+                                console.log(resource2);
+                                $('#create_resource_2').append("New resource id: " + resource2.id);
 
-  </script>
-  <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
-  <div id="get_ils"><b>ils.getIls:</b> </div>
-  <div id="get_vault"><b>ils.getVault:</b> </div>
-  <div id="list_vault"><b>ils.listVault:</b> </div>
-  <div id="read_resource_1"><b>ils.readResource(nonexistent):</b> </div>
-  <div id="read_resource_2"><b>ils.readResource(existent):</b> </div>
-  <div id="get_parent"><b>ils.getParent:</b> </div>
-  <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
-  <div id="create_resource"><b>ils.createResource:</b> </div>
-  <div id="exist_resource_1"><b>ils.existResource(nonexistent):</b> </div>
-  <div id="exist_resource_2"><b>ils.existResource(existent):</b> </div>
-  <div id="get_metadata"><b>ils.getMetadata:</b> </div>
-  <div id="delete_resource_1"><b>ils.deleteResource(nonexistent):</b> </div>
-  <div id="delete_resource_2"><b>ils.deleteResource(existent):</b> </div>
-  <div id="update_resource"><b>ils.updateResource:</b> </div>
-  <br/>
-  ]]>
-  </Content>
+                                // checks if the second resource exists
+                                ils.existResource(newResourceId2, function(response){
+                                    console.log("Checking existence of the second resource created (without additional metadata)");
+                                    $('#exist_resource_2').append("Resource " + newResourceId2 + " exists? " + response);
+                                });
+
+                                // read an existing resource in the Vault (without additional metadata)
+                                ils.readResource(newResourceId2, function(resource){
+                                    console.log("Read an existent resource in Vault (without additional metadata)");
+                                    console.log(resource);
+                                    $('#read_resource_2').append("Resource id and name: " + resource.id + " - " + resource.displayName);
+                                });
+
+                                // obtains a metadata from a resource (without additional metadata)
+                                ils.getMetadata(newResourceId2, function(metadata){
+                                    console.log("Getting metadata from resource (without additional metadata)");
+                                    console.log(metadata);
+                                    $('#get_metadata_2').append("Key names: " + Object.keys(metadata));
+                                });
+
+
+                                ils.listVault(function(resources){
+                                    console.log("Printing resources in the Vault");
+                                    console.log(resources);
+                                    if(resources.length>0){
+                                        $.each(resources, function(index, value) {
+                                            $('#list_vault_2a').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                        });
+                                    }else{
+                                        $('#list_vault_2a').append(resources.error);
+                                    }
+                                });
+                                // get all resources in the Vault (extended description)
+                                ils.listVaultExtended(function(resources){
+                                    console.log("Printing extended version of the resources in the Vault");
+                                    console.log(resources);
+                                    if(resources.length>0){
+                                        $.each(resources, function(index, value) {
+                                            $('#list_vault_2b').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                        });
+                                    }else{
+                                        $('#list_vault_2b').append(resources.error);
+                                    }
+
+                                    // THIRD STEP: UPDATE RESOURCES
+                                    // updates a resource
+                                    ils.updateResource(newResourceId, example_content_2, example_metadata_2, function(resource3){
+                                        console.log("Updating an existent resource");
+                                        console.log(resource3);
+                                        $('#update_resource').append("Resource updated: " + resource3.id);
+
+                                        // read the updated resource in the Vault
+                                        ils.readResource(newResourceId, function(resource){
+                                            console.log("Read the updated resource");
+                                            console.log(resource);
+                                            $('#read_resource_3').append("Resource id and name: " + resource.id + " - " + resource.displayName);
+                                        });
+
+                                        // obtains the metadata from the updated resource
+                                        ils.getMetadata(newResourceId, function(metadata){
+                                            console.log("Getting metadata from the updated resource");
+                                            console.log(metadata);
+                                            $('#get_metadata_3').append("Key names: " + Object.keys(metadata));
+                                        });
+
+                                        // FOURTH STEP: DELETE RESOURCES
+                                        // deletes a resource
+                                        ils.deleteResource(newResourceId, function(response){
+                                            console.log("Deleting the first resource that was created (and updated)");
+                                            $('#delete_resource_1').append(" " + response);
+
+                                            // checks if a resource exist
+                                            ils.existResource(newResourceId, function(response){
+                                                console.log("Checking whether the resource has been properly removed");
+                                                $('#exist_resource_3').append(" " + response);
+                                            });
+
+                                            // read a non-existent resource in the Vault
+                                            ils.readResource(newResourceId, function(resource){
+                                                console.log("Trying to read a non existent resource in Vault");
+                                                console.log(resource);
+                                                $('#read_resource_4').append(resource.error);
+                                            });
+
+                                            // deletes the second resource
+                                            ils.deleteResource(newResourceId, function(response){
+                                                console.log("Trying to delete the resource already removed)");
+                                                $('#delete_resource_3').append(" " + response.error);
+
+                                                // deletes the second resource
+                                                ils.deleteResource(newResourceId2, function(response){
+                                                    console.log("Deleting the second resource that was created");
+                                                    $('#delete_resource_2').append(" " + response);
+
+                                                    // checks if a resource exist
+                                                    ils.existResource(newResourceId2, function(response){
+                                                        console.log("Checking whether the resource has been properly removed");
+                                                        $('#exist_resource_4').append(" " + response);
+                                                    });
+
+                                                    //FIFTH STEP: OBTAIN FINAL STATE
+                                                    // get all the remaining resources in the Vault
+                                                    ils.listVault(function(resources){
+                                                        console.log("Printing resources in the Vault");
+                                                        console.log(resources);
+                                                        if(resources.length>0){
+                                                            $.each(resources, function(index, value) {
+                                                                $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                                            });
+                                                        }else{
+                                                            $('#list_vault_3').append(resources.error);
+                                                        }
+                                                    });
+                                                });
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                }
+
+                console.log(gadgets);
+                gadgets.util.registerOnLoadHandler(getData);
+
+              </script>
+
+          <br/>
+          <p>(*) Check the console for further details about the outputs</p>
+          <br/>
+          <a>INITIAL STATUS</a>
+          <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
+          <div id="get_ils"><b>ils.getIls(*):</b> </div>
+          <div id="get_parent"><b>ils.getParent(*):</b> </div>
+          <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
+          <div id="get_vault"><b>ils.getVault(*):</b> </div>
+          <div id="list_vault_1"><b>ils.listVault(*):</b> </div>
+          <br/>
+          <br/>
+          <a>CREATION OF A RESOURCE WITH ADDITIONAL METADATA (test1.txt)</a>
+          <div id="create_resource_1"><b>ils.createResource(*):</b> </div>
+          <div id="exist_resource_1"><b>ils.existResource:</b> </div>
+          <div id="read_resource_1"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_1"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>CREATION OF A RESOURCE WITHOUT ADDITIONAL METADATA (test2.txt)</a>
+          <div id="create_resource_2"><b>ils.createResource(*):</b> </div>
+          <div id="exist_resource_2"><b>ils.existResource:</b> </div>
+          <div id="read_resource_2"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_2"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
+          <div id="list_vault_2a"><b>ils.listVault(*):</b> </div>
+          <div id="list_vault_2b"><b>ils.listVaultExtended(*):</b> </div>
+          <br/>
+          <br/>
+          <a>RESOURCE UPDATE (test1.txt)</a>
+          <div id="update_resource"><b>ils.updateResource(*):</b> </div>
+          <div id="read_resource_3"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_3"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>REMOVING RESOURCES</a>
+          <div id="delete_resource_1"><b>ils.deleteResource(test1.txt):</b> </div>
+          <div id="delete_resource_2"><b>ils.deleteResource(test2.txt):</b> </div>
+          <div id="exist_resource_3"><b>ils.existResource(test1.txt):</b> </div>
+          <div id="exist_resource_4"><b>ils.existResource(test2.txt):</b> </div>
+          <div id="read_resource_4"><b>ils.readResource(*):</b> </div>
+          <div id="delete_resource_3"><b>ils.deleteResource(*):</b> </div>
+          <br/>
+          <br/>
+          <a>VAULT CONTENT AFTER REMOVING RESOURCES</a>
+          <div id="list_vault_3"><b>ils.listVault:</b> </div>
+          <br/>
+        ]]>
+
+    </Content>
+
 </Module>
   

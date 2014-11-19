@@ -1,6 +1,6 @@
 /*
 ILS Library for Go-Lab
-author: Na Li, Wissam Halimi, María Jesús Rodríguez-Triana
+author: María Jesús Rodríguez-Triana, Wissam Halimi
 contact: maria.rodrigueztriana@epfl.ch
 */
 
@@ -12,7 +12,7 @@ contact: maria.rodrigueztriana@epfl.ch
     // get the nickname of the student who is currently using the ils
     getCurrentUser: function(cb) {
       var username = "";
-      var error = {"error" : "Cannot get username"};
+      var error = {"error" : "The username couldn't be obtained."};
       username = $.cookie('graasp_user');
       if (username != undefined && username != null && username != "")
         return cb(username);
@@ -22,7 +22,7 @@ contact: maria.rodrigueztriana@epfl.ch
 
     // get the parent space of the widget 
     getParent: function(cb) {
-      var error = {"error" : "Cannot get parent space"};
+      var error = {"error" : "The parent space couldn't be obtained."};
       osapi.context.get().execute(function(context_space) {
         if (context_space != undefined && context_space != null && !context_space.error) {
           osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
@@ -52,20 +52,20 @@ contact: maria.rodrigueztriana@epfl.ch
                       if (!logResponse.error) {
                         return cb(true);
                       } else {
-                        error = {"error": "The resource removal couldn't be logged"};
+                        error = {"error": "The resource removal couldn't be logged."};
                         return cb(error);
                       }
                     });
                   });
                 } else {
-                  error = {"error": "Couldn't remove resource"};
+                  error = {"error": "The resource couldn't be removed."};
                   return cb(error);
                 }
               });
             });
           });
         } else {
-          error = {"error": "The resource to be deleted does not exist"};
+          error = {"error": "The resource to be deleted is not available. The resource couldn't be removed."};
           return cb(error);
         }
       });
@@ -83,7 +83,7 @@ contact: maria.rodrigueztriana@epfl.ch
           }
         });
       } else {
-        error = {"error" : "resourceId cannot be empty"};
+        error = {"error" : "The resourceId cannot be empty. The resource couldn't be obtained."};
         return cb(error);
       }
     },
@@ -95,54 +95,25 @@ contact: maria.rodrigueztriana@epfl.ch
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if (!resource.error && resource.id) {
             ils.getIls(function(parentIls) {
-              ils.getVault(function(vault) {
-                // get the associated activity of this resource
-                // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-                ils.getAction(vault.id, resourceId, function(action) {
-                  var metadata;
-                  if(resource.metadata){
-                    metadata = resource.metadata;
-                  }else{
-                    metadata = {};
-                  }
-                  if (action.actor) {
-                    metadata.actor = action.actor;
-                  }
-                  if (action.object) {
-                    metadata.target = {
-                      objectType: action.object.objectType,
-                      id: action.object.id,
-                      displayName: action.object.displayName
-                    };
-                  }
-                  if (action.generator) {
-                    metadata.generator = {
-                      objectType: action.generator.objectType,
-                      url: action.generator.url,
-                      id: action.generator.id,
-                      displayName: action.generator.displayName
-                    };
-                  }
-                  if(parentIls) {
-                    metadata.provider = {
-                      url: parentIls.profileUrl,
-                      id: parentIls.id,
-                      displayName: parentIls.displayName
-                    };
-                  }
-                  // append the metadata to the resource object
-                  resource["metadata"] = metadata;
-                  return cb(resource);
-                });
+              // get the associated activity of this resource
+              // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
+              ils.getAction(resource.parentId, resourceId, function(action) {
+                var metadata = "";
+                if (resource.metadata) {
+                  metadata = resource.metadata;
+                }
+                // append the metadata to the resource object
+                resource["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                return cb(resource);
               });
             });
           } else {
-            error = {"error" : "Cannot get resource"};
+            error = {"error" : "The resource is not available."};
             return cb(error);
           }
         });
       } else {
-        error = {"error" : "resourceId cannot be empty"};
+        error = {"error" : "The resourceId cannot be empty. The resource couldn't be read."};
         return cb(error);
       }
     },
@@ -153,21 +124,69 @@ contact: maria.rodrigueztriana@epfl.ch
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if (!resource.error) {
-            if(resource.metadata) {
-              return cb(resource.metadata);
-            } else {
-              error = {"error": "The resource has no metadata"};
-                return cb(error);
-            }
+            ils.getIls(function(parentIls) {
+              // get the associated activity of this resource
+              // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
+              ils.getAction(resource.parentId, resourceId, function(action) {
+                var metadata = "";
+                if (resource.metadata) {
+                  metadata = resource.metadata;
+                }
+                // append the metadata to the resource object
+                metadata = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                if(metadata) {
+                  return cb(metadata);
+                } else {
+                  error = {"error": "The resource has no metadata."};
+                  return cb(error);
+                }
+              });
+            });
           } else {
-            error = {"error" : "Cannot get resource"};
+            error = {"error" : "The resource is not available."};
             return cb(error);
           }
         });
       } else {
-        error = {"error" : "resourceId cannot be empty"};
+        error = {"error" : "The resourceId cannot be empty. The metadata couldn't be obtained."};
         return cb(error);
       }
+    },
+
+    // returns the basic metadata inferred from the history
+    obtainMetadataFromAction: function(metadata, action, parentIls) {
+        var extendedMetadata = "";
+        if(metadata){
+          extendedMetadata= JSON.parse(metadata);
+        }else{
+          extendedMetadata = {};
+        }
+        if (action.actor) {
+          extendedMetadata.actor = action.actor;
+        }
+        if (action.object) {
+          extendedMetadata.target = {
+            objectType: action.object.objectType,
+            id: action.object.id,
+            displayName: action.object.displayName
+          };
+        }
+        if (action.generator) {
+          extendedMetadata.generator = {
+            objectType: action.generator.objectType,
+            url: action.generator.url,
+            id: action.generator.id,
+            displayName: action.generator.displayName
+          };
+        }
+        if(parentIls) {
+          extendedMetadata.provider = {
+            url: parentIls.profileUrl,
+            id: parentIls.id,
+            displayName: parentIls.displayName
+          };
+        }
+        return (extendedMetadata);
     },
 
     // create a resource in the Vault, resourceName and content need to be passed
@@ -196,20 +215,20 @@ contact: maria.rodrigueztriana@epfl.ch
                     if (!response.error) {
                       return cb(resource);
                     }else{
-                      error = {"error" : "The resource creation couldn't be logged"};
+                      error = {"error" : "The resource creation couldn't be logged."};
                       return cb(error);
                     }
                   });
                 });
               } else {
-                error = {"error" : "Couldn't create resource"};
+                error = {"error" : "The resource couldn't be created."};
                 return cb(error);
               }
             });
           });
         });
       } else {
-        error = {"error" : "resourceName cannot be null. Cannot create resource."};
+        error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
         return cb(error);
       }
     },
@@ -258,25 +277,25 @@ contact: maria.rodrigueztriana@epfl.ch
                         if (!response.error) {
                           return cb(resource);
                         }else{
-                          error = {"error" : "The resource update couldn't be logged"};
+                          error = {"error" : "The resource update couldn't be logged."};
                           return cb(error);
                         }
                       });
                   });
                 });
               } else {
-                error = {"error" : "Couldn't update resource"};
+                error = {"error" : "The resource couldn't be updated."};
                 return cb(error);
               }
             });
           });
         } else {
-          error = {"error" : "Cannot get resource"};
+          error = {"error" : "The resource is not available."};
           return cb(error);
         }
       });
     } else {
-      error = {"error" : "resourceName cannot be null. Cannot update resource."};
+      error = {"error" : "The resourceName cannot be null. The resource couldn't be updated."};
       return cb(error);
     }
   },
@@ -284,7 +303,7 @@ contact: maria.rodrigueztriana@epfl.ch
 
   // get a list of all resources in the Vault
     listVault: function(cb) {
-      var error = {"error" : "Cannot get the resources in the Vault"};
+      var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
           if (resources.list.length > 0)
@@ -295,9 +314,38 @@ contact: maria.rodrigueztriana@epfl.ch
       });
     },
 
+    // get a list of all resources in the Vault including all the metadata extracted from the actions
+    listVaultExtended: function(cb) {
+      var error = {"error" : "No resource available in the Vault."};
+      ils.getVault(function(vault) {
+        osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
+          if (resources.list.length > 0) {
+          ils.getIls(function (parentIls) {
+              $.each(resources.list, function(index, value) {
+                $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                // get the associated activity of this resource
+                // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
+                ils.getAction(vault.id, value.id, function (action) {
+                  var metadata = "";
+                  if (value.metadata) {
+                    metadata = value.metadata;
+                  }
+                  // append the metadata to the resource object
+                  value["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                });
+              });
+          });
+          return cb(resources.list);
+        }else{
+          return cb(error);
+        }
+        });
+      });
+    },
+
     // get the current ILS of the app
     getIls: function(cb) {
-      var error = {"error" : "Cannot get ILS"};
+      var error = {"error" : "The ILS is not available."};
       osapi.context.get().execute(function(space) {
         if (!space.error) {
           osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
@@ -348,12 +396,12 @@ contact: maria.rodrigueztriana@epfl.ch
             })();
             return cb(vault[0]);
           } else {
-            error = {"error" : "No subspaces in current ILS"};
+            error = {"error" : "No subspaces in current ILS."};
             return cb(error);
           }
         });
       } else {
-        error = {"error" : "Cannot get the vault"};
+        error = {"error" : "The space is not available."};
         return cb(error);
       }
     });
@@ -365,7 +413,7 @@ contact: maria.rodrigueztriana@epfl.ch
         if (!response.error) {
           return cb(response);
         } else {
-          var error = {"error": "Cannot get app"};
+          var error = {"error": "The app couldn't be obtained."};
           return cb(error);
         }
       });
@@ -416,7 +464,7 @@ contact: maria.rodrigueztriana@epfl.ch
         if (!response.error) {
           return cb(response);
         } else {
-          var error = {"error": "Cannot create activity"};
+          var error = {"error": "The activity couldn't be created."};
           return cb(error);
         }
       });
@@ -439,7 +487,7 @@ contact: maria.rodrigueztriana@epfl.ch
         if (!response.error && (response.totalResults > 0 )) {
           return cb(response.list[0]);
         } else {
-          var error = {"error": "Cannot get activity"};
+          var error = {"error": "The activity couldn't be obtained."};
           return cb(error);
         }
       });
@@ -447,7 +495,7 @@ contact: maria.rodrigueztriana@epfl.ch
 
   // get the type of inquiry phase where the app is running in
     getParentInquiryPhase: function(cb) {
-      var error = {"error" : "Cannot get parent inquiry phase"};
+      var error = {"error" : "The parent inquiry phase couldn't be obtained."};
       this.getParent(function(parent) {
         if (!parent.error && parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
           return cb(parent.metadata.type);

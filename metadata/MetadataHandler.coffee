@@ -110,21 +110,64 @@ window.golab = window.golab || {}
 window.golab.ils = window.golab.ils || {}
 window.golab.ils.metadata = window.golab.ils.metadata || {}
 
+window.golab.ils.context = window.golab.ils.context or {}
+# the tool is running...
+# ...inside Graasp / authoring mode
+window.golab.ils.context.graasp = "graasp"
+# ...in an ILS / student mode
+window.golab.ils.context.ils = "ils"
+# ...as a preview on golabz.eu
+window.golab.ils.context.preview = "preview"
+# ...directly rendered via shindig
+window.golab.ils.context.direct = "direct"
+# ...as a standalone HTML version
+window.golab.ils.context.standalone = "standalone"
+# ...in an unknown context
+window.golab.ils.context.unknown = "unknown"
+
 class window.golab.ils.metadata.MetadataHandler
 
   constructor: (metadata, cb) ->
     console.log("Initializing MetadataHandler.")
+    # the context might already be set through subclass-constructors. if not, do it now.
+    @_context = @_context or @identifyContext()
     if metadata
       # cloning the parameter to avoid side-effects
       @_metadata = JSON.parse(JSON.stringify(metadata))
     else
       throw "MetadataHandler needs an initial set of metadata at construction!"
+
     setTimeout(=>
       cb(null, @) if cb
     , 0)
     console.log "MetadataHandler construction for #{@_metadata.generator.displayName} complete. Using the following metadata:"
     console.log @_metadata
+    console.log "context: #{@getContext()}"
     @
+
+  identifyContext: () =>
+    if not osapi?
+      @_context = window.golab.ils.context.standalone
+    else if document.referrer.indexOf("graasp.eu") isnt -1
+      @_context = window.golab.ils.context.graasp
+    else if document.referrer.indexOf("ils_metawidget") isnt -1
+      @_context = window.golab.ils.context.ils
+    else if document.referrer.indexOf("golabz.eu") isnt -1
+      @_context = window.golab.ils.context.preview
+    else if document.referrer is ""
+      @_context = window.golab.ils.context.direct
+    else
+      @_context = window.golab.ils.context.unknown
+
+  getContext: () =>
+    @_context
+
+  setId: (newId) ->
+    @_metadata.id = newId
+    @
+
+  getId: () ->
+    @_metadata.id
 
   setMetadata: (newMetadata) ->
     # cloning the parameter to avoid side-effects
@@ -165,21 +208,33 @@ class window.golab.ils.metadata.MetadataHandler
 class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 
   constructor: (metadata, cb) ->
+    @identifyContext()
     if osapi?
       # we in an OpenSocial context, try to get information from there...
-      console.log "Retrieving metadata from osapi/ils."
       try
         if not $.cookie
           throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library)."
         if not ils
           throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
-        ils.getCurrentUser (userResult) =>
-          if userResult.error
-            console.warn "error reading username:"
-            console.warn userResult.error
-            metadata.actor.displayName = "unknown"
-          else
-            metadata.actor.displayName = userResult
+
+        findUsername = $.Deferred()
+        console.log "testing against context:"
+        console.log @getContext()
+        if @getContext() is window.golab.ils.context.ils
+          ils.getCurrentUser (userResult) =>
+            if userResult.error
+              console.warn "error reading username: #{userResult.error}"
+              findUsername.resolve("unknown")
+            else
+              findUsername.resolve(userResult)
+        else if @getContext() is window.golab.ils.context.graasp
+          osapi.people.getOwner().execute (owner) ->
+            findUsername.resolve(owner.displayName)
+        else
+          findUsername.resolve("unknown")
+
+        findUsername.done (userName) =>
+          metadata.actor.displayName = userName
           ils.getIls (ils, phase) =>
             console.log "GoLab-MetadataHandler: ilsSpace, phaseSpace:"
             console.log ils
@@ -232,14 +287,12 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                 # we have the new graasp and are in a phase space
                 console.log "MetadataHandler: new Graasp, phase space."
                 metadata.generator.url = gadgets.util.getUrlParameters().url
-                if phase.metadata
+                metadata.provider.inquiryPhaseId = phase.id
+                metadata.provider.inquiryPhaseName = phase.displayName
+                if phase.metadata?
                   metadata.provider.inquiryPhase = phase.metadata.type
-                  metadata.provider.inquiryPhaseId = phase.id
-                  metadata.provider.inquiryPhaseName = phase.displayName
                 else
                   metadata.provider.inquiryPhase = "unknown"
-                  metadata.provider.inquiryPhaseId = "unknown"
-                  metadata.provider.inquiryPhaseName = "unknown"
               else
                 # we have the new graasp and are in an ILS space
                 console.log "MetadataHandler: new Graasp, ILS space."
@@ -269,6 +322,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
 class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 
   constructor: (metadata, cb) ->
+    @identifyContext()
     getIdentifyingUrl = ->
       path = window.location.pathname
       subPaths = window.location.pathname.split("/")
@@ -289,8 +343,10 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
     # if present as URL, take from there
     if (@getParameterFromUrl("provider")?)
       metadata.provider.id = @getParameterFromUrl("provider")
-    # if we have a name of the ILS, we can set it here
-    metadata.provider.displayName = "unnamed"
+    if document.title?
+      metadata.provider.displayName = document.title
+    else
+      metadata.provider.displayName = "unnamed"
 
     # if that goes wrong, call the callback with an error
     userNickname = localStorage.getItem('goLabNickName')

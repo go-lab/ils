@@ -109,7 +109,8 @@ phase:
 
 (function() {
   "use strict";
-  var __hasProp = {}.hasOwnProperty,
+  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   window.golab = window.golab || {};
@@ -118,10 +119,27 @@ phase:
 
   window.golab.ils.metadata = window.golab.ils.metadata || {};
 
+  window.golab.ils.context = window.golab.ils.context || {};
+
+  window.golab.ils.context.graasp = "graasp";
+
+  window.golab.ils.context.ils = "ils";
+
+  window.golab.ils.context.preview = "preview";
+
+  window.golab.ils.context.direct = "direct";
+
+  window.golab.ils.context.standalone = "standalone";
+
+  window.golab.ils.context.unknown = "unknown";
+
   window.golab.ils.metadata.MetadataHandler = (function() {
     function MetadataHandler(metadata, cb) {
+      this.getContext = __bind(this.getContext, this);
+      this.identifyContext = __bind(this.identifyContext, this);
       var _this = this;
       console.log("Initializing MetadataHandler.");
+      this._context = this._context || this.identifyContext();
       if (metadata) {
         this._metadata = JSON.parse(JSON.stringify(metadata));
       } else {
@@ -134,8 +152,38 @@ phase:
       }, 0);
       console.log("MetadataHandler construction for " + this._metadata.generator.displayName + " complete. Using the following metadata:");
       console.log(this._metadata);
+      console.log("context: " + (this.getContext()));
       this;
     }
+
+    MetadataHandler.prototype.identifyContext = function() {
+      if (typeof osapi === "undefined" || osapi === null) {
+        return this._context = window.golab.ils.context.standalone;
+      } else if (document.referrer.indexOf("graasp.eu") !== -1) {
+        return this._context = window.golab.ils.context.graasp;
+      } else if (document.referrer.indexOf("ils_metawidget") !== -1) {
+        return this._context = window.golab.ils.context.ils;
+      } else if (document.referrer.indexOf("golabz.eu") !== -1) {
+        return this._context = window.golab.ils.context.preview;
+      } else if (document.referrer === "") {
+        return this._context = window.golab.ils.context.direct;
+      } else {
+        return this._context = window.golab.ils.context.unknown;
+      }
+    };
+
+    MetadataHandler.prototype.getContext = function() {
+      return this._context;
+    };
+
+    MetadataHandler.prototype.setId = function(newId) {
+      this._metadata.id = newId;
+      return this;
+    };
+
+    MetadataHandler.prototype.getId = function() {
+      return this._metadata.id;
+    };
 
     MetadataHandler.prototype.setMetadata = function(newMetadata) {
       this._metadata = JSON.parse(JSON.stringify(newMetadata));
@@ -190,10 +238,10 @@ phase:
     __extends(GoLabMetadataHandler, _super);
 
     function GoLabMetadataHandler(metadata, cb) {
-      var error,
+      var error, findUsername,
         _this = this;
+      this.identifyContext();
       if (typeof osapi !== "undefined" && osapi !== null) {
-        console.log("Retrieving metadata from osapi/ils.");
         try {
           if (!$.cookie) {
             throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library).";
@@ -201,14 +249,27 @@ phase:
           if (!ils) {
             throw "ILS library needs to be present before using the (GoLab)MetadataHandler.";
           }
-          ils.getCurrentUser(function(userResult) {
-            if (userResult.error) {
-              console.warn("error reading username:");
-              console.warn(userResult.error);
-              metadata.actor.displayName = "unknown";
-            } else {
-              metadata.actor.displayName = userResult;
-            }
+          findUsername = $.Deferred();
+          console.log("testing against context:");
+          console.log(this.getContext());
+          if (this.getContext() === window.golab.ils.context.ils) {
+            ils.getCurrentUser(function(userResult) {
+              if (userResult.error) {
+                console.warn("error reading username: " + userResult.error);
+                return findUsername.resolve("unknown");
+              } else {
+                return findUsername.resolve(userResult);
+              }
+            });
+          } else if (this.getContext() === window.golab.ils.context.graasp) {
+            osapi.people.getOwner().execute(function(owner) {
+              return findUsername.resolve(owner.displayName);
+            });
+          } else {
+            findUsername.resolve("unknown");
+          }
+          findUsername.done(function(userName) {
+            metadata.actor.displayName = userName;
             return ils.getIls(function(ils, phase) {
               var actorId;
               console.log("GoLab-MetadataHandler: ilsSpace, phaseSpace:");
@@ -255,14 +316,12 @@ phase:
                 if ((phase != null) && phase.spaceType === "folder") {
                   console.log("MetadataHandler: new Graasp, phase space.");
                   metadata.generator.url = gadgets.util.getUrlParameters().url;
-                  if (phase.metadata) {
+                  metadata.provider.inquiryPhaseId = phase.id;
+                  metadata.provider.inquiryPhaseName = phase.displayName;
+                  if (phase.metadata != null) {
                     metadata.provider.inquiryPhase = phase.metadata.type;
-                    metadata.provider.inquiryPhaseId = phase.id;
-                    metadata.provider.inquiryPhaseName = phase.displayName;
                   } else {
                     metadata.provider.inquiryPhase = "unknown";
-                    metadata.provider.inquiryPhaseId = "unknown";
-                    metadata.provider.inquiryPhaseName = "unknown";
                   }
                 } else {
                   console.log("MetadataHandler: new Graasp, ILS space.");
@@ -302,6 +361,7 @@ phase:
 
     function LocalMetadataHandler(metadata, cb) {
       var actorId, getIdentifyingUrl, userNickname;
+      this.identifyContext();
       getIdentifyingUrl = function() {
         var path, subPaths;
         path = window.location.pathname;
@@ -327,7 +387,11 @@ phase:
       if ((this.getParameterFromUrl("provider") != null)) {
         metadata.provider.id = this.getParameterFromUrl("provider");
       }
-      metadata.provider.displayName = "unnamed";
+      if (document.title != null) {
+        metadata.provider.displayName = document.title;
+      } else {
+        metadata.provider.displayName = "unnamed";
+      }
       userNickname = localStorage.getItem('goLabNickName');
       if (!userNickname) {
         if ((this.getParameterFromUrl("username") != null)) {

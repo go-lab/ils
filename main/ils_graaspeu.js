@@ -103,7 +103,7 @@ contact: maria.rodrigueztriana@epfl.ch
                   metadata = resource.metadata;
                 }
                 // append the metadata to the resource object
-                resource["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                resource["metadata"] = metadata;
                 return cb(resource);
               });
             });
@@ -128,14 +128,8 @@ contact: maria.rodrigueztriana@epfl.ch
               // get the associated activity of this resource
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
               ils.getAction(resource.parentId, resourceId, function(action) {
-                var metadata = "";
-                if (resource.metadata) {
-                  metadata = resource.metadata;
-                }
-                // append the metadata to the resource object
-                metadata = ils.obtainMetadataFromAction(metadata, action, parentIls);
-                if(metadata) {
-                  return cb(metadata);
+                if(resource.metadata) {
+                  return cb(resource.metadata);
                 } else {
                   error = {"error": "The resource has no metadata."};
                   return cb(error);
@@ -331,7 +325,7 @@ contact: maria.rodrigueztriana@epfl.ch
                     metadata = value.metadata;
                   }
                   // append the metadata to the resource object
-                  value["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                  value["metadata"] = metadata;
                 });
               });
           });

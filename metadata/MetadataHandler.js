@@ -157,21 +157,23 @@ phase:
     }
 
     MetadataHandler.prototype.identifyContext = function() {
-      console.log("MetadataHandler.identifyContent. document.referrer:");
+      console.log("MetadataHandler.identifyContext. document.referrer:");
       console.log(document.referrer);
       if (typeof osapi === "undefined" || osapi === null) {
-        return this._context = window.golab.ils.context.standalone;
-      } else if (document.referrer.indexOf("ils_metawidget") !== -1) {
-        return this._context = window.golab.ils.context.ils;
-      } else if (document.referrer.indexOf("graasp.eu") !== -1) {
-        return this._context = window.golab.ils.context.graasp;
+        this._context = window.golab.ils.context.standalone;
       } else if (document.referrer.indexOf("golabz.eu") !== -1) {
-        return this._context = window.golab.ils.context.preview;
+        this._context = window.golab.ils.context.preview;
+      } else if (document.referrer.indexOf("ils") !== -1) {
+        this._context = window.golab.ils.context.ils;
+      } else if (document.referrer.indexOf("graasp.eu") !== -1) {
+        this._context = window.golab.ils.context.graasp;
       } else if (document.referrer === "") {
-        return this._context = window.golab.ils.context.direct;
+        this._context = window.golab.ils.context.direct;
       } else {
-        return this._context = window.golab.ils.context.unknown;
+        this._context = window.golab.ils.context.unknown;
       }
+      console.log("identified context:");
+      return console.log(this._context);
     };
 
     MetadataHandler.prototype.getContext = function() {
@@ -252,8 +254,6 @@ phase:
             throw "ILS library needs to be present before using the (GoLab)MetadataHandler.";
           }
           findUsername = $.Deferred();
-          console.log("identified context:");
-          console.log(this.getContext());
           if (this.getContext() === window.golab.ils.context.ils) {
             ils.getCurrentUser(function(userResult) {
               if (userResult.error) {

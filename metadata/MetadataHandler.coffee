@@ -146,20 +146,23 @@ class window.golab.ils.metadata.MetadataHandler
     @
 
   identifyContext: () =>
-    console.log "MetadataHandler.identifyContent. document.referrer:"
+    console.log "MetadataHandler.identifyContext. document.referrer:"
     console.log document.referrer
     if not osapi?
       @_context = window.golab.ils.context.standalone
-    else if document.referrer.indexOf("ils_metawidget") isnt -1
+    else if document.referrer.indexOf("golabz.eu") isnt -1
+      @_context = window.golab.ils.context.preview
+    #else if document.referrer.indexOf("ils_metawidget") isnt -1
+    else if document.referrer.indexOf("ils") isnt -1
       @_context = window.golab.ils.context.ils
     else if document.referrer.indexOf("graasp.eu") isnt -1
       @_context = window.golab.ils.context.graasp
-    else if document.referrer.indexOf("golabz.eu") isnt -1
-      @_context = window.golab.ils.context.preview
     else if document.referrer is ""
       @_context = window.golab.ils.context.direct
     else
       @_context = window.golab.ils.context.unknown
+    console.log "identified context:"
+    console.log @_context
 
   getContext: () =>
     @_context
@@ -220,8 +223,6 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
           throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
 
         findUsername = $.Deferred()
-        console.log "identified context:"
-        console.log @getContext()
         if @getContext() is window.golab.ils.context.ils
           ils.getCurrentUser (userResult) =>
             if userResult.error

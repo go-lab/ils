@@ -103,7 +103,7 @@ contact: maria.rodrigueztriana@epfl.ch
                   metadata = resource.metadata;
                 }
                 // append the metadata to the resource object
-                resource["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                resource["metadata"] = metadata;
                 return cb(resource);
               });
             });
@@ -128,14 +128,8 @@ contact: maria.rodrigueztriana@epfl.ch
               // get the associated activity of this resource
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
               ils.getAction(resource.parentId, resourceId, function(action) {
-                var metadata = "";
-                if (resource.metadata) {
-                  metadata = resource.metadata;
-                }
-                // append the metadata to the resource object
-                metadata = ils.obtainMetadataFromAction(metadata, action, parentIls);
-                if(metadata) {
-                  return cb(metadata);
+                if(resource.metadata) {
+                  return cb(resource.metadata);
                 } else {
                   error = {"error": "The resource has no metadata."};
                   return cb(error);
@@ -306,7 +300,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if (resources.list.length > 0)
+          if (resources.list && resources.list.length > 0)
             return cb(resources.list);
           else
             return cb(error);
@@ -319,7 +313,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
-          if (resources.list.length > 0) {
+          if (resources.list && resources.list.length > 0) {
           ils.getIls(function (parentIls) {
               $.each(resources.list, function(index, value) {
                 $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
@@ -331,7 +325,7 @@ contact: maria.rodrigueztriana@epfl.ch
                     metadata = value.metadata;
                   }
                   // append the metadata to the resource object
-                  value["metadata"] = ils.obtainMetadataFromAction(metadata, action, parentIls);
+                  value["metadata"] = metadata;
                 });
               });
           });

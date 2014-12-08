@@ -300,7 +300,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if (resources.list.length > 0)
+          if (resources.list && resources.list.length > 0)
             return cb(resources.list);
           else
             return cb(error);
@@ -313,7 +313,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
-          if (resources.list.length > 0) {
+          if (resources.list && resources.list.length > 0) {
           ils.getIls(function (parentIls) {
               $.each(resources.list, function(index, value) {
                 $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");

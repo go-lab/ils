@@ -156,7 +156,7 @@
                             ils.getMetadata(newResourceId, function(metadata){
                                 console.log("Getting metadata from resource (with additional metadata)");
                                 console.log(metadata);
-                                $('#get_metadata_1').append("Key names: " + metadata);
+                                $('#get_metadata_1').append(metadata);
                             });
 
                             // create a second resource in the Vault
@@ -183,7 +183,7 @@
                                 ils.getMetadata(newResourceId2, function(metadata){
                                     console.log("Getting metadata from resource (without additional metadata)");
                                     console.log(metadata);
-                                    $('#get_metadata_2').append("Key names: " + metadata);
+                                    $('#get_metadata_2').append(metadata);
                                 });
 
 
@@ -228,7 +228,7 @@
                                         ils.getMetadata(newResourceId, function(metadata){
                                             console.log("Getting metadata from the updated resource");
                                             console.log(metadata);
-                                            $('#get_metadata_3').append("Key names: " + metadata);
+                                            $('#get_metadata_3').append(metadata);
                                         });
 
                                         // FOURTH STEP: DELETE RESOURCES

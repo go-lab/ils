@@ -26,12 +26,17 @@ contact: maria.rodrigueztriana@epfl.ch
       osapi.context.get().execute(function(context_space) {
         if (context_space != undefined && context_space != null && !context_space.error) {
           osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
-            if (!parent.error)
+            if (!parent.error) {
               return cb(parent);
-            else
+            } else {
+              error.log = parent.error;
               return cb(error);
+            }
          });
         } else {
+          if (context_space.error){
+            error.log = context_space.error;
+          }
           return cb(error);
         }
       });
@@ -53,12 +58,16 @@ contact: maria.rodrigueztriana@epfl.ch
                         return cb(true);
                       } else {
                         error = {"error": "The resource removal couldn't be logged."};
+                        error.log = logResponse.error ;
                         return cb(error);
                       }
                     });
                   });
                 } else {
                   error = {"error": "The resource couldn't be removed."};
+                  if (deleteResponse.error){
+                    error.log = deleteResponse.error;
+                  }
                   return cb(error);
                 }
               });
@@ -79,6 +88,9 @@ contact: maria.rodrigueztriana@epfl.ch
           if (resource && !resource.error && resource.url) {
             return cb(true);
           } else {
+            if (resource.error){
+              error.log = resource.error;
+            }
             return cb(false);
           }
         });
@@ -109,6 +121,9 @@ contact: maria.rodrigueztriana@epfl.ch
             });
           } else {
             error = {"error" : "The resource is not available."};
+            if (resource.error){
+              error.log = resource.error;
+            }
             return cb(error);
           }
         });
@@ -138,6 +153,7 @@ contact: maria.rodrigueztriana@epfl.ch
             });
           } else {
             error = {"error" : "The resource is not available."};
+            error.log = resource.error ;
             return cb(error);
           }
         });
@@ -195,7 +211,7 @@ contact: maria.rodrigueztriana@epfl.ch
               "parentType": "@space",
               "parentSpaceId": vault.id,
               "mimeType": "txt",
-              "fileName": resourceName,
+              "fileName": resourceName + "_" + username + "_"+event.timeStamp,
               "content": JSON.stringify(content),
               "metadata": metadata
               }
@@ -210,12 +226,16 @@ contact: maria.rodrigueztriana@epfl.ch
                       return cb(resource);
                     }else{
                       error = {"error" : "The resource creation couldn't be logged."};
+                      error.log = response.error;
                       return cb(error);
                     }
                   });
                 });
               } else {
                 error = {"error" : "The resource couldn't be created."};
+                if(resource.error){
+                  error.log = resource.error;
+                }
                 return cb(error);
               }
             });
@@ -272,6 +292,7 @@ contact: maria.rodrigueztriana@epfl.ch
                           return cb(resource);
                         }else{
                           error = {"error" : "The resource update couldn't be logged."};
+                          error.log = response.error;
                           return cb(error);
                         }
                       });
@@ -279,12 +300,18 @@ contact: maria.rodrigueztriana@epfl.ch
                 });
               } else {
                 error = {"error" : "The resource couldn't be updated."};
+                if(resource.error){
+                  error.log = resource.error;
+                }
                 return cb(error);
               }
             });
           });
         } else {
           error = {"error" : "The resource is not available."};
+          if (resource.error){
+            error.log = resource.error;
+          }
           return cb(error);
         }
       });
@@ -356,10 +383,12 @@ contact: maria.rodrigueztriana@epfl.ch
                 });
               }
             } else {
+              error.log = parentSpace.error;
               return cb(error);
             }
           });
         } else {
+          error.log = space.error;
           return cb(error);
         }
       });
@@ -396,6 +425,7 @@ contact: maria.rodrigueztriana@epfl.ch
         });
       } else {
         error = {"error" : "The space is not available."};
+        error.log = parentIls.error;
         return cb(error);
       }
     });
@@ -408,6 +438,7 @@ contact: maria.rodrigueztriana@epfl.ch
           return cb(response);
         } else {
           var error = {"error": "The app couldn't be obtained."};
+          error.log = response.error;
           return cb(error);
         }
       });
@@ -459,6 +490,7 @@ contact: maria.rodrigueztriana@epfl.ch
           return cb(response);
         } else {
           var error = {"error": "The activity couldn't be created."};
+          error.log = response.error;
           return cb(error);
         }
       });
@@ -482,6 +514,9 @@ contact: maria.rodrigueztriana@epfl.ch
           return cb(response.list[0]);
         } else {
           var error = {"error": "The activity couldn't be obtained."};
+          if (response.error){
+            error.log = response.error;
+          }
           return cb(error);
         }
       });
@@ -494,6 +529,9 @@ contact: maria.rodrigueztriana@epfl.ch
         if (!parent.error && parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
           return cb(parent.metadata.type);
         } else {
+          if (parent.error){
+            error.log = parent.error;
+          }
           return cb(error);
         }
       });

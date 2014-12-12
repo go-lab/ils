@@ -137,7 +137,11 @@
                             var newResourceId = resource1.id;
                             console.log("Creating a resource (with additional metadata) in the Vault folder");
                             console.log(resource1);
-                            $('#create_resource_1').append("New resource id: " + resource1.id);
+                            if(resource1.id){
+                                $('#create_resource_1').append("New resource id: " + resource1.id);
+                            } else {
+                                $('#create_resource_1').append(resource1.error + " \n"+ resource1.log);
+                            }
 
                             // checks if the first resource exists
                             ils.existResource(newResourceId, function(response){
@@ -164,7 +168,11 @@
                                 var newResourceId2 = resource2.id;
                                 console.log("Creating a resource (without additional metadata) in the Vault folder");
                                 console.log(resource2);
-                                $('#create_resource_2').append("New resource id: " + resource2.id);
+                                if(resource2.id){
+                                    $('#create_resource_2').append("New resource id: " + resource2.id);
+                                } else {
+                                    $('#create_resource_2').append(resource2.error + " \n"+ resource2.log);
+                                }
 
                                 // checks if the second resource exists
                                 ils.existResource(newResourceId2, function(response){

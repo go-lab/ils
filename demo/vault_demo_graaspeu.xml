@@ -183,9 +183,12 @@
                                 ils.getMetadata(newResourceId2, function(metadata){
                                     console.log("Getting metadata from resource (without additional metadata)");
                                     console.log(metadata);
-                                    $('#get_metadata_2').append(metadata);
+                                    if(metadata.error){
+                                        $('#get_metadata_2').append(metadata.error);
+                                    } else {
+                                        $('#get_metadata_2').append("metadata");
+                                    }
                                 });
-
 
                                 ils.listVault(function(resources2){
                                     console.log("Printing resources in the Vault");

@@ -7,18 +7,56 @@ contact: maria.rodrigueztriana@epfl.ch
 
 (function() {
   var ils;
+  var context_graasp = "graasp";
+  var context_golabz = "golabz";
+  var context_direct = "direct";
+  var context_standalone = "standalone";
+  var context_unknown = "unknown";
 
   ils = {
     // get the nickname of the student who is currently using the ils
     getCurrentUser: function(cb) {
-      var username = "";
+      var username;
       var error = {"error" : "The username couldn't be obtained."};
-      username = $.cookie('graasp_user');
-      if (username != undefined && username != null && username != "")
-        return cb(username);
-      else
-        return cb(error);
+
+      ils.identifyContext(function (context) {
+        if (context == context_standalone) {
+          username = $.cookie('graasp_user');
+        } else if (context == context_graasp) {
+          osapi.people.getViewer().execute(function(viewer) {
+            username = viewer.displayName;          
+          });
+        }
+
+        if (username)
+          return cb(username);
+        else
+         return cb(error);
+     });
     },
+
+    identifyContext: function(cb) {
+          // http://www.golabz.eu/apps/
+          if (document.referrer.indexOf("golabz.eu") > -1) {
+            return cb(context_golabz);
+           
+          // http://localhost:9091/ils/ http://graasp.eu/ils/
+          } else if (document.referrer.indexOf("ils") > -1) {
+            return cb(context_standalone);
+           
+          // http://localhost:9091/applications/    http://localhost:9091/spaces/
+          // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
+          } else if ((document.referrer.indexOf("graasp.eu") > -1) || (document.referrer.indexOf("localhost") > -1)) {
+            return cb(context_graasp);
+         
+          } else if (document.referrer == "") {
+            return cb(context_direct);
+
+          } else {
+            return cb("unknown");
+          }
+
+        },
 
     // get the parent space of the widget 
     getParent: function(cb) {
@@ -190,12 +228,16 @@ contact: maria.rodrigueztriana@epfl.ch
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
           ils.getCurrentUser(function(username){
+            var creator = username;
+            if (username.error) {
+              creator = "unknown";
+            }
             var params = {
               "document": {
               "parentType": "@space",
               "parentSpaceId": vault.id,
               "mimeType": "txt",
-              "fileName": resourceName,
+              "fileName": resourceName + "_" + creator + "_" + event.timeStamp,
               "content": JSON.stringify(content),
               "metadata": metadata
               }

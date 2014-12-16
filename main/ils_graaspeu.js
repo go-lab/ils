@@ -11,13 +11,46 @@ contact: maria.rodrigueztriana@epfl.ch
   ils = {
     // get the nickname of the student who is currently using the ils
     getCurrentUser: function(cb) {
-      var username = "";
+      var username;
       var error = {"error" : "The username couldn't be obtained."};
-      username = $.cookie('graasp_user');
-      if (username != undefined && username != null && username != "")
+      var context = identifyContext();
+
+      if (context == "standalone") {
+        username = $.cookie('graasp_user');
+      } else if (context == "graasp") {
+        osapi.people.getOwner().execute(function(owner) {
+          username = owner.displayName;          
+        });
+      }
+
+      if (username) {
         return cb(username);
-      else
+      } else {
         return cb(error);
+      }
+    },
+
+    identifyContext: function() {
+      // http://www.golabz.eu/apps/
+      if (document.referrer.indexOf("golabz.eu") > -1) {
+        return "golabz";
+       
+      // http://localhost:9091/ils/ http://graasp.eu/ils/
+      } else if (document.referrer.indexOf("ils") > -1) {
+        return "standalone";
+       
+      // http://localhost:9091/applications/    http://localhost:9091/spaces/
+      // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
+      } else if ((document.referrer.indexOf("graasp.eu") > -1) || (document.referrer.indexOf("localhost") > -1)) {
+        return "graasp";
+     
+      } else if (document.referrer == "") {
+        return "direct";
+
+      } else {
+        return "unknown";
+      }
+
     },
 
     // get the parent space of the widget 
@@ -190,12 +223,14 @@ contact: maria.rodrigueztriana@epfl.ch
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
           ils.getCurrentUser(function(username){
+            var owner=username;
+            if(username.error) owner = "unknown";
             var params = {
               "document": {
               "parentType": "@space",
               "parentSpaceId": vault.id,
               "mimeType": "txt",
-              "fileName": resourceName,
+              "fileName": resourceName + "_" + owner + "_" + event.timeStamp,
               "content": JSON.stringify(content),
               "metadata": metadata
               }

@@ -121,12 +121,16 @@
                         ils.listVault(function(resources1){
                             console.log("Printing resources in the Vault");
                             console.log(resources1);
-                            if(resources1.length>0){
-                                $.each(resources1, function(index, value) {
-                                    $('#list_vault_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
-                                });
-                            }else{
+                            if(resources1.error){
                                 $('#list_vault_1').append(resources1.error);
+                            }else{
+                                if(resources1.length==0){
+                                   $('#list_vault_1').append("There is no resource in the Vault space"); 
+                                }else{
+                                    $.each(resources1, function(index, value) {
+                                        $('#list_vault_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                    });
+                                }
                             }
                         });
 
@@ -205,14 +209,17 @@
                                 ils.listVaultExtended(function(resources3){
                                     console.log("Printing extended version of the resources in the Vault");
                                     console.log(resources3);
-                                    if(resources3.length>0){
-                                        $.each(resources3, function(index, value) {
-                                            $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
-                                        });
-                                    }else{
+                                    if(resources3.error){
                                         $('#list_vault_3').append(resources3.error);
+                                    }else{
+                                        if(resources3.length==0){
+                                           $('#list_vault_3').append("There is no resource in the Vault space"); 
+                                        }else{
+                                            $.each(resources3, function(index, value) {
+                                                $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                            });
+                                        }
                                     }
-
                                     // THIRD STEP: UPDATE RESOURCES
                                     // updates a resource
                                     ils.updateResource(newResourceId, example_content_2, example_metadata_2, function(resource3){
@@ -274,12 +281,16 @@
                                                     ils.listVault(function(resources4){
                                                         console.log("Printing resources in the Vault");
                                                         console.log(resources4);
-                                                        if(resources4.length>0){
-                                                            $.each(resources4, function(index, value) {
-                                                                $('#list_vault_4').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
-                                                            });
-                                                        }else{
+                                                        if(resources4.error){
                                                             $('#list_vault_4').append(resources4.error);
+                                                        }else{
+                                                            if(resources4.length==0){
+                                                               $('#list_vault_4').append("There is no resource in the Vault space"); 
+                                                            }else{
+                                                                $.each(resources1, function(index, value) {
+                                                                    $('#list_vault_4').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                                                });
+                                                            }
                                                         }
                                                     });
                                                 });

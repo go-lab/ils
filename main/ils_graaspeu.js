@@ -342,7 +342,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if (resources.list && resources.list.length > 0)
+          if (resources.list)
             return cb(resources.list);
           else
             return cb(error);

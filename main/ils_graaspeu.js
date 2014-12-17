@@ -355,10 +355,10 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
-          if (resources.list && resources.list.length > 0) {
-          ils.getIls(function (parentIls) {
+          if (resources.list) {
+           if (resources.list.length > 0) {
+            ils.getIls(function (parentIls) {
               $.each(resources.list, function(index, value) {
-                $('#list_vault_3').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                 // get the associated activity of this resource
                 // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
                 ils.getAction(vault.id, value.id, function (action) {
@@ -370,7 +370,8 @@ contact: maria.rodrigueztriana@epfl.ch
                   value["metadata"] = metadata;
                 });
               });
-          });
+            });
+          }
           return cb(resources.list);
         }else{
           return cb(error);

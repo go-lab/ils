@@ -21,17 +21,18 @@
 
 
   window.golab.ils.storage.StorageHandler = (function() {
-    function StorageHandler(metadataHandler, _filterForResourceType, _filterForUser, _filterForProvider) {
+    function StorageHandler(metadataHandler, _filterForResourceType, _filterForUser, _filterForProvider, _customFilter) {
       var error;
       this._filterForResourceType = _filterForResourceType != null ? _filterForResourceType : true;
-      this._filterForUser = _filterForUser != null ? _filterForUser : false;
-      this._filterForProvider = _filterForProvider != null ? _filterForProvider : true;
+      this._filterForUser = _filterForUser != null ? _filterForUser : true;
+      this._filterForProvider = _filterForProvider != null ? _filterForProvider : false;
+      this._customFilter = _customFilter != null ? _customFilter : null;
       this.createResource = __bind(this.createResource, this);
       this.readLatestResource = __bind(this.readLatestResource, this);
       this.getResourceBundle = __bind(this.getResourceBundle, this);
       this.applyFilters = __bind(this.applyFilters, this);
       console.log("Initializing StorageHandler.");
-      this._debug = false;
+      this._debug = true;
       this._lastResourceId = void 0;
       try {
         metadataHandler.getMetadata();
@@ -46,6 +47,14 @@
       this._filterForResourceType = filterForResourceType;
       this._filterForUser = filterForUser;
       return this._filterForProvider = filterForProvider;
+    };
+
+    StorageHandler.prototype.setCustomFilter = function(customFilter) {
+      return this._customFilter = customFilter;
+    };
+
+    StorageHandler.prototype.getCustomFilter = function() {
+      return this._customFilter;
     };
 
     StorageHandler.prototype.getMetadataHandler = function() {
@@ -84,6 +93,11 @@
       if (this._filterForUser) {
         metadatas = metadatas.filter(function(entry) {
           return entry.metadata.actor.displayName === _this.metadataHandler.getActor().displayName;
+        });
+      }
+      if (this._customFilter) {
+        metadatas = metadatas.filter(function(entry) {
+          return _this._customFilter(entry.metadata);
         });
       }
       if (this._debug) {
@@ -138,9 +152,8 @@
           if (latestId != null) {
             return _this.readResource(latestId, cb);
           } else {
-            error = new Error("StorageHandler: no matching latest resource found.");
             return setTimeout(function() {
-              return cb(error, void 0);
+              return cb(null, null);
             }, 0);
           }
         }
@@ -573,6 +586,7 @@
       if (typeof ils === "undefined" || ils === null) {
         throw "The ILS library needs to be present for the VaultStorageHandler";
       } else {
+        this.configureFilters(true, true, false);
         return this;
       }
     }
@@ -581,66 +595,164 @@
       var error,
         _this = this;
       try {
-        return ils.readResource(resourceId, function(error, result) {
-          if (error != null) {
-            return cb(error);
+        return ils.readResource(resourceId, function(result) {
+          var resource;
+          if (result.error != null) {
+            return cb(result.error);
           } else {
-            return cb(null, result);
+            if (_this._debug != null) {
+              console.log("ils.readResource returns:");
+            }
+            if (_this._debug != null) {
+              console.log(result);
+            }
+            resource = {};
+            resource.metadata = JSON.parse(result.metadata);
+            resource.metadata.id = resourceId;
+            resource.content = JSON.parse(result.content);
+            _this.metadataHandler.setId(resource.metadata.id);
+            _this.metadataHandler.setTarget(resource.metadata.target);
+            return cb(null, resource);
           }
         });
       } catch (_error) {
         error = _error;
-        console.warn("Something went wrong when trying to load from the vault:");
+        console.warn("Something went wrong when trying to load resource " + resourceId + " from the vault:");
         console.warn(error);
         return cb(error);
       }
     };
 
     VaultStorageHandler.prototype.resourceExists = function(resourceId, cb) {
-      throw "Not yet implemented.";
-    };
-
-    VaultStorageHandler.prototype.createResource = function(content, cb) {
-      var error, resource,
+      var error,
         _this = this;
       try {
-        resource = this.getResourceBundle(content);
-        resource.metadata.id = "";
-        return ils.createResource(resource, function(error, result) {
-          if (error != null) {
-            return cb(error);
+        return ils.existResource(resourceId, function(result) {
+          if (result.error != null) {
+            return cb(result.error);
           } else {
-            resource.metadata.id = result.id;
-            return cb(null, resource);
+            return cb(null, result);
           }
         });
       } catch (_error) {
         error = _error;
-        console.log("Vault resource creation unsuccessful: ");
-        console.error(error);
+        console.warn("Something went wrong when trying to call 'resourceExists' from the vault:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
+    VaultStorageHandler.prototype.createResource = function(content, cb) {
+      var error, resource, resourceName,
+        _this = this;
+      try {
+        resource = this.getResourceBundle(content);
+        resourceName = resource.metadata.target.displayName;
+        resource.metadata.id = void 0;
+        return ils.createResource(resourceName, resource.content, resource.metadata, function(result) {
+          var returnedResource;
+          if (_this._debug != null) {
+            console.log("ils.createResource returns:");
+          }
+          if (_this._debug != null) {
+            console.log(result);
+          }
+          if (result.error != null) {
+            return cb(result.error);
+          } else {
+            returnedResource = {};
+            returnedResource.content = resource.content;
+            returnedResource.metadata = JSON.parse(result.metadata);
+            returnedResource.metadata.id = result.id;
+            _this.metadataHandler.setId(resource.metadata.id);
+            return cb(null, returnedResource);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when trying to create a resource in the vault:");
+        console.warn(error);
         return cb(error);
       }
     };
 
     VaultStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
-      throw "Not yet implemented.";
+      var error, metadata, resource,
+        _this = this;
+      try {
+        resource = this.getResourceBundle(content);
+        content = resource.content;
+        metadata = resource.metadata;
+        metadata.id = resourceId;
+        return ils.updateResource(resourceId, content, metadata, function(result) {
+          var updatedResource;
+          if (_this._debug != null) {
+            console.log("ils.updateResource returns:");
+          }
+          if (_this._debug != null) {
+            console.log(result);
+          }
+          if (result.error != null) {
+            return cb(result.error);
+          } else {
+            updatedResource = {};
+            updatedResource.content = content;
+            updatedResource.metadata = JSON.parse(result.metadata);
+            updatedResource.metadata.id = result.id;
+            _this.metadataHandler.setId(resource.metadata.id);
+            return cb(null, updatedResource);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when trying to update resource " + resourceId + " in the vault:");
+        console.warn(error);
+        return cb(error);
+      }
     };
 
     VaultStorageHandler.prototype.listResourceIds = function(cb) {
       throw "Not yet implemented.";
     };
 
-    VaultStorageHandler.prototype.listResourceMetaDatas = function(callback) {
-      var _this = this;
-      return ils.listVault(function(error, result) {
-        if (error != null) {
-          return callback(error);
-        } else {
-          console.log("listResourceMetaDatas:");
-          console.log(result);
-          return callback(null, result);
-        }
-      });
+    VaultStorageHandler.prototype.listResourceMetaDatas = function(cb) {
+      var error,
+        _this = this;
+      try {
+        return ils.listVaultExtended(function(result) {
+          var item, resource, returnedMetadatas, _i, _len;
+          if (_this._debug != null) {
+            console.log("ils.listVaultExtended returns:");
+          }
+          if (_this._debug != null) {
+            console.log(result);
+          }
+          if (result.error != null) {
+            if (result.error === "No resource available in the Vault.") {
+              return cb(null, []);
+            } else {
+              return cb(result.error);
+            }
+          } else {
+            returnedMetadatas = [];
+            for (_i = 0, _len = result.length; _i < _len; _i++) {
+              resource = result[_i];
+              item = {};
+              item.id = resource.id;
+              item.metadata = JSON.parse(resource.metadata);
+              item.metadata.id = resource.id;
+              returnedMetadatas.push(item);
+            }
+            returnedMetadatas = _this.applyFilters(returnedMetadatas);
+            return cb(null, returnedMetadatas);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when trying to list the resources in the vault:");
+        console.warn(error);
+        return cb(error);
+      }
     };
 
     return VaultStorageHandler;
@@ -659,7 +771,7 @@
       this.urlPrefix = urlPrefix;
       this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
-      MongoStorageHandler.__super__.constructor.call(this, metadataHandler, true, false, true);
+      MongoStorageHandler.__super__.constructor.call(this, metadataHandler, true, true, true);
       if (this.urlPrefix != null) {
         console.log("Initializing MongoStorageHandler.");
         this;
@@ -872,7 +984,7 @@
       this.urlPrefix = urlPrefix;
       this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
-      MongoIISStorageHandler.__super__.constructor.call(this, metadataHandler, true, false, true);
+      MongoIISStorageHandler.__super__.constructor.call(this, metadataHandler, true, true, true);
       if (this.urlPrefix != null) {
         console.log("Initializing MongoStorageHandler.");
         this;
@@ -953,14 +1065,28 @@
     };
 
     MongoIISStorageHandler.prototype.listResourceMetaDatas = function(cb) {
-      var error,
+      var error, filterString, urlString,
         _this = this;
       try {
+        urlString = "/listMetadatas.js";
+        filterString = "";
+        if (this._filterForProvider) {
+          filterString = "providerId=" + (this.metadataHandler.getProvider().id);
+        }
+        if (this._filterForUser) {
+          if (filterString != null) {
+            filterString = filterString + "&";
+          }
+          filterString = filterString + ("actorId=" + (this.metadataHandler.getActor().id));
+        }
+        if (filterString != null) {
+          urlString = urlString + "?" + filterString;
+        }
         return $.ajax({
           type: "GET",
           crossDomain: true,
           contentType: "text/plain",
-          url: "" + this.urlPrefix + "/listMetadatas.js",
+          url: this.urlPrefix + urlString,
           success: function(responseData) {
             var metadatas;
             console.log("GET listResourceMetaDatas success, response (before filters):");

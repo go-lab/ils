@@ -11,9 +11,9 @@ window.golab.ils.storage.memory = window.golab.ils.storage.memory || {}
 ###
 class window.golab.ils.storage.StorageHandler
 
-  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = false, @_filterForProvider = true) ->
+  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = false, @_customFilter = null) ->
     console.log "Initializing StorageHandler."
-    @_debug = false
+    @_debug = true
     @_lastResourceId = undefined
     try
       metadataHandler.getMetadata()
@@ -24,12 +24,18 @@ class window.golab.ils.storage.StorageHandler
   # the three different filters can be activated or deactivated by setting them to true or false
   # the filter value is fetched from the metadataHandler
   # e.g. the default setting
-  # configureFilters(true, false, true)
-  # returns only resources that match the resource type and provider id from all users
+  # configureFilters(true, true, true)
+  # returns only resources that match the resource type, provider id and users id
   configureFilters: (filterForResourceType, filterForUser, filterForProvider) ->
     @_filterForResourceType = filterForResourceType
     @_filterForUser = filterForUser
     @_filterForProvider = filterForProvider
+
+  setCustomFilter: (customFilter)->
+    @_customFilter = customFilter
+
+  getCustomFilter: ()->
+    @_customFilter
 
   getMetadataHandler: ->
     @metadataHandler
@@ -60,6 +66,8 @@ class window.golab.ils.storage.StorageHandler
       metadatas = metadatas.filter (entry) => entry.metadata.provider.id is @metadataHandler.getProvider().id
     if @_filterForUser
       metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
+    if @_customFilter
+      metadatas = metadatas.filter (entry) => @_customFilter(entry.metadata)
     if @_debug
       console.log "after: "
       console.log metadatas
@@ -101,9 +109,8 @@ class window.golab.ils.storage.StorageHandler
         if latestId?
           @readResource latestId, cb
         else
-          error = new Error "StorageHandler: no matching latest resource found."
           setTimeout(->
-            cb error, undefined
+            cb null, null
           , 0)
 
 
@@ -384,64 +391,141 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     if not ils?
       throw "The ILS library needs to be present for the VaultStorageHandler"
     else
+      @configureFilters(true, true, false)
       return @
 
   readResource: (resourceId, cb) ->
-    # this function only relays the call to the ILS library and does some error catching
+    # this function relays the call to the ILS library,
+    # maps is correctly to the callback parameters
+    # and does some additional error catching
     try
-      ils.readResource resourceId, (error, result) =>
-        if error?
-          cb error
+      ils.readResource resourceId, (result) =>
+        if result.error?
+          cb result.error
         else
-          cb null, result
+          if @_debug? then console.log "ils.readResource returns:"
+          if @_debug? then console.log result
+          resource = {}
+          resource.metadata = JSON.parse(result.metadata)
+          resource.metadata.id = resourceId
+          resource.content = JSON.parse(result.content)
+          # update the metadata with new properties
+          @metadataHandler.setId resource.metadata.id
+          @metadataHandler.setTarget(resource.metadata.target)
+          cb null, resource
     catch error
-      console.warn "Something went wrong when trying to load from the vault:"
+      console.warn "Something went wrong when trying to load resource #{resourceId} from the vault:"
       console.warn error
       cb error
 
   resourceExists: (resourceId, cb) ->
-    throw "Not yet implemented."
+    # this function relays the call to the ILS library,
+    # maps is correctly to the callback parameters
+    # and does some additional error catching
+    try
+      ils.existResource resourceId, (result) =>
+        if result.error?
+          cb result.error
+        else
+          cb null, result
+    catch error
+      console.warn "Something went wrong when trying to call 'resourceExists' from the vault:"
+      console.warn error
+      cb error
 
   createResource: (content, cb) =>
+    # this function relays the call to the ILS library,
+    # maps is correctly to the callback parameters
+    # and does some additional error catching
     try
-      # create resource with id, metadata and content
       resource = @getResourceBundle(content)
-      # remove the resource.metadata.id (if present...), because the Vault will set its own id
-      # (see result.id below)
-      # TODO
-      resource.metadata.id = ""
-      ils.createResource resource, (error, result) =>
-        if error?
-          cb error
+      resourceName = resource.metadata.target.displayName
+      # the resource.metadata.id will be generated by the Vault,
+      # we can only set it later (see below)
+      resource.metadata.id = undefined
+      ils.createResource resourceName, resource.content, resource.metadata, (result) =>
+        if @_debug? then console.log "ils.createResource returns:"
+        if @_debug? then console.log result
+        if result.error?
+          cb result.error
         else
-          resource.metadata.id = result.id
-          cb null, resource
+          returnedResource = {}
+          returnedResource.content = resource.content
+          returnedResource.metadata = JSON.parse(result.metadata)
+          returnedResource.metadata.id = result.id
+          # the id might have change here. update in metadata handler
+          @metadataHandler.setId resource.metadata.id
+          cb null, returnedResource
     catch error
-      console.log "Vault resource creation unsuccessful: "
-      console.error error
+      console.warn "Something went wrong when trying to create a resource in the vault:"
+      console.warn error
       cb error
 
   updateResource: (resourceId, content, cb) ->
-    throw "Not yet implemented."
+    # this function relays the call to the ILS library,
+    # maps is correctly to the callback parameters
+    # and does some additional error catching
+    try
+      resource = @getResourceBundle(content)
+      content = resource.content
+      metadata = resource.metadata
+      metadata.id = resourceId
+      ils.updateResource resourceId, content, metadata, (result) =>
+        if @_debug? then console.log "ils.updateResource returns:"
+        if @_debug? then console.log result
+        if result.error?
+          cb result.error
+        else
+          updatedResource = {}
+          updatedResource.content = content
+          updatedResource.metadata = JSON.parse(result.metadata)
+          updatedResource.metadata.id = result.id
+          # the id might have change here. update in metadata handler
+          @metadataHandler.setId resource.metadata.id
+          cb null, updatedResource
+    catch error
+      console.warn "Something went wrong when trying to update resource #{resourceId} in the vault:"
+      console.warn error
+      cb error
 
   listResourceIds: (cb) ->
     throw "Not yet implemented."
 
-  listResourceMetaDatas: (callback) ->
-    ils.listVault (error, result) =>
-      if error?
-        callback error
-      else
-        console.log "listResourceMetaDatas:"
-        console.log result
-        callback null, result
+  listResourceMetaDatas: (cb) ->
+    # this function relays the call to the ILS library,
+    # maps is correctly to the callback parameters
+    # and does some additional error catching
+    try
+      ils.listVaultExtended (result) =>
+        if @_debug? then console.log "ils.listVaultExtended returns:"
+        if @_debug? then console.log result
+        if result.error?
+          if result.error is "No resource available in the Vault."
+            cb null, []
+          else
+            cb result.error
+        else
+          returnedMetadatas = []
+          for resource in result
+            item = {}
+            item.id = resource.id
+            item.metadata = JSON.parse(resource.metadata)
+            # to prevent potential inconsistencies:
+            item.metadata.id = resource.id
+            returnedMetadatas.push item
+          returnedMetadatas = @applyFilters(returnedMetadatas)
+          cb null, returnedMetadatas
+    catch error
+      console.warn "Something went wrong when trying to list the resources in the vault:"
+      console.warn error
+      cb error
 
 ###
   Implementation of a MongoDB storage handler.
 ###
 class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @urlPrefix) ->
-    super metadataHandler, true, false, true
+    super metadataHandler, true, true, true
     if @urlPrefix?
       console.log "Initializing MongoStorageHandler."
       @
@@ -607,7 +691,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
 ###
 class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @urlPrefix) ->
-    super metadataHandler, true, false, true
+    super metadataHandler, true, true, true
     if @urlPrefix?
       console.log "Initializing MongoStorageHandler."
       @
@@ -678,13 +762,20 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
 
   listResourceMetaDatas: (cb) =>
     try
+      urlString = "/listMetadatas.js"
+      filterString = ""
+      if @_filterForProvider then filterString = "providerId=#{@metadataHandler.getProvider().id}"
+      if @_filterForUser
+        if filterString?
+          filterString = filterString+"&"
+        filterString = filterString + "actorId=#{@metadataHandler.getActor().id}"
+      if filterString?
+        urlString = urlString + "?" + filterString
       $.ajax({
         type: "GET",
         crossDomain: true
         contentType: "text/plain"
-        #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
-        #TODO active filters can already be applied here as URL parameters
-        url: "#{@urlPrefix}/listMetadatas.js"
+        url: @urlPrefix+urlString
         success: (responseData) =>
           console.log("GET listResourceMetaDatas success, response (before filters):")
           console.log responseData

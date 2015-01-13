@@ -29,7 +29,7 @@ contact: maria.rodrigueztriana@epfl.ch
         }
 
         if (username)
-          return cb(username);
+          return cb(username.toLowerCase());
         else
          return cb(error);
      });

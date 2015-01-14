@@ -8,9 +8,9 @@ contact: maria.rodrigueztriana@epfl.ch
 (function() {
   var ils;
   var context_graasp = "graasp";
-  var context_golabz = "golabz";
-  var context_direct = "direct";
-  var context_standalone = "standalone";
+  var context_preview = "preview";
+  var context_standalone_ils = "standalone_ils";
+  var context_standalone_html = "standalone_html";
   var context_unknown = "unknown";
 
   ils = {
@@ -20,7 +20,7 @@ contact: maria.rodrigueztriana@epfl.ch
       var error = {"error" : "The username couldn't be obtained."};
 
       ils.identifyContext(function (context) {
-        if (context == context_standalone) {
+        if (context == context_standalone_ils) {
           username = $.cookie('graasp_user');
         } else if (context == context_graasp) {
           osapi.people.getViewer().execute(function(viewer) {
@@ -36,27 +36,26 @@ contact: maria.rodrigueztriana@epfl.ch
     },
 
     identifyContext: function(cb) {
-          // http://www.golabz.eu/apps/
-          if (document.referrer.indexOf("golabz.eu") > -1) {
-            return cb(context_golabz);
-           
-          // http://localhost:9091/ils/ http://graasp.eu/ils/
-          } else if (document.referrer.indexOf("ils") > -1) {
-            return cb(context_standalone);
-           
-          // http://localhost:9091/applications/    http://localhost:9091/spaces/
-          // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
-          } else if ((document.referrer.indexOf("graasp.eu") > -1) || (document.referrer.indexOf("localhost") > -1)) {
-            return cb(context_graasp);
-         
-          } else if (document.referrer == "") {
-            return cb(context_direct);
+      if (typeof osapi === "undefined" || osapi === null){
+        return cb(context_standalone_html);
 
-          } else {
-            return cb("unknown");
-          }
+      // http://www.golabz.eu/apps/ OR  http://composer.golabz.eu/
+      } else if (document.referrer.indexOf("golabz.eu") > -1 || document.referrer == "") {
+        return cb(context_preview);
+           
+      // http://localhost:9091/ils/ OR http://graasp.eu/ils/
+      } else if (document.referrer.indexOf("ils") > -1) {
+        return cb(context_standalone_ils);
+           
+      // http://localhost:9091/applications/    http://localhost:9091/spaces/
+      // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
+      } else if (document.referrer.indexOf("graasp.eu") > -1 || document.referrer.indexOf("localhost") > -1) {
+        return cb(context_graasp);
 
-        },
+      } else {
+        return cb(context_unknown);
+      }
+    },
 
     // get the parent space of the widget 
     getParent: function(cb) {

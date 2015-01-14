@@ -31,8 +31,10 @@
       this.readLatestResource = __bind(this.readLatestResource, this);
       this.getResourceBundle = __bind(this.getResourceBundle, this);
       this.applyFilters = __bind(this.applyFilters, this);
-      console.log("Initializing StorageHandler.");
-      this._debug = true;
+      this._debug = false;
+      if (this._debug) {
+        console.log("Initializing StorageHandler.");
+      }
       this._lastResourceId = void 0;
       try {
         metadataHandler.getMetadata();
@@ -42,6 +44,22 @@
         throw "StorageHandler needs a MetadataHandler at construction!";
       }
     }
+
+    StorageHandler.prototype.generateUUID = function() {
+      var d, uuid;
+      d = new Date().getTime();
+      uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(char) {
+        var r;
+        r = (d + Math.random() * 16) % 16 | 0;
+        d = Math.floor(d / 16);
+        if (char === 'x') {
+          return r.toString(16);
+        } else {
+          return (r & 0x7 | 0x8).toString(16);
+        }
+      });
+      return uuid;
+    };
 
     StorageHandler.prototype.configureFilters = function(filterForResourceType, filterForUser, filterForProvider) {
       this._filterForResourceType = filterForResourceType;
@@ -110,7 +128,7 @@
     StorageHandler.prototype.getResourceBundle = function(content, id) {
       var metadata, thisContent;
       if (id == null) {
-        id = ut.commons.utils.generateUUID();
+        id = this.generateUUID();
       }
       thisContent = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
@@ -261,7 +279,9 @@
         throw "you must pass on an object to store the resources";
       }
       this.storeObject = storeObject;
-      console.log("Initializing ObjectStorageHandler.");
+      if (this._debug) {
+        console.log("Initializing ObjectStorageHandler.");
+      }
       this;
     }
 
@@ -332,7 +352,9 @@
       if (this.storeObject[resourceId]) {
         resource = this.getResourceBundle(content, resourceId);
         this.storeObject[resourceId] = resource;
-        console.log("MemoryStorage: updateResource " + resourceId);
+        if (this._debug) {
+          console.log("MemoryStorage: updateResource " + resourceId);
+        }
         return setTimeout(function() {
           return cb(null, resource);
         }, 0);
@@ -393,7 +415,9 @@
 
     function MemoryStorageHandler(metadataHandler) {
       MemoryStorageHandler.__super__.constructor.call(this, metadataHandler, {});
-      console.log("Initializing MemoryStorageHandler, debug: " + this._debug + ".");
+      if (this._debug) {
+        console.log("Initializing MemoryStorageHandler, debug: " + this._debug + ".");
+      }
       this;
     }
 
@@ -419,7 +443,9 @@
       this.listResourceMetaDatas = __bind(this.listResourceMetaDatas, this);
       this.createResource = __bind(this.createResource, this);
       LocalStorageHandler.__super__.constructor.apply(this, arguments);
-      console.log("Initializing LocalStorageHandler.");
+      if (this._debug) {
+        console.log("Initializing LocalStorageHandler.");
+      }
       this.localStorage = window.localStorage;
       this;
     }
@@ -507,7 +533,9 @@
       if (this.localStorage[goLabLocalStorageKey + resourceId]) {
         resource = this.getResourceBundle(content, resourceId);
         this.localStorage[goLabLocalStorageKey + resourceId] = JSON.stringify(resource);
-        console.log("LocalStorageHandler: updateResource " + resourceId);
+        if (this._debug) {
+          console.log("LocalStorageHandler: updateResource " + resourceId);
+        }
         return setTimeout(function() {
           return cb(null, resource);
         }, 0);
@@ -582,7 +610,9 @@
     function VaultStorageHandler(metadataHandler) {
       this.createResource = __bind(this.createResource, this);
       VaultStorageHandler.__super__.constructor.apply(this, arguments);
-      console.log("Initializing VaultStorageHandler.");
+      if (this._debug) {
+        console.log("Initializing VaultStorageHandler.");
+      }
       if (typeof ils === "undefined" || ils === null) {
         throw "The ILS library needs to be present for the VaultStorageHandler";
       } else {
@@ -711,6 +741,31 @@
       }
     };
 
+    VaultStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      var error,
+        _this = this;
+      try {
+        return ils.deleteResource(resourceId, function(result) {
+          if (_this._debug != null) {
+            console.log("ils.deleteResource returns:");
+          }
+          if (_this._debug != null) {
+            console.log(result);
+          }
+          if (result.error != null) {
+            return cb(result.error);
+          } else {
+            return cb(null);
+          }
+        });
+      } catch (_error) {
+        error = _error;
+        console.warn("Something went wrong when trying to delete resource " + resourceId + " in the vault:");
+        console.warn(error);
+        return cb(error);
+      }
+    };
+
     VaultStorageHandler.prototype.listResourceIds = function(cb) {
       throw "Not yet implemented.";
     };
@@ -773,7 +828,9 @@
       this.createResource = __bind(this.createResource, this);
       MongoStorageHandler.__super__.constructor.call(this, metadataHandler, true, true, true);
       if (this.urlPrefix != null) {
-        console.log("Initializing MongoStorageHandler.");
+        if (this._debug) {
+          console.log("Initializing MongoStorageHandler.");
+        }
         this;
       } else {
         console.error("I need an urlPrefix as second parameter.");
@@ -789,8 +846,10 @@
           contentType: "text/plain",
           crossDomain: true,
           success: function(resource) {
-            console.log("GET readResource success, response:");
-            console.log(resource);
+            if (this._debug) {
+              console.log("GET readResource success, response:");
+              console.log(resource);
+            }
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -815,8 +874,10 @@
           url: ("" + this.urlPrefix + "/deleteResource/") + resourceId,
           crossDomain: true,
           success: function(response) {
-            console.log("POST deleteResource success, response:");
-            console.log(response);
+            if (this._debug) {
+              console.log("POST deleteResource success, response:");
+              console.log(response);
+            }
             return cb(null);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -842,8 +903,10 @@
           crossDomain: true,
           contentType: "text/plain",
           success: function(result) {
-            console.log("GET resourceExists success, response:");
-            console.log(result);
+            if (this._debug) {
+              console.log("GET resourceExists success, response:");
+              console.log(result);
+            }
             return cb(void 0, true);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -876,8 +939,10 @@
           contentType: "text/plain",
           crossDomain: true,
           success: function(responseData, textStatus, jqXHR) {
-            console.log("POST createResource success, response:");
-            console.log(responseData);
+            if (this._debug) {
+              console.log("POST createResource success, response:");
+              console.log(responseData);
+            }
             delete resource._id;
             return cb(void 0, resource);
           },
@@ -913,8 +978,10 @@
               contentType: "text/plain",
               crossDomain: true,
               success: function(responseData, textStatus, jqXHR) {
-                console.log("POST updateResource success, response:");
-                console.log(responseData);
+                if (this._debug) {
+                  console.log("POST updateResource success, response:");
+                  console.log(responseData);
+                }
                 delete resource._id;
                 return cb(null, resource);
               },
@@ -945,8 +1012,10 @@
           contentType: "text/plain",
           url: "" + this.urlPrefix + "/listResourceMetaDatas",
           success: function(responseData) {
-            console.log("GET listResourceMetaDatas success, response (before filters):");
-            console.log(responseData);
+            if (_this._debug) {
+              console.log("GET listResourceMetaDatas success, response (before filters):");
+              console.log(responseData);
+            }
             responseData = _this.applyFilters(responseData);
             return cb(void 0, responseData);
           },
@@ -986,7 +1055,9 @@
       this.createResource = __bind(this.createResource, this);
       MongoIISStorageHandler.__super__.constructor.call(this, metadataHandler, true, true, true);
       if (this.urlPrefix != null) {
-        console.log("Initializing MongoStorageHandler.");
+        if (this._debug) {
+          console.log("Initializing MongoStorageHandler.");
+        }
         this;
       } else {
         console.error("I need an urlPrefix as second parameter.");
@@ -1005,8 +1076,10 @@
           data: JSON.stringify(resource),
           crossDomain: true,
           success: function(responseData, textStatus, jqXHR) {
-            console.log("POST createResource success, response:");
-            console.log(responseData);
+            if (this._debug) {
+              console.log("POST createResource success, response:");
+              console.log(responseData);
+            }
             delete resource._id;
             return cb(void 0, resource);
           },
@@ -1041,10 +1114,12 @@
               data: JSON.stringify(resource),
               crossDomain: true,
               success: function(responseData, textStatus, jqXHR) {
-                console.log("POST updateResource success, response:");
-                console.log(responseData);
-                console.log(textStatus);
-                console.log(jqXHR);
+                if (this._debug) {
+                  console.log("POST updateResource success, response:");
+                  console.log(responseData);
+                  console.log(textStatus);
+                  console.log(jqXHR);
+                }
                 delete resource._id;
                 return cb(null, resource);
               },
@@ -1089,8 +1164,10 @@
           url: this.urlPrefix + urlString,
           success: function(responseData) {
             var metadatas;
-            console.log("GET listResourceMetaDatas success, response (before filters):");
-            console.log(responseData);
+            if (_this._debug) {
+              console.log("GET listResourceMetaDatas success, response (before filters):");
+              console.log(responseData);
+            }
             metadatas = _this.applyFilters(responseData);
             return cb(void 0, metadatas);
           },
@@ -1116,8 +1193,10 @@
           url: ("" + this.urlPrefix + "/readResource.js?id=") + resourceId,
           crossDomain: true,
           success: function(resource) {
-            console.log("GET readResource success, response:");
-            console.log(resource);
+            if (this._debug) {
+              console.log("GET readResource success, response:");
+              console.log(resource);
+            }
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1142,8 +1221,10 @@
           url: ("" + this.urlPrefix + "/deleteResource.js?id=") + resourceId,
           crossDomain: true,
           success: function(response) {
-            console.log("POST deleteResource success, response:");
-            console.log(response);
+            if (this._debug) {
+              console.log("POST deleteResource success, response:");
+              console.log(response);
+            }
             return cb(null);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1168,8 +1249,10 @@
           url: ("" + this.urlPrefix + "/resourceExists.js?id=") + resourceId,
           crossDomain: true,
           success: function(result) {
-            console.log("GET resourceExists success, response:");
-            console.log(result);
+            if (this._debug) {
+              console.log("GET resourceExists success, response:");
+              console.log(result);
+            }
             return cb(void 0, true);
           },
           error: function(responseData, textStatus, errorThrown) {

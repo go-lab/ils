@@ -12,14 +12,25 @@ window.golab.ils.storage.memory = window.golab.ils.storage.memory || {}
 class window.golab.ils.storage.StorageHandler
 
   constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = false, @_customFilter = null) ->
-    console.log "Initializing StorageHandler."
-    @_debug = true
+    @_debug = false
+    if @_debug then console.log "Initializing StorageHandler."
     @_lastResourceId = undefined
     try
       metadataHandler.getMetadata()
       @metadataHandler = metadataHandler
     catch error
       throw "StorageHandler needs a MetadataHandler at construction!"
+
+  generateUUID: () ->
+    d = new Date().getTime()
+    uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace /[xy]/g, (char) ->
+      r = (d + Math.random()*16)%16 | 0
+      d = Math.floor(d/16)
+      if char is 'x'
+        return r.toString(16)
+      else
+        return (r&0x7|0x8).toString(16)
+    return uuid
 
   # the three different filters can be activated or deactivated by setting them to true or false
   # the filter value is fetched from the metadataHandler
@@ -74,7 +85,7 @@ class window.golab.ils.storage.StorageHandler
     return metadatas
 
   # internal function, typically not used external
-  getResourceBundle: (content, id = ut.commons.utils.generateUUID()) =>
+  getResourceBundle: (content, id = @generateUUID()) =>
     # cloning the objects!
     thisContent = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
@@ -184,7 +195,7 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
     if ( typeof storeObject != "object")
       throw "you must pass on an object to store the resources"
     @storeObject = storeObject
-    console.log "Initializing ObjectStorageHandler."
+    if @_debug then console.log "Initializing ObjectStorageHandler."
     @
 
   readResource: (resourceId, cb) ->
@@ -234,7 +245,7 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
       # create resource with id, metadata and content
       resource = @getResourceBundle(content, resourceId)
       @storeObject[resourceId] = resource
-      console.log "MemoryStorage: updateResource #{resourceId}"
+      if @_debug then console.log "MemoryStorage: updateResource #{resourceId}"
       setTimeout(->
         cb(null, resource)
       , 0)
@@ -269,7 +280,7 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
 class window.golab.ils.storage.MemoryStorageHandler extends window.golab.ils.storage.ObjectStorageHandler
   constructor: (metadataHandler)->
     super(metadataHandler, {})
-    console.log "Initializing MemoryStorageHandler, debug: #{@_debug}."
+    if @_debug then console.log "Initializing MemoryStorageHandler, debug: #{@_debug}."
     @
 
 ###
@@ -283,7 +294,7 @@ goLabLocalStorageKey = "_goLab_"
 class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler) ->
     super
-    console.log "Initializing LocalStorageHandler."
+    if @_debug then console.log "Initializing LocalStorageHandler."
     @localStorage = window.localStorage
     @
 
@@ -347,7 +358,7 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       # create resource with id, metadata and content
       resource = @getResourceBundle(content, resourceId)
       @localStorage[goLabLocalStorageKey + resourceId] = JSON.stringify(resource)
-      console.log "LocalStorageHandler: updateResource #{resourceId}"
+      if @_debug then console.log "LocalStorageHandler: updateResource #{resourceId}"
       setTimeout(->
         cb(null, resource)
       , 0)
@@ -387,7 +398,7 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
 class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler) ->
     super
-    console.log "Initializing VaultStorageHandler."
+    if @_debug then console.log "Initializing VaultStorageHandler."
     if not ils?
       throw "The ILS library needs to be present for the VaultStorageHandler"
     else
@@ -488,6 +499,20 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       console.warn error
       cb error
 
+  deleteResource: (resourceId, cb) ->
+    try
+      ils.deleteResource resourceId, (result) =>
+        if @_debug? then console.log "ils.deleteResource returns:"
+        if @_debug? then console.log result
+        if result.error?
+          cb result.error
+        else
+          cb null
+    catch error
+      console.warn "Something went wrong when trying to delete resource #{resourceId} in the vault:"
+      console.warn error
+      cb error
+
   listResourceIds: (cb) ->
     throw "Not yet implemented."
 
@@ -527,7 +552,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
   constructor: (metadataHandler, @urlPrefix) ->
     super metadataHandler, true, true, true
     if @urlPrefix?
-      console.log "Initializing MongoStorageHandler."
+      if @_debug then console.log "Initializing MongoStorageHandler."
       @
     else
       console.error "I need an urlPrefix as second parameter."
@@ -540,8 +565,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         contentType: "text/plain"
         crossDomain: true,
         success: (resource) ->
-          console.log("GET readResource success, response:")
-          console.log resource
+          if @_debug
+            console.log("GET readResource success, response:")
+            console.log resource
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET readResource failed, response:"
@@ -560,8 +586,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         url: "#{@urlPrefix}/deleteResource/"+resourceId,
         crossDomain: true,
         success: (response) ->
-          console.log("POST deleteResource success, response:")
-          console.log response
+          if @_debug
+            console.log("POST deleteResource success, response:")
+            console.log response
           cb null
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST deleteResource failed, response:"
@@ -581,8 +608,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         crossDomain: true,
         contentType: "text/plain"
         success: (result) ->
-          console.log("GET resourceExists success, response:")
-          console.log result
+          if @_debug
+            console.log("GET resourceExists success, response:")
+            console.log result
           cb undefined, true
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET resourceExists failed, response:"
@@ -611,8 +639,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         contentType: "text/plain"
         crossDomain: true,
         success: (responseData, textStatus, jqXHR) ->
-          console.log("POST createResource success, response:")
-          console.log responseData
+          if @_debug
+            console.log("POST createResource success, response:")
+            console.log responseData
           # remove that mongo-internal id again
           delete resource._id
           cb undefined, resource
@@ -643,8 +672,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
             contentType: "text/plain"
             crossDomain: true,
             success: (responseData, textStatus, jqXHR) ->
-              console.log("POST updateResource success, response:")
-              console.log responseData
+              if @_debug
+                console.log("POST updateResource success, response:")
+                console.log responseData
               delete resource._id
               cb null, resource
             error: (responseData, textStatus, errorThrown) ->
@@ -668,8 +698,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         url: "#{@urlPrefix}/listResourceMetaDatas",
         #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
         success: (responseData) =>
-          console.log("GET listResourceMetaDatas success, response (before filters):")
-          console.log responseData
+          if @_debug
+            console.log("GET listResourceMetaDatas success, response (before filters):")
+            console.log responseData
           responseData = @applyFilters(responseData)
           cb undefined, responseData
         error: (responseData, textStatus, errorThrown) ->
@@ -693,7 +724,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
   constructor: (metadataHandler, @urlPrefix) ->
     super metadataHandler, true, true, true
     if @urlPrefix?
-      console.log "Initializing MongoStorageHandler."
+      if @_debug then console.log "Initializing MongoStorageHandler."
       @
     else
       console.error "I need an urlPrefix as second parameter."
@@ -712,8 +743,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         data: JSON.stringify(resource)
         crossDomain: true
         success: (responseData, textStatus, jqXHR) ->
-          console.log("POST createResource success, response:")
-          console.log responseData
+          if @_debug
+            console.log("POST createResource success, response:")
+            console.log responseData
           # remove that mongo-internal id again
           delete resource._id
           cb undefined, resource
@@ -744,10 +776,11 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
             #contentType: "application/json",
             crossDomain: true,
             success: (responseData, textStatus, jqXHR) ->
-              console.log("POST updateResource success, response:")
-              console.log responseData
-              console.log textStatus
-              console.log jqXHR
+              if @_debug
+                console.log("POST updateResource success, response:")
+                console.log responseData
+                console.log textStatus
+                console.log jqXHR
               delete resource._id
               cb null, resource
             error: (responseData, textStatus, errorThrown) ->
@@ -777,8 +810,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         contentType: "text/plain"
         url: @urlPrefix+urlString
         success: (responseData) =>
-          console.log("GET listResourceMetaDatas success, response (before filters):")
-          console.log responseData
+          if @_debug
+            console.log("GET listResourceMetaDatas success, response (before filters):")
+            console.log responseData
           metadatas = @applyFilters(responseData)
           cb undefined, metadatas
         error: (responseData, textStatus, errorThrown) ->
@@ -798,8 +832,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         url: "#{@urlPrefix}/readResource.js?id="+resourceId,
         crossDomain: true,
         success: (resource) ->
-          console.log("GET readResource success, response:")
-          console.log resource
+          if @_debug
+            console.log("GET readResource success, response:")
+            console.log resource
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET readResource failed, response:"
@@ -818,8 +853,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         url: "#{@urlPrefix}/deleteResource.js?id="+resourceId,
         crossDomain: true,
         success: (response) ->
-          console.log("POST deleteResource success, response:")
-          console.log response
+          if @_debug
+            console.log("POST deleteResource success, response:")
+            console.log response
           cb null
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST deleteResource failed, response:"
@@ -838,8 +874,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         url: "#{@urlPrefix}/resourceExists.js?id="+resourceId,
         crossDomain: true,
         success: (result) ->
-          console.log("GET resourceExists success, response:")
-          console.log result
+          if @_debug
+            console.log("GET resourceExists success, response:")
+            console.log result
           cb undefined, true
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET resourceExists failed, response:"

@@ -2,6 +2,7 @@
 ILS Library for Go-Lab
 author: María Jesús Rodríguez-Triana, Wissam Halimi
 contact: maria.rodrigueztriana@epfl.ch
+requirements: this library uses jquery
 */
 
 
@@ -236,7 +237,7 @@ contact: maria.rodrigueztriana@epfl.ch
               "parentType": "@space",
               "parentSpaceId": vault.id,
               "mimeType": "txt",
-              "fileName": resourceName + "_" + creator + "_" + event.timeStamp,
+              "fileName": resourceName + "_" + creator + "_" + (new Date).getTime(),
               "content": JSON.stringify(content),
               "metadata": metadata
               }

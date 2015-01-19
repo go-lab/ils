@@ -456,6 +456,18 @@ requirements: this library uses jquery
       });
     },
 
+    // get the current appId
+    getAppId: function(cb) {
+      osapi.apps.get({contextId: "@self"}).execute(function(response){
+        if (!response.error && response.id) {
+          return cb(response.id);
+        } else {
+          var error = {"error": "The appId couldn't be obtained."};
+          return cb(error);
+        }
+      });
+    },
+
     // log the action of adding a resource in the Vault
     logAction: function(userName, vault, resourceId, app, actionType, cb) {
       var params = {

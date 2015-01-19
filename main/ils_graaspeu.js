@@ -22,7 +22,11 @@ requirements: this library uses jquery
 
       ils.identifyContext(function (context) {
         if (context == context_standalone_ils) {
-          username = $.cookie('graasp_user');
+          if (typeof(Storage) !== "undefined") {
+            username = localStorage.getItem("graasp_user");
+          } else {
+            username = $.cookie('graasp_user');
+          }
         } else if (context == context_graasp) {
           osapi.people.getViewer().execute(function(viewer) {
             username = viewer.displayName;          

@@ -28,8 +28,8 @@ requirements: this library uses jquery
             username = $.cookie('graasp_user');
           }
         } else if (context == context_graasp) {
-          osapi.people.getViewer().execute(function(viewer) {
-            username = viewer.displayName;          
+          osapi.people.get({userId: '@viewer'}).execute(function(viewer) {
+            username = viewer.displayName;
           });
         }
 

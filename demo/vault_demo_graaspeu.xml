@@ -137,7 +137,7 @@
 
                         // SECOND STEP: CREATE NEW RESOURCES
                         // create a resource in the Vault
-                        ils.createResource("test1", example_content, example_metadata, function(resource1){
+                        ils.createResource("test1.txt", example_content, example_metadata, function(resource1){
                             var newResourceId = resource1.id;
                             console.log("Creating a resource (with additional metadata) in the Vault folder");
                             console.log(resource1);
@@ -164,7 +164,7 @@
                             });
 
                             // create a second resource in the Vault
-                            ils.createResource("test2", example_content, "", function(resource2){
+                            ils.createResource("test2.txt", example_content, "", function(resource2){
                                 var newResourceId2 = resource2.id;
                                 console.log("Creating a resource (without additional metadata) in the Vault folder");
                                 console.log(resource2);
@@ -205,6 +205,15 @@
                                         $('#list_vault_2').append(resources2.error);
                                     }
                                 });
+
+                                // try to create a resource with a name already existing in the Vault
+                                ils.createResource("test1.txt", example_content, example_metadata, function(resource1bis){
+                                    var newResourceId = resource1bis.id;
+                                    console.log("Creating a resource with a name already existing in the Vault folder: " + "test1.txt");
+                                    console.log(resource1bis);
+                                    $('#create_resource_1bis').append("Error message: " + resource1bis.error);
+                                });
+
                                 // get all resources in the Vault (extended description)
                                 ils.listVaultExtended(function(resources3){
                                     console.log("Printing extended version of the resources in the Vault");
@@ -337,6 +346,10 @@
           <a>VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
           <div id="list_vault_2"><b>ils.listVault(*):</b> </div>
           <div id="list_vault_3"><b>ils.listVaultExtended(*):</b> </div>
+          <br/>
+          <br/>
+          <a>CREATION OF A RESOURCE WITH AN ALREADY EXISTING NAME (test1.txt)</a>
+          <div id="create_resource_1bis"><b>ils.createResource(*):</b> </div>
           <br/>
           <br/>
           <a>RESOURCE UPDATE (test1.txt)</a>

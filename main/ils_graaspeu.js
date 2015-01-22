@@ -261,46 +261,53 @@ requirements: this library uses jquery
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
-          ils.getCurrentUser(function(username){
-            var creator = username;
-            if (username.error) {
-              creator = "unknown";
-            }
-            var params = {
-              "document": {
-              "parentType": "@space",
-              "parentSpaceId": vault.id,
-              "mimeType": "txt",
-              "fileName": resourceName + "_" + creator + "_" + (new Date).getTime(),
-              "content": JSON.stringify(content),
-              "metadata": metadata
-              }
-            };
-
-            osapi.documents.create(params).execute(function(resource){
-              if (resource && !resource.error && resource.id ) {
-                ils.getApp(function(app){
-                  //log the action of adding this resource
-                  ils.logAction(username, vault, resource.id, app, "add", function(response){
-                    if (!response.error) {
-                      return cb(resource);
-                    }else{
-                      error = {
-                        "error" : "The resource creation couldn't be logged.",
-                        "log" : response.error
-                      };
-                      return cb(error);
-                    }
-                  });
-                });
-              } else {
-                error = {
-                  "error" : "The resource couldn't be created.",
-                  "log" : resource.error
+          ils.listVaultNames(function(nameList){
+            if(nameList.indexOf(resourceName)==-1) {
+              ils.getCurrentUser(function(username){
+                var creator = username;
+                if (username.error) {
+                  creator = "unknown";
+                }
+                var params = {
+                  "document": {
+                    "parentType": "@space",
+                    "parentSpaceId": vault.id,
+                    "mimeType": "txt",
+                    "fileName": resourceName,
+                    "content": JSON.stringify(content),
+                    "metadata": metadata
+                  }
                 };
-                return cb(error);
-              }
-            });
+
+                osapi.documents.create(params).execute(function(resource){
+                  if (resource && !resource.error && resource.id ) {
+                    ils.getApp(function(app){
+                      //log the action of adding this resource
+                      ils.logAction(username, vault, resource.id, app, "add", function(response){
+                        if (!response.error) {
+                          return cb(resource);
+                        }else{
+                          error = {
+                            "error" : "The resource creation couldn't be logged.",
+                            "log" : response.error
+                          };
+                          return cb(error);
+                        }
+                      });
+                    });
+                  } else {
+                    error = {
+                      "error" : "The resource couldn't be created.",
+                      "log" : resource.error
+                    };
+                    return cb(error);
+                  }
+                });
+              });
+            }else{
+              error = {"error" : "The resourceName already exists in the space."};
+              return cb(error);
+            }
           });
         });
       } else {
@@ -391,12 +398,31 @@ requirements: this library uses jquery
     listVault: function(cb) {
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
-        osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources){
-          if (resources.list)
-            return cb(resources.list);
-          else
-            return cb(error);
-        });
+        if(!vault.error) {
+          osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
+            if (resources.list)
+              return cb(resources.list);
+            else
+              return cb(error);
+          });
+        }else{
+          return cb(vault.error);
+        }
+      });
+    },
+
+    // get a list of all resources in the Vault
+    listVaultNames: function(cb) {
+      var nameList = [];
+      ils.listVault(function(resourceList) {
+        if(!resourceList.error){
+          for (i = 0; i < resourceList.length; i++) {
+            nameList.push(resourceList[i].displayName);
+          }
+          return cb(nameList);
+      }else{
+          return cb(resourceList.error);
+      }
       });
     },
 

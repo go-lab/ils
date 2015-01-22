@@ -66,16 +66,29 @@ requirements: this library uses jquery
     getParent: function(cb) {
       var error = {"error" : "The parent space couldn't be obtained."};
       osapi.context.get().execute(function(context_space) {
-        if (context_space != undefined && context_space != null && !context_space.error) {
-          osapi.spaces.get({contextId: context_space.contextId}).execute(function(parent){
-            if (!parent.error)
-              return cb(parent);
-            else
-              return cb(error);
-         });
-        } else {
-          return cb(error);
+        if (context_space != undefined && context_space != null) {
+          if (!context_space.error) {
+            osapi.spaces.get({contextId: context_space.contextId}).execute(function (parent) {
+              if (!parent.error) {
+                return cb(parent);
+              } else {
+                error = {
+                  "error" : "The parent space couldn't be obtained.",
+                  "log" : context_space.error
+                };
+                return cb(error);
+              }
+            });
+          } else {
+            error = {
+              "error" : "The parent space couldn't be obtained.",
+              "log" : context_space.error
+            };
+            return cb(error);
         }
+      }else{
+        return cb(error);
+      }
       });
     },
 
@@ -87,18 +100,29 @@ requirements: this library uses jquery
           ils.getVault(function (vault) {
             ils.getCurrentUser(function (username) {
               osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
-                if (deleteResponse && !deleteResponse.error) {
-                  ils.getApp(function (app) {
-                    //log the action of adding this resource
-                    ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
-                      if (!logResponse.error) {
-                        return cb(true);
-                      } else {
-                        error = {"error": "The resource removal couldn't be logged."};
-                        return cb(error);
-                      }
+                if (deleteResponse){
+                  if (deleteResponse.error) {
+                    ils.getApp(function (app) {
+                      //log the action of adding this resource
+                      ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
+                        if (!logResponse.error) {
+                          return cb(true);
+                        } else {
+                          error = {
+                            "error": "The resource removal couldn't be logged.",
+                            "log": logResponse.error
+                          };
+                          return cb(error);
+                       }
+                     });
                     });
-                  });
+                  } else {
+                    error = {
+                      "error": "The resource couldn't be removed.",
+                      "log": deleteResponse.error
+                    };
+                    return cb(error);
+                  }
                 } else {
                   error = {"error": "The resource couldn't be removed."};
                   return cb(error);
@@ -150,7 +174,10 @@ requirements: this library uses jquery
               });
             });
           } else {
-            error = {"error" : "The resource is not available."};
+            error = {
+              "error" : "The resource is not available.",
+              "log": resource.error
+            };
             return cb(error);
           }
         });
@@ -179,7 +206,10 @@ requirements: this library uses jquery
               });
             });
           } else {
-            error = {"error" : "The resource is not available."};
+            error = {
+              "error" : "The resource is not available.",
+              "log": resource.error
+            };
             return cb(error);
           }
         });
@@ -255,13 +285,19 @@ requirements: this library uses jquery
                     if (!response.error) {
                       return cb(resource);
                     }else{
-                      error = {"error" : "The resource creation couldn't be logged."};
+                      error = {
+                        "error" : "The resource creation couldn't be logged.",
+                        "log" : response.error
+                      };
                       return cb(error);
                     }
                   });
                 });
               } else {
-                error = {"error" : "The resource couldn't be created."};
+                error = {
+                  "error" : "The resource couldn't be created.",
+                  "log" : resource.error
+                };
                 return cb(error);
               }
             });
@@ -317,20 +353,30 @@ requirements: this library uses jquery
                         if (!response.error) {
                           return cb(resource);
                         }else{
-                          error = {"error" : "The resource update couldn't be logged."};
+                          error = {
+                            "error": "The resource update couldn't be logged.",
+                            "log": response.error
+                          };
                           return cb(error);
                         }
                       });
                   });
                 });
+
               } else {
-                error = {"error" : "The resource couldn't be updated."};
+                error = {
+                  "error" : "The resource couldn't be updated.",
+                  "log" : resource.error
+                };
                 return cb(error);
               }
             });
           });
         } else {
-          error = {"error" : "The resource is not available."};
+          error = {
+            "error" : "The resource is not available.",
+            "log" : resource.error
+          };
           return cb(error);
         }
       });
@@ -386,31 +432,53 @@ requirements: this library uses jquery
 
     // get the current ILS of the app
     getIls: function(cb) {
-      var error = {"error" : "The ILS is not available."};
+      var error;
       osapi.context.get().execute(function(space) {
         if (!space.error) {
           osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
             if (!parentSpace.error) {
+              //app at the ils level
               if(parentSpace.spaceType === 'ils'){
                 return cb(parentSpace, parentSpace);
               }else{
                 osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                  if (!parentIls.error && parentIls.spaceType === 'ils') {
-                    return cb(parentIls, parentSpace);
+                  if (!parentIls.error) {
+                    //app at the phase level
+                     if (parentIls.spaceType === 'ils') {
+                       return cb(parentIls, parentSpace);
+                     } else {
+                       error = {"error" : "The app is not located in an ILS or in one of its phases."};
+                       return cb(error);
+                     }
                   } else {
+                    error = {
+                      "error" : "The ils where the app is located is not available.",
+                      "log" : parentIls.error
+                    };
                     return cb(error);
                   }
                 });
               }
             } else {
+              error = {
+                "error" : "The space where the app is located is not available.",
+                "log" : parentSpace.error
+              };
               return cb(error);
+
             }
           });
         } else {
+          error = {
+            "error" : "The id of the space where the app is located is not available.",
+            "log" : space.error
+          };
           return cb(error);
         }
       });
     },
+
+
 
     // get the Vault of the current ILS
     getVault: function(cb) {
@@ -442,7 +510,10 @@ requirements: this library uses jquery
           }
         });
       } else {
-        error = {"error" : "The space is not available."};
+        error = {
+          "error" : "The space is not available.",
+          "log" : parentIls.error
+        };
         return cb(error);
       }
     });
@@ -454,7 +525,10 @@ requirements: this library uses jquery
         if (!response.error) {
           return cb(response);
         } else {
-          var error = {"error": "The app couldn't be obtained."};
+          var error = {
+            "error": "The app couldn't be obtained.",
+            "log": response.error
+          };
           return cb(error);
         }
       });
@@ -462,12 +536,21 @@ requirements: this library uses jquery
 
     // get the current appId
     getAppId: function(cb) {
+      var error;
       osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error && response.id) {
-          return cb(response.id);
-        } else {
-          var error = {"error": "The appId couldn't be obtained."};
-          return cb(error);
+        if (!response.error){
+          if (response.id) {
+            return cb(response.id);
+          } else {
+            error = {"error": "The appId couldn't be obtained."};
+            return cb(error);
+          }
+        }else{
+            error = {
+              "error": "The appId couldn't be obtained.",
+              "log": response.error
+            };
+            return cb(error);
         }
       });
     },
@@ -517,7 +600,10 @@ requirements: this library uses jquery
         if (!response.error) {
           return cb(response);
         } else {
-          var error = {"error": "The activity couldn't be created."};
+          var error = {
+            "error": "The activity couldn't be created.",
+            "log": response.error
+          };
           return cb(error);
         }
       });
@@ -526,6 +612,7 @@ requirements: this library uses jquery
 
     // get the action of adding the resource in the Vault based on resourceId and vaultId
     getAction: function(vaultId, resourceId, cb) {
+      var error;
       var params = {
         contextId: vaultId,
         contextType: "@space",
@@ -537,10 +624,18 @@ requirements: this library uses jquery
         ext: true
       };
       osapi.activitystreams.get(params).execute(function(response){
-        if (!response.error && (response.totalResults > 0 )) {
-          return cb(response.list[0]);
+        if (!response.error) {
+          if (response.totalResults > 0) {
+            return cb(response.list[0]);
+          } else {
+            error = {"error": "The activity couldn't be obtained."};
+            return cb(error);
+          }
         } else {
-          var error = {"error": "The activity couldn't be obtained."};
+          error = {
+            "error": "The activity couldn't be obtained.",
+            "log": response.error
+          };
           return cb(error);
         }
       });
@@ -548,11 +643,20 @@ requirements: this library uses jquery
 
   // get the type of inquiry phase where the app is running in
     getParentInquiryPhase: function(cb) {
-      var error = {"error" : "The parent inquiry phase couldn't be obtained."};
+      var error;
       this.getParent(function(parent) {
-        if (!parent.error && parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
-          return cb(parent.metadata.type);
-        } else {
+        if (!parent.error) {
+          if (parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
+            return cb(parent.metadata.type);
+          } else {
+            error = {"error" : "The parent inquiry phase couldn't be obtained."}
+            return cb(error);
+          }
+        }else{
+          error = {
+            "error": "The parent inquiry phase couldn't be obtained.",
+            "log": parent.error
+          };
           return cb(error);
         }
       });

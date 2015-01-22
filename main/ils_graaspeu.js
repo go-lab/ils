@@ -539,11 +539,17 @@ requirements: this library uses jquery
       var error;
       osapi.apps.get({contextId: "@self"}).execute(function(response){
         if (!response.error){
-          if (response.id) {
+          if (response.id) { //for os apps
             return cb(response.id);
           } else {
-            error = {"error": "The appId couldn't be obtained."};
-            return cb(error);
+            ils.getIls(function(space) {
+              if(space.id){ //for metawidget
+                return cb(space.id);
+              }else{
+                error = {"error": "The appId couldn't be obtained. No App or metawidget was found."};
+                return cb(error);
+              }
+            });
           }
         }else{
             error = {

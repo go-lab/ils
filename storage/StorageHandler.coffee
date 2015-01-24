@@ -11,7 +11,7 @@ window.golab.ils.storage.memory = window.golab.ils.storage.memory || {}
 ###
 class window.golab.ils.storage.StorageHandler
 
-  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = false, @_customFilter = null) ->
+  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = false, @_customFilter = null, @_filterForAppId = false) ->
     @_debug = false
     if @_debug then console.log "Initializing StorageHandler."
     @_lastResourceId = undefined
@@ -37,10 +37,11 @@ class window.golab.ils.storage.StorageHandler
   # e.g. the default setting
   # configureFilters(true, true, true)
   # returns only resources that match the resource type, provider id and users id
-  configureFilters: (filterForResourceType, filterForUser, filterForProvider) ->
+  configureFilters: (filterForResourceType, filterForUser, filterForProvider, filterForAppId) ->
     @_filterForResourceType = filterForResourceType
     @_filterForUser = filterForUser
     @_filterForProvider = filterForProvider
+    @_filterForAppId = filterForAppId
 
   setCustomFilter: (customFilter)->
     @_customFilter = customFilter
@@ -77,6 +78,8 @@ class window.golab.ils.storage.StorageHandler
       metadatas = metadatas.filter (entry) => entry.metadata.provider.id is @metadataHandler.getProvider().id
     if @_filterForUser
       metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
+    if @_filterForAppId
+      metadatas = metadatas.filter (entry) => entry.metadata.generator.id is @metadataHandler.getGenerator().id
     if @_customFilter
       metadatas = metadatas.filter (entry) => @_customFilter(entry.metadata)
     if @_debug
@@ -657,31 +660,27 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
 
   updateResource: (resourceId, content, cb) ->
     try
-      @resourceExists resourceId, (error, result) =>
-        if error?
-          cb error
-        else
-          # creating a resource with a give id
-          resource = @getResourceBundle(content, resourceId)
-          # adding the mongo specific id
-          resource._id = resource.metadata.id
-          $.ajax({
-            type: "POST",
-            url: "#{@urlPrefix}/updateResource",
-            data: JSON.stringify(resource),
-            contentType: "text/plain"
-            crossDomain: true,
-            success: (responseData, textStatus, jqXHR) ->
-              if @_debug
-                console.log("POST updateResource success, response:")
-                console.log responseData
-              delete resource._id
-              cb null, resource
-            error: (responseData, textStatus, errorThrown) ->
-              console.warn "POST updateResource failed, response:"
-              console.warn responseData
-              cb responseData
-          })
+      # creating a resource with a given id
+      resource = @getResourceBundle(content, resourceId)
+      # adding the mongo specific id
+      resource._id = resource.metadata.id
+      $.ajax({
+        type: "POST",
+        url: "#{@urlPrefix}/updateResource",
+        data: JSON.stringify(resource),
+        contentType: "text/plain"
+        crossDomain: true,
+        success: (responseData, textStatus, jqXHR) ->
+          if @_debug
+            console.log("POST updateResource success, response:")
+            console.log responseData
+          delete resource._id
+          cb null, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST updateResource failed, response:"
+          console.warn responseData
+          cb responseData
+      })
     catch error
       console.log "Something went wrong when updating to Mongo:"
       console.error error
@@ -759,35 +758,32 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.error error
       cb error
 
-  updateResource: (resourceId, content, cb) ->
+  updateResource: (resourceId, content, cb, async = true) ->
     try
-      @resourceExists resourceId, (error, result) =>
-        if error?
-          cb error
-        else
-          # creating a resource with a give id
-          resource = @getResourceBundle(content, resourceId)
-          # adding the mongo specific id
-          resource._id = resource.metadata.id
-          $.ajax({
-            type: "POST",
-            url: "#{@urlPrefix}/updateResource.js",
-            data: JSON.stringify(resource),
-            #contentType: "application/json",
-            crossDomain: true,
-            success: (responseData, textStatus, jqXHR) ->
-              if @_debug
-                console.log("POST updateResource success, response:")
-                console.log responseData
-                console.log textStatus
-                console.log jqXHR
-              delete resource._id
-              cb null, resource
-            error: (responseData, textStatus, errorThrown) ->
-              console.warn "POST updateResource failed, response:"
-              console.warn responseData
-              cb responseData
-          })
+      # creating a resource with a give id
+      resource = @getResourceBundle(content, resourceId)
+      # adding the mongo specific id
+      resource._id = resource.metadata.id
+      $.ajax({
+        async: async
+        type: "POST",
+        url: "#{@urlPrefix}/updateResource.js",
+        data: JSON.stringify(resource),
+        #contentType: "application/json",
+        crossDomain: true,
+        success: (responseData, textStatus, jqXHR) ->
+          if @_debug
+            console.log("POST updateResource success, response:")
+            console.log responseData
+            console.log textStatus
+            console.log jqXHR
+          delete resource._id
+          cb null, resource
+        error: (responseData, textStatus, errorThrown) ->
+          console.warn "POST updateResource failed, response:"
+          console.warn responseData
+          cb responseData
+      })
     catch error
       console.log "Something went wrong when updating to Mongo:"
       console.error error

@@ -37,7 +37,7 @@ class window.golab.ils.storage.StorageHandler
   # e.g. the default setting
   # configureFilters(true, true, true)
   # returns only resources that match the resource type, provider id and users id
-  configureFilters: (filterForResourceType, filterForUser, filterForProvider, filterForAppId) ->
+  configureFilters: (filterForResourceType, filterForUser, filterForProvider, filterForAppId = false) ->
     @_filterForResourceType = filterForResourceType
     @_filterForUser = filterForUser
     @_filterForProvider = filterForProvider

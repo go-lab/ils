@@ -63,6 +63,9 @@
     };
 
     StorageHandler.prototype.configureFilters = function(filterForResourceType, filterForUser, filterForProvider, filterForAppId) {
+      if (filterForAppId == null) {
+        filterForAppId = false;
+      }
       this._filterForResourceType = filterForResourceType;
       this._filterForUser = filterForUser;
       this._filterForProvider = filterForProvider;

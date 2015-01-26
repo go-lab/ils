@@ -24,19 +24,36 @@ requirements: this library uses jquery
         if (context == context_standalone_ils) {
           if (typeof(Storage) !== "undefined") {
             username = localStorage.getItem("graasp_user");
+            if (username) {
+              return cb(username.toLowerCase());
+            } else {
+              return cb(error);
+            }
           } else {
             username = $.cookie('graasp_user');
+            if (username) {
+              return cb(username.toLowerCase());
+            } else {
+              return cb(error);
+            }
           }
         } else if (context == context_graasp) {
           osapi.people.get({userId: '@viewer'}).execute(function(viewer) {
             username = viewer.displayName;
+            if (username) {
+              return cb(username.toLowerCase());
+            } else if (viewer.error){
+              return cb(error);
+            } else {
+              error = {
+                "error" : "he username couldn't be obtained.",
+                "log" : viewer.error
+              };
+            }
           });
+        } else {
+          return cb(error);
         }
-
-        if (username)
-          return cb(username.toLowerCase());
-        else
-         return cb(error);
      });
     },
 

@@ -46,7 +46,7 @@ requirements: this library uses jquery
               return cb(error);
             } else {
               error = {
-                "error" : "he username couldn't be obtained.",
+                "error" : "The username couldn't be obtained.",
                 "log" : viewer.error
               };
             }

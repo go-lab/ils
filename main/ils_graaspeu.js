@@ -300,7 +300,7 @@ requirements: this library uses jquery
                   if (resource && !resource.error && resource.id ) {
                     ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(username, vault, resource.id, app, "add", function(response){
+                      ils.logAction(creator, vault, resource.id, app, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{

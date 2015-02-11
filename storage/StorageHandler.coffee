@@ -535,12 +535,18 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
         else
           returnedMetadatas = []
           for resource in result
-            item = {}
-            item.id = resource.id
-            item.metadata = JSON.parse(resource.metadata)
-            # to prevent potential inconsistencies:
-            item.metadata.id = resource.id
-            returnedMetadatas.push item
+            # do a quick sanity check:
+            try
+              item = {}
+              item.id = resource.id
+              item.metadata = JSON.parse(resource.metadata)
+              if item.metadata? and item.metadata.target?
+                # to prevent potential inconsistencies:
+                item.metadata.id = resource.id
+                returnedMetadatas.push item
+            catch error
+              console.log "caught an error when parsing metadata from Vault"
+              console.log error
           returnedMetadatas = @applyFilters(returnedMetadatas)
           cb null, returnedMetadatas
     catch error

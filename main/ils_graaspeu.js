@@ -275,6 +275,7 @@ requirements: this library uses jquery
     // create a resource in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, content should be in JSON format
     createResource: function(resourceName, content, metadata, cb) {
+      debugger;
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {

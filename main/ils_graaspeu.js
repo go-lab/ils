@@ -278,8 +278,8 @@ requirements: this library uses jquery
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
-          ils.listVaultNames(function(nameList){
-            if(nameList.indexOf(resourceName)==-1) {
+          ils.getUniqueName(resourceName, function(uniqueName){
+//            if(nameList.indexOf(resourceName)==-1) {
               ils.getCurrentUser(function(username){
                 var creator = username;
                 if (username.error) {
@@ -290,7 +290,7 @@ requirements: this library uses jquery
                     "parentType": "@space",
                     "parentSpaceId": vault.id,
                     "mimeType": "txt",
-                    "fileName": resourceName,
+                    "fileName": uniqueName,
                     "content": JSON.stringify(content),
                     "metadata": metadata
                   }
@@ -321,10 +321,10 @@ requirements: this library uses jquery
                   }
                 });
               });
-            }else{
-              error = {"error" : "The resourceName already exists in the space."};
-              return cb(error);
-            }
+  //          }else{
+ //             error = {"error" : "The resourceName already exists in the space."};
+ //             return cb(error);
+ //           }
           });
         });
       } else {
@@ -440,6 +440,20 @@ requirements: this library uses jquery
       }else{
           return cb(resourceList.error);
       }
+      });
+    },
+
+    // ensure unique filenames
+    getUniqueName: function(resourceName, cb) {
+      ils.listVaultNames(function(nameList){
+        if(nameList.indexOf(resourceName)==-1) {
+          return cb(resourceName);
+        }else{
+          //The resourceName already exists in the space
+          var timeStamp = new Date().getTime();
+          var uniqueName = resourceName + "_" + timeStamp;
+          return cb(uniqueName);
+        }
       });
     },
 

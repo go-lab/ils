@@ -275,7 +275,6 @@ requirements: this library uses jquery
     // create a resource in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, content should be in JSON format
     createResource: function(resourceName, content, metadata, cb) {
-      debugger;
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
@@ -451,9 +450,11 @@ requirements: this library uses jquery
           return cb(resourceName);
         }else{
           //The resourceName already exists in the space
-          var timeStamp = new Date().getTime();
-          var uniqueName = resourceName + "_" + timeStamp;
-          return cb(uniqueName);
+          ils.getCurrentUser(function (username) {
+            var timeStamp = new Date().getTime();
+            var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+            return cb(uniqueName);
+          });
         }
       });
     },

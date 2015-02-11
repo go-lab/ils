@@ -446,7 +446,7 @@ requirements: this library uses jquery
     // ensure unique filenames
     getUniqueName: function(resourceName, cb) {
       ils.listVaultNames(function(nameList){
-        if(nameList.indexOf(resourceName)==-1) {
+        if(nameList.indexOf(resourceName)==-1 && nameList.indexOf(resourceName+".txt")==-1) {
           return cb(resourceName);
         }else{
           //The resourceName already exists in the space

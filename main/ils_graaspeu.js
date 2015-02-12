@@ -339,87 +339,97 @@ requirements: this library uses jquery
     });
   },
 
-    getConfigurationSpace: function(vaultId, cb) {
-      osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){
-        return cb(space);
-      });
-    },
+    //Returns the Configuration Space based on the VaultId
+  getConfigurationSpace: function(vaultId, cb) {
+    debugger;
+    osapi.spaces.get({contextId: vaultId, contextType: "@space"}).execute(
+        function(subspaces) {
+          var configurationSpace = _.find(subspaces.list, function(space){
+            return space.name === "Configuration";
+          });
+
+          if(configurationSpace){
+            return cb(configurationSpace);
+          }else{
+            ils.createConfigurationSpace(vault.id, function(newConfigurationSpace){
+              return cb(newConfigurationSpace);
+            });
+          }
+        }
+    );
+  },
 
     // create a configuration file in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, content should be in JSON format
   createConfigurationFile: function(resourceName, content, metadata, cb) {
     var error = {};
-    ils.getVault(function(vault) {
-      if (!vault.error) {
-        osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
-            function(subspaces) {
-
-            });
-      } else {
-        error = {
-          "error" : "The space is not available.",
-          "log" : parentIls.error
-        };
-        return cb(error);
-      }
-    });
-
-
-      if (resourceName != null && resourceName != undefined) {
-        ils.getVault(function(vault) {
-          ils.listVaultNames(function(nameList){
-            if(nameList.indexOf(resourceName)==-1) {
-              ils.getCurrentUser(function(username){
-                var creator = username;
-                if (username.error) {
-                  creator = "unknown";
-                }
-                var params = {
-                  "document": {
-                    "parentType": "@space",
-                    "parentSpaceId": vault.id,
-                    "mimeType": "txt",
-                    "fileName": resourceName,
-                    "content": JSON.stringify(content),
-                    "metadata": metadata
+    if (resourceName != null && resourceName != undefined) {
+      ils.getVault(function(vault) {
+        if (!vault.error) {
+          ils.getConfigurationSpace(vault.id, function (space) {
+            ils.listConfigurationNames(space.id, function (nameList) {
+              if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
+                ils.getCurrentUser(function (username) {
+                  var creator = username;
+                  if (username.error) {
+                    creator = "unknown";
                   }
-                };
+                  var params = {
+                    "document": {
+                      "parentType": "@space",
+                      "parentSpaceId": vault.id,
+                      "mimeType": "txt",
+                      "fileName": resourceName,
+                      "content": JSON.stringify(content),
+                      "metadata": metadata
+                    }
+                  };
 
-                osapi.documents.create(params).execute(function(resource){
-                  if (resource && !resource.error && resource.id ) {
-                    ils.getApp(function(app){
-                      //log the action of adding this resource
-                      ils.logAction(creator, vault, resource.id, app, "add", function(response){
-                        if (!response.error) {
-                          return cb(resource);
-                        }else{
-                          error = {
-                            "error" : "The resource creation couldn't be logged.",
-                            "log" : response.error
-                          };
-                          return cb(error);
-                        }
+                  osapi.documents.create(params).execute(function (resource) {
+                    if (resource && !resource.error && resource.id) {
+                      ils.getApp(function (app) {
+                        //log the action of adding this resource
+                        ils.logAction(creator, vault, resource.id, app, "add", function (response) {
+                          if (!response.error) {
+                            return cb(resource);
+                          } else {
+                            error = {
+                              "error": "The resource creation couldn't be logged.",
+                              "log": response.error
+                            };
+                            return cb(error);
+                          }
+                        });
                       });
-                    });
-                  } else {
-                    error = {
-                      "error" : "The resource couldn't be created.",
-                      "log" : resource.error
-                    };
-                    return cb(error);
-                  }
+                    } else {
+                      error = {
+                        "error": "The resource couldn't be created.",
+                        "log": resource.error
+                      };
+                      return cb(error);
+                    }
+                  });
                 });
-              });
-            }else{
-              error = {"error" : "The resourceName already exists in the space."};
-              return cb(error);
-            }
+              } else {
+                error = {"error": "The resourceName already exists in the space."};
+                return cb(error);
+              }
+            });
           });
-        });
-      } else {
-        error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
-        return cb(error);
-      }
+
+        } else {
+          error = {
+            "error": "The Vault is not available.",
+            "log": vault.error
+          };
+          return cb(error);
+        }
+      });
+    } else {
+      error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
+      return cb(error);
+    }
+
   },
 
   // updates a resource in the Vault, resourceId, content and metadata need to be passed
@@ -499,20 +509,44 @@ requirements: this library uses jquery
     }
   },
 
+    // get a list of all resources in the Space
+    listFilesBySpaceId: function(spaceId, cb) {
+      var error = {"error" : "The spaceId cannot be empty."};
+      if (spaceId && spaceId != "") {
+        osapi.documents.get({contextId: spaceId, contextType: "@space"}).execute(function (resources) {
+          if (resources.list)
+            return cb(resources.list);
+          else
+            return cb(error);
+        });
+      }else{
+        return cb(space.error);
+      }
+    },
 
   // get a list of all resources in the Vault
     listVault: function(cb) {
-      var error = {"error" : "No resource available in the Vault."};
-      ils.getVault(function(vault) {
-        if(!vault.error) {
-          osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
-            if (resources.list)
-              return cb(resources.list);
-            else
-              return cb(error);
+      debugger;
+      ils.getVault(function(space) {
+        if(!space.error) {
+          ils.listFilesBySpaceId(space.id, function(list){
+            return list;
           });
         }else{
-          return cb(vault.error);
+          return cb(space.error);
+        }
+      });
+    },
+
+    // get a list of all resources in the Vault
+    listConfiguration: function(cb) {
+      ils.getConfigurationSpace(function(space) {
+        if(!space.error) {
+          ils.listFilesBySpaceId(space.id, function(list){
+            return list;
+          });
+        }else{
+          return cb(space.error);
         }
       });
     },
@@ -526,9 +560,24 @@ requirements: this library uses jquery
             nameList.push(resourceList[i].displayName);
           }
           return cb(nameList);
-      }else{
+        }else{
           return cb(resourceList.error);
-      }
+        }
+      });
+    },
+
+    // get a list of all resources in the Configuration
+    listConfigurationNames: function(cb) {
+      var nameList = [];
+      ils.listConfiguration(function(resourceList) {
+        if(!resourceList.error){
+          for (i = 0; i < resourceList.length; i++) {
+            nameList.push(resourceList[i].displayName);
+          }
+          return cb(nameList);
+        }else{
+          return cb(resourceList.error);
+        }
       });
     },
 

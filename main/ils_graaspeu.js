@@ -526,11 +526,10 @@ requirements: this library uses jquery
 
   // get a list of all resources in the Vault
     listVault: function(cb) {
-      debugger;
       ils.getVault(function(space) {
         if(!space.error) {
           ils.listFilesBySpaceId(space.id, function(list){
-            return list;
+            return cb(list);
           });
         }else{
           return cb(space.error);
@@ -668,6 +667,7 @@ requirements: this library uses jquery
         if (!parentIls.error) {
         osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
           function(subspaces) {
+            debugger
             if (subspaces.totalResults != 0) {
               var item, vault;
               vault = (function() {

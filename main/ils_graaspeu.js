@@ -343,9 +343,9 @@ requirements: this library uses jquery
   getConfigurationSpace: function(vaultId, cb) {
     debugger;
     osapi.spaces.get({contextId: vaultId, contextType: "@space"}).execute(
-        function(subspaces) {
-          var configurationSpace = _.find(subspaces.list, function(space){
-            return space.name === "Configuration";
+        function(items) {
+          var configurationSpace = _.find(items.list, function(item){
+            return item.spaceType && item.name === "Configuration";
           });
 
           if(configurationSpace){
@@ -665,31 +665,14 @@ requirements: this library uses jquery
       var error = {};
       ils.getIls(function(parentIls) {
         if (!parentIls.error) {
-        osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
-          function(subspaces) {
-            debugger
-            if (subspaces.totalResults != 0) {
-              var item, vault;
-              vault = (function() {
-                var i, len, ref, results;
-                ref = subspaces.list;
-                results = [];
-                for (i = 0, len = ref.length; i < len; i++) {
-                  item = ref[i];
-                   if (item.hasOwnProperty("metadata") && item.metadata != undefined) {
-                    if (item.metadata.type === "Vault") {
-                      results.push(item);
-                  }
-                }
-              }
-              return results;
-            })();
-            return cb(vault[0]);
-          } else {
-            error = {"error" : "No subspaces in current ILS."};
-            return cb(error);
-          }
-        });
+          ils.getVaultByIlsId(parentIls.id, function(vault) {
+            if (vault){
+              return cb(vault);
+            }else {
+              error = {"error" : "There is no Vault available."};
+              return cb(error);
+            }
+          });
       } else {
         error = {
           "error" : "The space is not available.",
@@ -698,6 +681,24 @@ requirements: this library uses jquery
         return cb(error);
       }
     });
+    },
+
+    // get the Vault of the current ILS
+    getVaultByIlsId: function(ilsId, cb) {
+      var error = {};
+      if(ilsId && ilsId != ""){
+        osapi.spaces.get({contextId: ilsId, contextType: "@space"}).execute(
+            function(items) {
+              var vault = _.find(items.list, function(item){
+                return item.spaceType && item.metadata && item.metadata.type === "Vault";
+              });
+              return cb(vault);
+            }
+        );
+      }else{
+        error = {"error" : "There ILS identifier cannot be empty. The Vault space could not be obtained"};
+        return cb(error);
+      }
     },
 
     // get the info of the current app

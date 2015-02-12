@@ -333,39 +333,91 @@ requirements: this library uses jquery
       }
     },
 
-  createConfigurationSpace: function( cb) {
-
+  createConfigurationSpace: function(vaultId, cb) {
+    osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){
+      return cb(space);
+    });
   },
 
-  // get the configuration space in the vault based on the vaultId
-  getConfigurationSpace: function(vaultId, cb) {
-      var error = {};
-      if (resourceId && resourceId != "") {
-        osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
-          if (!resource.error && resource.id) {
-            ils.getIls(function(parentIls) {
-              // get the associated activity of this resource
-              // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-              ils.getAction(resource.parentId, resourceId, function(action) {
-                var metadata = "";
-                if (resource.metadata) {
-                  metadata = resource.metadata;
-                }
-                // append the metadata to the resource object
-                resource["metadata"] = metadata;
-                return cb(resource);
-              });
+    getConfigurationSpace: function(vaultId, cb) {
+      osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){
+        return cb(space);
+      });
+    },
+
+    // create a configuration file in the Vault, resourceName and content need to be passed
+    // resourceName should be in string format, content should be in JSON format
+  createConfigurationFile: function(resourceName, content, metadata, cb) {
+    var error = {};
+    ils.getVault(function(vault) {
+      if (!vault.error) {
+        osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
+            function(subspaces) {
+
             });
-          } else {
-            error = {
-              "error" : "The resource is not available.",
-              "log": resource.error
-            };
-            return cb(error);
-          }
+      } else {
+        error = {
+          "error" : "The space is not available.",
+          "log" : parentIls.error
+        };
+        return cb(error);
+      }
+    });
+
+
+      if (resourceName != null && resourceName != undefined) {
+        ils.getVault(function(vault) {
+          ils.listVaultNames(function(nameList){
+            if(nameList.indexOf(resourceName)==-1) {
+              ils.getCurrentUser(function(username){
+                var creator = username;
+                if (username.error) {
+                  creator = "unknown";
+                }
+                var params = {
+                  "document": {
+                    "parentType": "@space",
+                    "parentSpaceId": vault.id,
+                    "mimeType": "txt",
+                    "fileName": resourceName,
+                    "content": JSON.stringify(content),
+                    "metadata": metadata
+                  }
+                };
+
+                osapi.documents.create(params).execute(function(resource){
+                  if (resource && !resource.error && resource.id ) {
+                    ils.getApp(function(app){
+                      //log the action of adding this resource
+                      ils.logAction(creator, vault, resource.id, app, "add", function(response){
+                        if (!response.error) {
+                          return cb(resource);
+                        }else{
+                          error = {
+                            "error" : "The resource creation couldn't be logged.",
+                            "log" : response.error
+                          };
+                          return cb(error);
+                        }
+                      });
+                    });
+                  } else {
+                    error = {
+                      "error" : "The resource couldn't be created.",
+                      "log" : resource.error
+                    };
+                    return cb(error);
+                  }
+                });
+              });
+            }else{
+              error = {"error" : "The resourceName already exists in the space."};
+              return cb(error);
+            }
+          });
         });
       } else {
-        error = {"error" : "The resourceId cannot be empty. The resource couldn't be read."};
+        error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
         return cb(error);
       }
   },

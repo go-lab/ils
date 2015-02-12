@@ -333,6 +333,43 @@ requirements: this library uses jquery
       }
     },
 
+  createConfigurationSpace: function( cb) {
+
+  },
+
+  // get the configuration space in the vault based on the vaultId
+  getConfigurationSpace: function(vaultId, cb) {
+      var error = {};
+      if (resourceId && resourceId != "") {
+        osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
+          if (!resource.error && resource.id) {
+            ils.getIls(function(parentIls) {
+              // get the associated activity of this resource
+              // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
+              ils.getAction(resource.parentId, resourceId, function(action) {
+                var metadata = "";
+                if (resource.metadata) {
+                  metadata = resource.metadata;
+                }
+                // append the metadata to the resource object
+                resource["metadata"] = metadata;
+                return cb(resource);
+              });
+            });
+          } else {
+            error = {
+              "error" : "The resource is not available.",
+              "log": resource.error
+            };
+            return cb(error);
+          }
+        });
+      } else {
+        error = {"error" : "The resourceId cannot be empty. The resource couldn't be read."};
+        return cb(error);
+      }
+  },
+
   // updates a resource in the Vault, resourceId, content and metadata need to be passed
   // content should be in JSON format
   updateResource: function(resourceId, content, metadata, cb) {

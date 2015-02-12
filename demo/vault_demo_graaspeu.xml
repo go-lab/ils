@@ -12,7 +12,8 @@
         <![CDATA[
             <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery-1.8.0.min.js"></script>
             <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery.cookie.js"></script>
-            <script type="text/javascript" src="http://graasp.epfl.ch/ils_lib/main/ils_graaspeu.js"></script>
+            <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/underscore-min.js"></script>
+            <script type="text/javascript" src="http://iamac146.epfl.ch/ils_lib/main/ils_graaspeu.js"></script>
             
             <script type="text/javascript">
             
@@ -164,7 +165,7 @@
                             });
 
                             // create a second resource in the Vault
-                            ils.createResource("test2.txt", example_content, "", function(resource2){
+                            ils.createConfigurationFile("test2.txt", example_content, "", function(resource2){
                                 var newResourceId2 = resource2.id;
                                 console.log("Creating a resource (without additional metadata) in the Vault folder");
                                 console.log(resource2);

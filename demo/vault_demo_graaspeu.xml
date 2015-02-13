@@ -135,6 +135,29 @@
                             }
                         });
 
+                        // get the Configuration space and print it
+                        ils.getConfiguration(function(configuration){
+                            console.log("Printing configuration");
+                            console.log(configuration);
+                            $('#get_configuration').append("Configuration id " + configuration.id);
+                        });
+
+                        // get all resources in the Configuration
+                        ils.listConfiguration(function(resources1){
+                            console.log("Printing resources in the Configuration");
+                            console.log(resources1);
+                            if(resources1.error){
+                                $('#list_configuration_1').append(resources1.error);
+                            }else{
+                                if(resources1.length==0){
+                                   $('#list_configuration_1').append("There is no resource in the Configuration space");
+                                }else{
+                                    $.each(resources1, function(index, value) {
+                                        $('#list_configuration_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                    });
+                                }
+                            }
+                        });
 
                         // SECOND STEP: CREATE NEW RESOURCES
                         // create a resource in the Vault
@@ -165,7 +188,7 @@
                             });
 
                             // create a second resource in the Vault
-                            ils.createConfigurationFile("test2.txt", example_content, "", function(resource2){
+                            ils.createResource("test2.txt", example_content, "", function(resource2){
                                 var newResourceId2 = resource2.id;
                                 console.log("Creating a resource (without additional metadata) in the Vault folder");
                                 console.log(resource2);
@@ -206,6 +229,39 @@
                                         $('#list_vault_2').append(resources2.error);
                                     }
                                 });
+
+                                // try to create a file in the configuration folder
+                                ils.createConfigurationFile("configuration1.txt", example_content, example_metadata, function(configuration1){
+                                    var newConfigurationFileId = configuration1.id;
+                                    console.log("Creating a file in the Configuration space: " + "configuration1.txt");
+                                    console.log(configuration1);
+                                    $('#create_configuration_1').append("Error message: " + configuration1.error);
+
+                                    // checks if the configuration file exists
+                                    ils.existResource(newConfigurationFileId, function(response){
+                                        console.log("Checking existence of the configuration file");
+                                        $('#exist_configuration_1').append("Resource " + newConfigurationFileId + " exists? " + response);
+                                    });
+
+                                    // read an existing resource in the Vault (without additional metadata)
+                                    ils.readResource(newConfigurationFileId, function(file){
+                                        console.log("Read an existent configuration file");
+                                        console.log(file);
+                                        $('#read_configuration_1').append("Resource id and name: " + file.id + " - " + file.displayName);
+                                    });
+
+                                    // obtains the metadata from the configuration file
+                                    ils.getMetadata(newConfigurationFileId, function(metadata){
+                                        console.log("Getting metadata from the configuration file ");
+                                        console.log(metadata);
+                                        if(metadata.error){
+                                            $('#get_configuration_metadata_1').append(metadata.error);
+                                        } else {
+                                            $('#get_configuration_metadata_1').append("metadata");
+                                        }
+                                    });
+                                });
+
 
                                 // try to create a resource with a name already existing in the Vault
                                 ils.createResource("test1.txt", example_content, example_metadata, function(resource1bis){
@@ -297,7 +353,7 @@
                                                             if(resources4.length==0){
                                                                $('#list_vault_4').append("There is no resource in the Vault space"); 
                                                             }else{
-                                                                $.each(resources1, function(index, value) {
+                                                                $.each(resources4, function(index, value) {
                                                                     $('#list_vault_4').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                                                 });
                                                             }
@@ -321,45 +377,59 @@
           <br/>
           <p>(*) Check the console for further details about the outputs</p>
           <br/>
-          <a>INITIAL STATUS</a>
+          <a>1. - INITIAL STATUS</a>
           <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
           <div id="get_ils"><b>ils.getIls(*):</b> </div>
           <div id="get_parent"><b>ils.getParent(*):</b> </div>
           <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
           <div id="get_vault"><b>ils.getVault(*):</b> </div>
           <div id="list_vault_1"><b>ils.listVault(*):</b> </div>
+          <div id="get_configuration"><b>ils.getConfiguration(*):</b> </div>
+          <div id="list_configuration_1"><b>ils.listConfiguration(*):</b> </div>
           <br/>
           <br/>
-          <a>CREATION OF A RESOURCE WITH ADDITIONAL METADATA (test1.txt)</a>
+          <a>2. - CREATION OF A RESOURCE WITH ADDITIONAL METADATA (test1.txt)</a>
           <div id="create_resource_1"><b>ils.createResource(*):</b> </div>
           <div id="exist_resource_1"><b>ils.existResource:</b> </div>
           <div id="read_resource_1"><b>ils.readResource(*):</b> </div>
           <div id="get_metadata_1"><b>ils.getMetadata(*):</b> </div>
           <br/>
           <br/>
-          <a>CREATION OF A RESOURCE WITHOUT ADDITIONAL METADATA (test2.txt)</a>
+          <a>3. - CREATION OF A RESOURCE WITHOUT ADDITIONAL METADATA (test2.txt)</a>
           <div id="create_resource_2"><b>ils.createResource(*):</b> </div>
           <div id="exist_resource_2"><b>ils.existResource:</b> </div>
           <div id="read_resource_2"><b>ils.readResource(*):</b> </div>
           <div id="get_metadata_2"><b>ils.getMetadata(*):</b> </div>
           <br/>
           <br/>
-          <a>VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
+          <a>4. - VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
           <div id="list_vault_2"><b>ils.listVault(*):</b> </div>
           <div id="list_vault_3"><b>ils.listVaultExtended(*):</b> </div>
           <br/>
           <br/>
-          <a>CREATION OF A RESOURCE WITH AN ALREADY EXISTING NAME (test1.txt)</a>
+          <a>5. - CREATION OF A CONFIGURATION FILE (configuration1.txt)</a>
+          <div id="create_configuration_1"><b>ils.createConfigurationFile(*):</b> </div>
+          <div id="exist_configuration_1"><b>ils.existResource:</b> </div>
+          <div id="read_configuration_1"><b>ils.readResource(*):</b> </div>
+          <div id="get_configuration_metadata_1"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>6. - CONFIGURATION CONTENT AFTER THE CREATION OF THE FILES</a>
+          <div id="list_configuration_2"><b>ils.listConfiguration(*):</b> </div>
+          <div id="list_configuration_3"><b>ils.listConfigurationExtended(*):</b> </div>
+          <br/>
+          <br/>
+          <a>7. - CREATION OF A RESOURCE WITH AN ALREADY EXISTING NAME (test1.txt)</a>
           <div id="create_resource_1bis"><b>ils.createResource(*):</b> </div>
           <br/>
           <br/>
-          <a>RESOURCE UPDATE (test1.txt)</a>
+          <a>8. - RESOURCE UPDATE (test1.txt)</a>
           <div id="update_resource"><b>ils.updateResource(*):</b> </div>
           <div id="read_resource_3"><b>ils.readResource(*):</b> </div>
           <div id="get_metadata_3"><b>ils.getMetadata(*):</b> </div>
           <br/>
           <br/>
-          <a>REMOVING RESOURCES</a>
+          <a>9. - REMOVING RESOURCES</a>
           <div id="delete_resource_1"><b>ils.deleteResource(test1.txt):</b> </div>
           <div id="delete_resource_2"><b>ils.deleteResource(test2.txt):</b> </div>
           <div id="exist_resource_3"><b>ils.existResource(test1.txt):</b> </div>
@@ -368,7 +438,7 @@
           <div id="delete_resource_3"><b>ils.deleteResource(*):</b> </div>
           <br/>
           <br/>
-          <a>VAULT CONTENT AFTER REMOVING RESOURCES</a>
+          <a>10. - VAULT CONTENT AFTER REMOVING RESOURCES</a>
           <div id="list_vault_4"><b>ils.listVault:</b> </div>
           <br/>
         ]]>

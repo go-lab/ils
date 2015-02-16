@@ -140,23 +140,24 @@
                             console.log("Printing configuration");
                             console.log(configuration);
                             $('#get_configuration').append("Configuration id " + configuration.id);
-                        });
 
-                        // get all resources in the Configuration
-                        ils.listConfiguration(function(resources1){
-                            console.log("Printing resources in the Configuration");
-                            console.log(resources1);
-                            if(resources1.error){
-                                $('#list_configuration_1').append(resources1.error);
-                            }else{
-                                if(resources1.length==0){
-                                   $('#list_configuration_1').append("There is no resource in the Configuration space");
+                            // get all resources in the Configuration
+                            ils.listConfiguration(function(files1){
+                                console.log("Printing resources in the Configuration");
+                                console.log(files1);
+                                if(files1.error){
+                                    $('#list_configuration_1').append(files1.error);
                                 }else{
-                                    $.each(resources1, function(index, value) {
-                                        $('#list_configuration_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
-                                    });
+                                    if(files1.length==0){
+                                       $('#list_configuration_1').append("There is no resource in the Configuration space");
+                                    }else{
+                                        $.each(files1, function(index, value) {
+                                            $('#list_configuration_1').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                        });
+                                    }
                                 }
-                            }
+                            });
+
                         });
 
                         // SECOND STEP: CREATE NEW RESOURCES
@@ -260,6 +261,24 @@
                                             $('#get_configuration_metadata_1').append("metadata");
                                         }
                                     });
+
+                                    // get all resources in the Configuration
+                                    ils.listConfiguration(function(files1){
+                                        console.log("Printing resources in the Configuration");
+                                        console.log(files1);
+                                        if(files1.error){
+                                            $('#list_configuration_2').append(files1.error);
+                                        }else{
+                                            if(files1.length==0){
+                                               $('#list_configuration_2').append("There is no resource in the Configuration space");
+                                            }else{
+                                                $.each(files1, function(index, value) {
+                                                    $('#list_configuration_2').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
+                                                });
+                                            }
+                                        }
+                                    });
+
                                 });
 
 

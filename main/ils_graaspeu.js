@@ -340,23 +340,34 @@ requirements: this library uses jquery
   },
 
     //Returns the Configuration Space based on the VaultId
-  getConfigurationSpace: function(vaultId, cb) {
-    debugger;
-    osapi.spaces.get({contextId: vaultId, contextType: "@space"}).execute(
-        function(items) {
-          var configurationSpace = _.find(items.list, function(item){
-            return item.spaceType && item.name === "Configuration";
-          });
-
-          if(configurationSpace){
-            return cb(configurationSpace);
-          }else{
-            ils.createConfigurationSpace(vault.id, function(newConfigurationSpace){
-              return cb(newConfigurationSpace);
+  getConfiguration: function(cb) {
+    var error = {};
+    ils.getVault(function(vault) {
+      if (!vault.error) {
+        osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
+          function (items) {
+            var configurationSpace = _.find(items.list, function (item) {
+              return item.spaceType && item.displayName === "Configuration";
             });
+
+            if (configurationSpace) {
+              return cb(configurationSpace);
+            } else {
+              ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
+                return cb(newConfigurationSpace);
+              });
+            }
           }
-        }
-    );
+        );
+      } else {
+        error = {
+          "error": "The Vault is not available.",
+          "log": vault.error
+        };
+        return cb(error);
+      }
+    });
+
   },
 
     // create a configuration file in the Vault, resourceName and content need to be passed
@@ -364,10 +375,8 @@ requirements: this library uses jquery
   createConfigurationFile: function(resourceName, content, metadata, cb) {
     var error = {};
     if (resourceName != null && resourceName != undefined) {
-      ils.getVault(function(vault) {
-        if (!vault.error) {
-          ils.getConfigurationSpace(vault.id, function (space) {
-            ils.listConfigurationNames(space.id, function (nameList) {
+      ils.getConfiguration(function (space) {
+            ils.listConfigurationNames(function (nameList) {
               if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
                 ils.getCurrentUser(function (username) {
                   var creator = username;
@@ -377,7 +386,7 @@ requirements: this library uses jquery
                   var params = {
                     "document": {
                       "parentType": "@space",
-                      "parentSpaceId": vault.id,
+                      "parentSpaceId": space.id,
                       "mimeType": "txt",
                       "fileName": resourceName,
                       "content": JSON.stringify(content),
@@ -388,8 +397,8 @@ requirements: this library uses jquery
                   osapi.documents.create(params).execute(function (resource) {
                     if (resource && !resource.error && resource.id) {
                       ils.getApp(function (app) {
-                        //log the action of adding this resource
-                        ils.logAction(creator, vault, resource.id, app, "add", function (response) {
+                      //log the action of adding this resource
+                        ils.logAction(creator, space, resource.id, app, "add", function (response) {
                           if (!response.error) {
                             return cb(resource);
                           } else {
@@ -417,14 +426,6 @@ requirements: this library uses jquery
             });
           });
 
-        } else {
-          error = {
-            "error": "The Vault is not available.",
-            "log": vault.error
-          };
-          return cb(error);
-        }
-      });
     } else {
       error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
       return cb(error);
@@ -539,10 +540,10 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Vault
     listConfiguration: function(cb) {
-      ils.getConfigurationSpace(function(space) {
+      ils.getConfiguration(function(space) {
         if(!space.error) {
           ils.listFilesBySpaceId(space.id, function(list){
-            return list;
+            return cb(list);
           });
         }else{
           return cb(space.error);
@@ -744,56 +745,56 @@ requirements: this library uses jquery
     },
 
     // log the action of adding a resource in the Vault
-    logAction: function(userName, vault, resourceId, app, actionType, cb) {
+    logAction: function(userName, space, resourceId, app, actionType, cb) {
       var params = {
         "userId": "@viewer",
         "groupId": "@self",
+        "published": new Date().toISOString(),
+        "verb": actionType,
         "activity": {
-        "verb": actionType
         }
       };
-      params.activity.actor = {
-        "id": userName + "@" + vault.parentId.toString(), //the id of the ILS
-        "objectType": "person",
-        "name": userName
-      };
       params.activity.object = {
-        "id": resourceId.toString(),
+        "id": resourceId,
         "objectType": "Asset",
         "graasp_object": "true"
       };
       params.activity.target = {
-        "id": vault.id.toString(),
+        "id": space.id,
         "objectType": "Space",
         "graasp_object": "true"
       };
       params.activity.generator = {
-        "id": app.id.toString(),
+        "id": app.id,
         "objectType": "Widget",
         "url": app.appUrl,
         "graasp_object": "true"
       };
 
       ils.getIls(function(parentSpace) {
+        params.activity.actor = {
+          "id": userName + "@" + parentSpace.id,
+          "objectType": "person",
+          "name": userName
+        };
         params.activity.provider = {
           "objectType": "ils",
           "url": parentSpace.profileUrl,
-          "id": parentSpace.id.toString(),
+          "id": parentSpace.id,
           "displayName": parentSpace.displayName
         };
-      });
 
-
-      osapi.activitystreams.create(params).execute(function(response){
-        if (!response.error) {
-          return cb(response);
-        } else {
-          var error = {
-            "error": "The activity couldn't be created.",
-            "log": response.error
-          };
-          return cb(error);
-        }
+        osapi.activitystreams.create(params).execute(function(response){
+          if (response.id && !response.error) {
+            return cb(response);
+          } else {
+            var error = {
+              "error": "The activity couldn't be logged.",
+              "log": response.error
+            };
+            return cb(error);
+          }
+        });
       });
 
     },

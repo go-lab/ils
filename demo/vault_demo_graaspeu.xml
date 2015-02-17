@@ -43,12 +43,33 @@
                     };
 
                     var example_metadata = {
-                      "config": [
-                        {"m1": "metadata1",
-                         "m2": "metadata2"},
-
-                        {"m3": "metadata1",
-                         "m4": "metadata2"}]
+                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
+                      "published": "2014-11-12T09:27:14.186Z",
+                      "actor": {
+                         "objectType": "person",
+                         "id": "lars@5458b041427dd6ce7cbf7006",
+                         "displayName": "lars"
+                      },
+                      "target": {
+                         "objectType": "hypotheses",
+                         "id": "4b8f69e3-2914-3a1a-454e-f4c157734bd1",
+                         "displayName": "my first hypotheses"
+                      },
+                      "generator": {
+                         "objectType": "application",
+                         "url": "http://go-lab.gw.utwente.nl/production/hypothesis.xml",
+                         "id": "c9933ad6-dd4a-6f71-ce84-fb1676ea3aac",
+                         "displayName": "hypothesis scratchpad"
+                     },
+                     "provider": {
+                         "objectType": "ils",
+                         "url": "http://graasp.epfl.ch/metawidget/1/b387b6f",
+                         "id": "5458b041427dd6ce7cbf7006",
+                         "displayName": "Black body experiments",
+                         "inquiryPhase": "Orientation",
+                         "inquiryPhaseId": "5458b041427dd6ce7cbf700b",
+                         "inquiryPhaseName": "my Orientation phase"
+                     }
                     };
 
                     var example_content_2 = {
@@ -75,12 +96,83 @@
                     };
 
                     var example_metadata_2 = {
-                      "config": [
-                        {"m1": "metadata1.1",
-                         "m2": "metadata2.1"},
+                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
+                      "published": new Date().toISOString(),
+                      "actor": {
+                         "objectType": "person",
+                         "id": "lars@5458b041427dd6ce7cbf7006",
+                         "displayName": "chus"
+                      },
+                      "target": {
+                         "objectType": "hypotheses",
+                         "id": "4b8f69e3-2914-3a1a-454e-f4c157734bd1",
+                         "displayName": "my first hypotheses"
+                      },
+                      "generator": {
+                         "objectType": "application",
+                         "url": "http://go-lab.gw.utwente.nl/production/hypothesis.xml",
+                         "id": "c9933ad6-dd4a-6f71-ce84-fb1676ea3aac",
+                         "displayName": "hypothesis scratchpad"
+                      },
+                      "provider": {
+                         "objectType": "ils",
+                         "url": "http://graasp.epfl.ch/metawidget/1/b387b6f",
+                         "id": "5458b041427dd6ce7cbf7006",
+                         "displayName": "Black body experiments",
+                         "inquiryPhase": "Orientation",
+                         "inquiryPhaseId": "5458b041427dd6ce7cbf700b",
+                         "inquiryPhaseName": "my Orientation phase"
+                      }
+                    };
 
-                        {"m3": "metadata1.1",
-                         "m4": "metadata2.1"}]
+                    var configuration_content = {
+                        "configUISettings": {
+                            "showHideSections": {
+                                "i_editConfiguration_helpHtml":true,
+                                "i_editConfiguration_resourceOptions":true
+                                }
+                            },
+                        "help":"Help text",
+                        "autoLoadLatestResource":true,
+                        "showResourceName":true,
+                        "singleDocumentMode":false,
+                        "showImportExport":false,
+                        "showLoadExamples":false,
+                        "showLoadConfiguration":true,
+                        "showModelJson":false,
+                        "autoSave":false,
+                        "defaultResourceName":"",
+                        "loadInitialResource":true
+                    };
+
+                    var configuration_metadata = {
+                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
+                      "published": "2014-11-12T09:27:14.186Z",
+                      "actor": {
+                         "objectType": "person",
+                         "id": "lars@5458b041427dd6ce7cbf7006",
+                         "displayName": "lars"
+                      },
+                      "target": {
+                         "objectType": "configuration",
+                         "id": "4b8f69e3-2914-3a1a-454e-f4c157734bd1",
+                         "displayName": "my first hypotheses"
+                      },
+                      "generator": {
+                         "objectType": "application",
+                         "url": "http://go-lab.gw.utwente.nl/production/hypothesis.xml",
+                         "id": "c9933ad6-dd4a-6f71-ce84-fb1676ea3aac",
+                         "displayName": "hypothesis scratchpad"
+                      },
+                      "provider": {
+                         "objectType": "ils",
+                         "url": "http://graasp.epfl.ch/metawidget/1/b387b6f",
+                         "id": "5458b041427dd6ce7cbf7006",
+                         "displayName": "Black body experiments",
+                         "inquiryPhase": "Orientation",
+                         "inquiryPhaseId": "5458b041427dd6ce7cbf700b",
+                         "inquiryPhaseName": "my Orientation phase"
+                      }
                     };
 
                     // FIRST STEP: OBTAIN INITIAL STATE
@@ -232,7 +324,7 @@
                                 });
 
                                 // try to create a file in the configuration folder
-                                ils.createConfigurationFile("configuration1.txt", example_content, example_metadata, function(configuration1){
+                                ils.createConfigurationFile("configuration1.txt", configuration_content, configuration_metadata, function(configuration1){
                                     var newConfigurationFileId = configuration1.id;
                                     console.log("Creating a file in the Configuration space: " + "configuration1.txt");
                                     console.log(configuration1);

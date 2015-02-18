@@ -195,31 +195,22 @@ requirements: this library uses jquery
 
     // get the current appId
     getAppId: function(cb) {
-      var error;
-      osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error){
-          if (response.id) { //for os apps
-            return cb(response.id);
-          } else {
-            ils.getIls(function(space) {
-              if(space.id){ //for metawidget
-                return cb(space.id);
-              }else{
-                error = {"error": "The appId couldn't be obtained. No App or metawidget was found."};
-                return cb(error);
-              }
-            });
-          }
-        }else{
-          error = {
-            "error": "The appId couldn't be obtained.",
-            "log": response.error
-          };
-          return cb(error);
+      ils.getApp(function(app) {
+        if (app.id) { //for os apps
+          return cb(app.id);
+        } else {
+          ils.getIls(function(space) {
+            if(space.id){ //for metawidget
+              return cb(space.id);
+            }else{
+              var error = {"error": "The appId couldn't be obtained. No Open Social App or metawidget was found."};
+              return cb(error);
+            }
+          });
         }
       });
     },
-s
+
 
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {

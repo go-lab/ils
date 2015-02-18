@@ -118,7 +118,7 @@ requirements: this library uses jquery
             ils.getCurrentUser(function (username) {
               osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
                 if (deleteResponse){
-                  if (deleteResponse.error) {
+                  if (!deleteResponse.error) {
                     ils.getApp(function (app) {
                       //log the action of adding this resource
                       ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {

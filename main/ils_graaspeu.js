@@ -109,6 +109,118 @@ requirements: this library uses jquery
       });
     },
 
+    // get the type of inquiry phase where the app is running in
+    getParentInquiryPhase: function(cb) {
+      var error;
+      this.getParent(function(parent) {
+        if (!parent.error) {
+          if (parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
+            return cb(parent.metadata.type);
+          } else {
+            error = {"error" : "The parent inquiry phase couldn't be obtained."}
+            return cb(error);
+          }
+        }else{
+          error = {
+            "error": "The parent inquiry phase couldn't be obtained.",
+            "log": parent.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the current ILS of the app
+    getIls: function(cb) {
+      var error;
+      osapi.context.get().execute(function(space) {
+        if (!space.error) {
+          osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
+            if (!parentSpace.error) {
+              //app at the ils level
+              if(parentSpace.spaceType === 'ils'){
+                return cb(parentSpace, parentSpace);
+              }else{
+                osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
+                  if (!parentIls.error) {
+                    //app at the phase level
+                    if (parentIls.spaceType === 'ils') {
+                      return cb(parentIls, parentSpace);
+                    } else {
+                      error = {"error" : "The app is not located in an ILS or in one of its phases."};
+                      return cb(error);
+                    }
+                  } else {
+                    error = {
+                      "error" : "The ils where the app is located is not available.",
+                      "log" : parentIls.error
+                    };
+                    return cb(error);
+                  }
+                });
+              }
+            } else {
+              error = {
+                "error" : "The space where the app is located is not available.",
+                "log" : parentSpace.error
+              };
+              return cb(error);
+
+            }
+          });
+        } else {
+          error = {
+            "error" : "The id of the space where the app is located is not available.",
+            "log" : space.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the info of the current app
+    getApp: function(cb) {
+      osapi.apps.get({contextId: "@self"}).execute(function(response){
+        if (!response.error) {
+          return cb(response);
+        } else {
+          var error = {
+            "error": "The app couldn't be obtained.",
+            "log": response.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the current appId
+    getAppId: function(cb) {
+      var error;
+      osapi.apps.get({contextId: "@self"}).execute(function(response){
+        if (!response.error){
+          if (response.id) { //for os apps
+            return cb(response.id);
+          } else {
+            ils.getIls(function(space) {
+              if(space.id){ //for metawidget
+                return cb(space.id);
+              }else{
+                error = {"error": "The appId couldn't be obtained. No App or metawidget was found."};
+                return cb(error);
+              }
+            });
+          }
+        }else{
+          error = {
+            "error": "The appId couldn't be obtained.",
+            "log": response.error
+          };
+          return cb(error);
+        }
+      });
+    },
+s
+
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {
       var error = {};
@@ -611,53 +723,7 @@ requirements: this library uses jquery
       });
     },
 
-    // get the current ILS of the app
-    getIls: function(cb) {
-      var error;
-      osapi.context.get().execute(function(space) {
-        if (!space.error) {
-          osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
-            if (!parentSpace.error) {
-              //app at the ils level
-              if(parentSpace.spaceType === 'ils'){
-                return cb(parentSpace, parentSpace);
-              }else{
-                osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                  if (!parentIls.error) {
-                    //app at the phase level
-                     if (parentIls.spaceType === 'ils') {
-                       return cb(parentIls, parentSpace);
-                     } else {
-                       error = {"error" : "The app is not located in an ILS or in one of its phases."};
-                       return cb(error);
-                     }
-                  } else {
-                    error = {
-                      "error" : "The ils where the app is located is not available.",
-                      "log" : parentIls.error
-                    };
-                    return cb(error);
-                  }
-                });
-              }
-            } else {
-              error = {
-                "error" : "The space where the app is located is not available.",
-                "log" : parentSpace.error
-              };
-              return cb(error);
 
-            }
-          });
-        } else {
-          error = {
-            "error" : "The id of the space where the app is located is not available.",
-            "log" : space.error
-          };
-          return cb(error);
-        }
-      });
-    },
 
 
 
@@ -702,47 +768,6 @@ requirements: this library uses jquery
       }
     },
 
-    // get the info of the current app
-    getApp: function(cb) {
-      osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error) {
-          return cb(response);
-        } else {
-          var error = {
-            "error": "The app couldn't be obtained.",
-            "log": response.error
-          };
-          return cb(error);
-        }
-      });
-    },
-
-    // get the current appId
-    getAppId: function(cb) {
-      var error;
-      osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error){
-          if (response.id) { //for os apps
-            return cb(response.id);
-          } else {
-            ils.getIls(function(space) {
-              if(space.id){ //for metawidget
-                return cb(space.id);
-              }else{
-                error = {"error": "The appId couldn't be obtained. No App or metawidget was found."};
-                return cb(error);
-              }
-            });
-          }
-        }else{
-            error = {
-              "error": "The appId couldn't be obtained.",
-              "log": response.error
-            };
-            return cb(error);
-        }
-      });
-    },
 
     // log the action of adding a resource in the Vault
     logAction: function(userName, space, resourceId, app, actionType, cb) {
@@ -824,27 +849,6 @@ requirements: this library uses jquery
           error = {
             "error": "The activity couldn't be obtained.",
             "log": response.error
-          };
-          return cb(error);
-        }
-      });
-    },
-
-  // get the type of inquiry phase where the app is running in
-    getParentInquiryPhase: function(cb) {
-      var error;
-      this.getParent(function(parent) {
-        if (!parent.error) {
-          if (parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
-            return cb(parent.metadata.type);
-          } else {
-            error = {"error" : "The parent inquiry phase couldn't be obtained."}
-            return cb(error);
-          }
-        }else{
-          error = {
-            "error": "The parent inquiry phase couldn't be obtained.",
-            "log": parent.error
           };
           return cb(error);
         }

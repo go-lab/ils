@@ -277,7 +277,15 @@
                             ils.getMetadata(newResourceId, function(metadata){
                                 console.log("Getting metadata from resource (with additional metadata)");
                                 console.log(metadata);
-                                $('#get_metadata_1').append(metadata);
+                                var keyList = _.keys(metadata);
+                                if(keyList.length==0){
+                                    $('#get_metadata_1').append("There is no metadata");
+                                }else{
+                                    $('#get_metadata_1').append("The list of keys is:");
+                                    $.each(keyList, function(index, value) {
+                                        $('#get_metadata_1').append(" " + value);
+                                    });
+                                }
                             });
 
                             // create a second resource in the Vault
@@ -328,7 +336,7 @@
                                     var newConfigurationFileId = configuration1.id;
                                     console.log("Creating a file in the Configuration space: " + "configuration1.txt");
                                     console.log(configuration1);
-                                    $('#create_configuration_1').append("Error message: " + configuration1.error);
+                                    $('#create_configuration_1').append("New resource id: " + configuration1.id);
 
                                     // checks if the configuration file exists
                                     ils.existResource(newConfigurationFileId, function(response){
@@ -350,7 +358,15 @@
                                         if(metadata.error){
                                             $('#get_configuration_metadata_1').append(metadata.error);
                                         } else {
-                                            $('#get_configuration_metadata_1').append("metadata");
+                                            var keyList = _.keys(metadata);
+                                            if(keyList.length==0){
+                                                $('#get_configuration_metadata_1').append("There is no metadata");
+                                            }else{
+                                                $('#get_configuration_metadata_1').append("The list of keys is:");
+                                                $.each(keyList, function(index, value) {
+                                                    $('#get_configuration_metadata_1').append(" " + value);
+                                                });
+                                            }
                                         }
                                     });
 

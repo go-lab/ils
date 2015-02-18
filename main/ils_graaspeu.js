@@ -215,7 +215,7 @@ requirements: this library uses jquery
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
               ils.getAction(resource.parentId, resourceId, function(action) {
                 if(resource.metadata) {
-                  return cb(resource.metadata);
+                  return cb(JSON.parse(resource.metadata));
                 } else {
                   error = {"error": "The resource has no metadata."};
                   return cb(error);
@@ -273,7 +273,7 @@ requirements: this library uses jquery
     },
 
     // create a resource in the Vault, resourceName and content need to be passed
-    // resourceName should be in string format, content should be in JSON format
+    // resourceName should be in string format, metadata and content should be in JSON format
     createResource: function(resourceName, content, metadata, cb) {
       var error = {};
       if (resourceName != null && resourceName != undefined) {
@@ -393,7 +393,7 @@ requirements: this library uses jquery
                       "metadata": metadata
                     }
                   };
-
+;
                   osapi.documents.create(params).execute(function (resource) {
                     if (resource && !resource.error && resource.id) {
                       ils.getApp(function (app) {

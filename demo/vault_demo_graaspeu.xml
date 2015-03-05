@@ -47,8 +47,6 @@
                     };
 
                     var example_metadata = {
-                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
-                      "published": "2014-11-12T09:27:14.186Z",
                       "actor": {
                          "objectType": "person",
                          "id": "lars@5458b041427dd6ce7cbf7006",
@@ -100,11 +98,9 @@
                     };
 
                     var example_metadata_2 = {
-                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
-                      "published": new Date().toISOString(),
                       "actor": {
                          "objectType": "person",
-                         "id": "lars@5458b041427dd6ce7cbf7006",
+                         "id": "chus@5458b041427dd6ce7cbf7006",
                          "displayName": "chus"
                       },
                       "target": {
@@ -150,12 +146,10 @@
                     };
 
                     var configuration_metadata = {
-                      "id": "2e90ab41-2893-42ca-9169-b2dcd10285a6",
-                      "published": "2014-11-12T09:27:14.186Z",
                       "actor": {
                          "objectType": "person",
-                         "id": "lars@5458b041427dd6ce7cbf7006",
-                         "displayName": "lars"
+                         "id": "chus@5458b041427dd6ce7cbf7006",
+                         "displayName": "chus"
                       },
                       "target": {
                          "objectType": "configuration",
@@ -253,6 +247,25 @@
                                     }
                                 }
                             });
+                        });
+
+                        // obtains the context parameters of the app
+                        ils.getAppContextParameters(function(parameters){
+                            console.log("Getting app parameters");
+                            console.log(parameters);
+                            if(parameters){
+                            var keyList = _.keys(parameters);
+                            if(keyList.length==0){
+                                    $('#get_parameters').append("There is no parameter");
+                                }else{
+                                    $('#get_parameters').append("The list of parameters is:");
+                                    $.each(keyList, function(index, value) {
+                                        $('#get_parameters').append(" " + value);
+                                    });
+                                }
+                            } else {
+                                $('#get_parameters').append("No parameter available");
+                            }
                         });
 
                         // SECOND STEP: CREATE NEW RESOURCES
@@ -558,6 +571,7 @@
           <div id="list_vault_1"><b>ils.listVault(*):</b> </div>
           <div id="get_configuration"><b>ils.getConfiguration(*):</b> </div>
           <div id="list_configuration_1"><b>ils.listConfiguration(*):</b> </div>
+          <div id="get_parameters"><b>ils.getAppContextParameters(*):</b> </div>
           <br/>
           <br/>
           <a>2. - CREATION OF A RESOURCE WITH ADDITIONAL METADATA (test1.txt)</a>

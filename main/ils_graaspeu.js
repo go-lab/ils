@@ -252,6 +252,70 @@ requirements: this library uses jquery
       });
     },
 
+    // get the parameters that describe the context of the app (actor, generator, provider, target)
+    getAppContextParameters: function(cb) {
+      var context = {};
+      ils.getCurrentUser(function(viewer) {
+        osapi.people.get({userId: '@owner'}).execute(function(owner) {
+          var userName = "unknown";
+          var userId;
+          if (viewer && viewer != "" && !viewer.error) {
+            userName = viewer;
+            if (owner && owner.displayName && owner.displayName.toLowerCase() != viewer) {
+              userId = viewer + "@" + owner.id;
+            } else {
+              userId = owner.id;
+            }
+
+            context.actor = {
+              "objectType": "person",
+              "id": userId,
+              "displayName": userName
+            }
+
+            ils.getApp(function (app) {
+              if (app && app.id) {
+                context.generator = {
+                  "objectType": "application",
+                  "url": app.appUrl,
+                  "id": app.id,
+                  "displayName": app.displayName
+                }
+
+                ils.getIls(function (space, subspace) {
+                if (space && space.id) {
+                  context.provider = {
+                    "objectType": space.spaceType,
+                    "url": space.profileUrl,
+                    "id": space.id,
+                    "displayName": space.displayName
+                  }
+
+                  if (subspace && subspace.id && space.id != subspace.id) {
+                    context.provider.inquiryPhaseId = subspace.id;
+                    context.provider.inquiryPhaseName = subspace.displayName;
+                    if (subspace.metadata && subspace.metadata.type) {
+                      context.provider.inquiryPhase = subspace.metadata.type;
+                    }
+                  }
+
+                  ils.getVault(function (vault) {
+                    if (vault && vault.id) {
+                      context.target = {
+                        "spaceId": vault.id,
+                        "spaceType": vault.spaceType
+                      }
+                    }
+                    return cb(context);
+                  });
+                }
+              });
+            }
+          });
+        }
+        });
+      });
+    },
 
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {
@@ -265,7 +329,7 @@ requirements: this library uses jquery
                   if (!deleteResponse.error) {
                     ils.getApp(function (app) {
                       //log the action of adding this resource
-                      ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
+                      ils.logAction(username, vault.id, resourceId, app, "remove", function (logResponse) {
                         if (!logResponse.error) {
                           return cb(true);
                         } else {
@@ -444,7 +508,7 @@ requirements: this library uses jquery
                   if (resource && !resource.error && resource.id ) {
                     ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(creator, vault, resource.id, app, "add", function(response){
+                      ils.logAction(creator, vault.id, resource.id, app, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -537,12 +601,12 @@ requirements: this library uses jquery
                       "metadata": metadata
                     }
                   };
-;
+
                   osapi.documents.create(params).execute(function (resource) {
                     if (resource && !resource.error && resource.id) {
                       ils.getApp(function (app) {
                       //log the action of adding this resource
-                        ils.logAction(creator, space, resource.id, app, "add", function (response) {
+                        ils.logAction(creator, space.id, resource.id, app, "add", function (response) {
                           if (!response.error) {
                             return cb(resource);
                           } else {
@@ -617,7 +681,7 @@ requirements: this library uses jquery
                 ils.getApp(function(app){
                   //log the action of adding this resource
                   ils.getVault(function(vault) {
-                      ils.logAction(username, vault, resource.id, app, "add", function(response){
+                      ils.logAction(username, vault.id, resource.id, app, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -759,7 +823,7 @@ requirements: this library uses jquery
 
 
     // log the action of adding a resource in the Vault
-    logAction: function(userName, space, resourceId, app, actionType, cb) {
+    logAction: function(userName, spaceId, resourceId, app, actionType, cb) {
       var params = {
         "userId": "@viewer",
         "groupId": "@self",
@@ -774,7 +838,7 @@ requirements: this library uses jquery
         "graasp_object": "true"
       };
       params.activity.target = {
-        "id": space.id,
+        "id": spaceId,
         "objectType": "Space",
         "graasp_object": "true"
       };

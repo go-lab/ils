@@ -302,8 +302,8 @@ requirements: this library uses jquery
                   ils.getVault(function (vault) {
                     if (vault && vault.id) {
                       context.target = {
-                        "spaceId": vault.id,
-                        "spaceType": vault.spaceType
+                        "storageId": vault.id,
+                        "storageType": vault.spaceType
                       }
                     }
                     return cb(context);

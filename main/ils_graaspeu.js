@@ -366,7 +366,7 @@ requirements: this library uses jquery
 
     setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){
       if (viewer && viewer != "" && !viewer.error) {
-        //to be fixed once we have the temporary users (viewer.id/owner.id)
+        //TODO to be fixed once we have the temporary users (viewer.id/owner.id)
         context.actor.id = context.actor.id.replace("unknown", viewer);
         context.actor.displayName = viewer;
       }
@@ -469,19 +469,21 @@ requirements: this library uses jquery
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
           if (!resource.error && resource.id) {
-            ils.getIls(function(parentIls) {
+ //           ils.getIls(function(parentIls) {
               // get the associated activity of this resource
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-              ils.getAction(resource.parentId, resourceId, function(action) {
-                var metadata = "";
-                if (resource.metadata) {
-                  metadata = resource.metadata;
-                }
+            //TODO: those resources without metatada should be enriched based on the actions registered
+//              ils.getAction(resource.parentId, resourceId, function(action) {
+//                var metadata = "";
+//                if (resource.metadata) {
+//                  metadata = resource.metadata;
+//                }
                 // append the metadata to the resource object
-                resource["metadata"] = metadata;
+//                resource["metadata"] = metadata;
+            //TODO: log action
                 return cb(resource);
-              });
-            });
+//              });
+//            });
           } else {
             error = {
               "error" : "The resource is not available.",

@@ -486,8 +486,8 @@ requirements: this library uses jquery
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
-          ils.listVaultNames(function(nameList){
-            if(nameList.indexOf(resourceName)==-1) {
+           ils.getUniqueName(resourceName, function(uniqueName){
+   //         if(nameList.indexOf(resourceName)==-1) {
               ils.getCurrentUser(function(username){
                 var creator = username;
                 if (username.error) {
@@ -498,7 +498,7 @@ requirements: this library uses jquery
                     "parentType": "@space",
                     "parentSpaceId": vault.id,
                     "mimeType": "txt",
-                    "fileName": resourceName,
+                    "fileName": uniqueName,
                     "content": JSON.stringify(content),
                     "metadata": metadata
                   }
@@ -529,10 +529,10 @@ requirements: this library uses jquery
                   }
                 });
               });
-            }else{
-              error = {"error" : "The resourceName already exists in the space."};
-              return cb(error);
-            }
+//            }else{
+//              error = {"error" : "The resourceName already exists in the space."};
+//              return cb(error);
+//            }
           });
         });
       } else {
@@ -540,6 +540,22 @@ requirements: this library uses jquery
         return cb(error);
       }
     },
+
+  // ensure unique filenames
+  getUniqueName: function(resourceName, cb) {
+    ils.listVaultNames(function(nameList){
+      if(nameList.indexOf(resourceName)==-1 && nameList.indexOf(resourceName+".txt")==-1) {
+        return cb(resourceName);
+      }else{
+        //The resourceName already exists in the space
+        ils.getCurrentUser(function (username) {
+          var timeStamp = new Date().getTime();
+          var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+          return cb(uniqueName);
+        });
+      }
+    });
+  },
 
   createConfigurationSpace: function(vaultId, cb) {
     osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){

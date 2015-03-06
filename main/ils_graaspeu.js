@@ -413,7 +413,7 @@ requirements: this library uses jquery
                   if (!deleteResponse.error) {
                     ils.getApp(function (app) {
                       //log the action of adding this resource
-                      ils.logAction(username, vault.id, resourceId, app.id, app.appUrl, "remove", function (logResponse) {
+                      ils.logAction(username, vault.id, resourceId, app.id, app.appUrl, "delete", function (logResponse) {
                         if (!logResponse.error) {
                           return cb(true);
                         } else {
@@ -594,7 +594,7 @@ requirements: this library uses jquery
                   if (resource && !resource.error && resource.id ) {
  //                   ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "add", function(response){
+                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "create", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -749,45 +749,46 @@ requirements: this library uses jquery
   updateResource: function(resourceId, content, metadata, cb) {
     var error = {};
     if (resourceId && resourceId != "") {
-      osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
-        if (!resource.error && resource.id) {
-          ils.getCurrentUser(function(username){
-            var newContent;
-            var newMetadata;
+      ils.getContextFromMetadata(metadata, function(){
+ //       osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
+ //         if (!resource.error && resource.id) {
+//            ils.getCurrentUser(function (username) {
+              var newContent;
+              var newMetadata;
 
-            if(content && content!=""){
-              newContent = JSON.stringify(content);
-            }else{
-              newContent = resource.content;
-            }
-
-            if(metadata && metadata!=""){
-              newMetadata = metadata;
-            }else{
-              newMetadata = resource.metadata;
-            }
-
-            var params = {
-              "contextId": resource.id,
-              "document": {
-                "parentType": resource.parentType,
-                "parentSpaceId": resource.parentId,
-                "mimeType": resource.mimeType,
-                "fileName": resource.displayName,
-                "content": newContent,
-                "metadata": newMetadata
+              if (content && content != "") {
+                newContent = JSON.stringify(content);
+              } else {
+                newContent = resource.content;
               }
-            };
 
-            osapi.documents.update(params).execute(function(resource){
-              if (resource && !resource.error && resource.id ) {
-                ils.getApp(function(app){
-                  //log the action of adding this resource
-                  ils.getVault(function(vault) {
-                      ils.logAction(username, vault.id, resource.id, app.id, app.appUrl, "add", function(response){
+              if (metadata && metadata != "") {
+                newMetadata = metadata;
+              } else {
+                newMetadata = resource.metadata;
+              }
+
+              var params = {
+                "contextId": resourceId,
+                "document": {
+                  "parentType": context.target.storageId,
+                  "parentSpaceId": context.target.storageId,
+                  "mimeType": "txt",
+                  "fileName": metadata.target.displayName,
+                  "content": newContent,
+                  "metadata": newMetadata
+                }
+              };
+
+              osapi.documents.update(params).execute(function (resource) {
+                if (resource && !resource.error && resource.id) {
+ //                 ils.getApp(function (app) {
+                    //log the action of adding this resource
+ ///                   ils.getVault(function (vault) {
+                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
                         if (!response.error) {
                           return cb(resource);
-                        }else{
+                        } else {
                           error = {
                             "error": "The resource update couldn't be logged.",
                             "log": response.error
@@ -795,25 +796,26 @@ requirements: this library uses jquery
                           return cb(error);
                         }
                       });
-                  });
-                });
+//                    });
+ //                 });
 
-              } else {
-                error = {
-                  "error" : "The resource couldn't be updated.",
-                  "log" : resource.error
-                };
-                return cb(error);
-              }
-            });
-          });
-        } else {
-          error = {
-            "error" : "The resource is not available.",
-            "log" : resource.error
-          };
-          return cb(error);
-        }
+                } else {
+                  error = {
+                    "error": "The resource couldn't be updated.",
+                    "log": resource.error
+                  };
+                  return cb(error);
+                }
+              });
+//            });
+//          } else {
+//            error = {
+//              "error": "The resource is not available.",
+//              "log": resource.error
+//            };
+//            return cb(error);
+//          }
+//        });
       });
     } else {
       error = {"error" : "The resourceName cannot be null. The resource couldn't be updated."};

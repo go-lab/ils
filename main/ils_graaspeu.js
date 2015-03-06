@@ -270,39 +270,53 @@ requirements: this library uses jquery
     },
 
     setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){
-      var context = {};
-      if (viewer && viewer != "" && !viewer.error) {
-        var userName = viewer;
-        var userId;
-        if (owner && owner.displayName && owner.displayName.toLowerCase() != viewer && space.id) {
-          userId = viewer + "@" + space.id;
-        } else {
-          userId = owner.id;
-        }
-
-        context.actor = {
+      var context = {
+        actor : {
           "objectType": "person",
-          "id": userId,
-          "displayName": userName
+          "id": "unknown@undefined",
+          "displayName": "unknown"
+        },
+        generator: {
+          "objectType": "application",
+          "url": gadgets.util.getUrlParameters().url,
+          "id": "undefined",
+          "displayName": "undefined"
+        },
+
+        provider: {
+          "objectType": "preview",
+          "url": window.location.href,
+          "id": "unknown",
+          "displayName": "unknown",
+          "inquiryPhaseId": "unknown",
+          "inquiryPhaseName": "unknown",
+          "inquiryPhase": "unknown"
+        },
+
+        target: {
+          "storageId": "unknown",
+          "storageType": "unknown"
         }
+      };
+
+      if (viewer && viewer != "" && !viewer.error) {
+        //to be fixed once we have the temporary users (viewer.id/owner.id)
+        context.actor.id = context.actor.id.replace("unknown", viewer);
+        context.actor.displayName = viewer;
       }
 
       if (app && app.id) {
-        context.generator = {
-          "objectType": "application",
-          "url": app.appUrl,
-          "id": app.id,
-          "displayName": app.displayName
-        }
+        context.generator.url = app.appUrl;
+        context.generator.id = app.id;
+        context.generator.displayName = app.displayName;
       }
 
       if (space && space.id) {
-        context.provider = {
-          "objectType": space.spaceType,
-          "url": space.profileUrl,
-          "id": space.id,
-          "displayName": space.displayName
-        }
+        context.actor.id = context.actor.id.replace("undefined", space.id);
+        context.provider.objectType = space.spaceType;
+        context.provider.url = space.profileUrl;
+        context.provider.id = space.id;
+        context.provider.displayName = space.displayName;
 
         if (subspace && subspace.id && space.id != subspace.id) {
           context.provider.inquiryPhaseId = subspace.id;
@@ -314,10 +328,8 @@ requirements: this library uses jquery
       }
 
       if (vault && vault.id) {
-        context.target = {
-          "storageId": vault.id,
-          "storageType": vault.spaceType
-        }
+        context.target.storageId = vault.id;
+        context.target.storageType = vault.spaceType;
       }
 
       return cb(context);

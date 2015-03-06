@@ -254,67 +254,73 @@ requirements: this library uses jquery
 
     // get the parameters that describe the context of the app (actor, generator, provider, target)
     getAppContextParameters: function(cb) {
-      var context = {};
       ils.getCurrentUser(function(viewer) {
         osapi.people.get({userId: '@owner'}).execute(function(owner) {
-          var userName = "unknown";
-          var userId;
-          if (viewer && viewer != "" && !viewer.error) {
-            userName = viewer;
-            if (owner && owner.displayName && owner.displayName.toLowerCase() != viewer) {
-              userId = viewer + "@" + owner.id;
-            } else {
-              userId = owner.id;
-            }
-
-            context.actor = {
-              "objectType": "person",
-              "id": userId,
-              "displayName": userName
-            }
-
-            ils.getApp(function (app) {
-              if (app && app.id) {
-                context.generator = {
-                  "objectType": "application",
-                  "url": app.appUrl,
-                  "id": app.id,
-                  "displayName": app.displayName
-                }
-
-                ils.getIls(function (space, subspace) {
-                if (space && space.id) {
-                  context.provider = {
-                    "objectType": space.spaceType,
-                    "url": space.profileUrl,
-                    "id": space.id,
-                    "displayName": space.displayName
-                  }
-
-                  if (subspace && subspace.id && space.id != subspace.id) {
-                    context.provider.inquiryPhaseId = subspace.id;
-                    context.provider.inquiryPhaseName = subspace.displayName;
-                    if (subspace.metadata && subspace.metadata.type) {
-                      context.provider.inquiryPhase = subspace.metadata.type;
-                    }
-                  }
-
-                  ils.getVault(function (vault) {
-                    if (vault && vault.id) {
-                      context.target = {
-                        "storageId": vault.id,
-                        "storageType": vault.spaceType
-                      }
-                    }
-                    return cb(context);
-                  });
-                }
+          ils.getApp(function (app) {
+            ils.getIls(function (space, subspace) {
+              ils.getVault(function (vault) {
+                ils.setContextParameters(viewer, owner, app, space, subspace, vault, function (context){
+                  return cb(context);
+                });
               });
-            }
+            });
           });
-        }
         });
       });
+    },
+
+    setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){
+      var context = {};
+      if (viewer && viewer != "" && !viewer.error) {
+        var userName = viewer;
+        var userId;
+        if (owner && owner.displayName && owner.displayName.toLowerCase() != viewer && space.id) {
+          userId = viewer + "@" + space.id;
+        } else {
+          userId = owner.id;
+        }
+
+        context.actor = {
+          "objectType": "person",
+          "id": userId,
+          "displayName": userName
+        }
+      }
+
+      if (app && app.id) {
+        context.generator = {
+          "objectType": "application",
+          "url": app.appUrl,
+          "id": app.id,
+          "displayName": app.displayName
+        }
+      }
+
+      if (space && space.id) {
+        context.provider = {
+          "objectType": space.spaceType,
+          "url": space.profileUrl,
+          "id": space.id,
+          "displayName": space.displayName
+        }
+
+        if (subspace && subspace.id && space.id != subspace.id) {
+          context.provider.inquiryPhaseId = subspace.id;
+          context.provider.inquiryPhaseName = subspace.displayName;
+          if (subspace.metadata && subspace.metadata.type) {
+            context.provider.inquiryPhase = subspace.metadata.type;
+          }
+        }
+      }
+
+      if (vault && vault.id) {
+        context.target = {
+          "storageId": vault.id,
+          "storageType": vault.spaceType
+        }
+      }
+
+      return cb(context);
     },
 
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted

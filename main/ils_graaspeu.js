@@ -13,6 +13,34 @@ requirements: this library uses jquery
   var context_standalone_ils = "standalone_ils";
   var context_standalone_html = "standalone_html";
   var context_unknown = "unknown";
+  var context = {
+    actor : {
+      "objectType": "person",
+      "id": "unknown@undefined",
+      "displayName": "unknown"
+    },
+    generator: {
+      "objectType": "application",
+      "url": gadgets.util.getUrlParameters().url,
+      "id": "undefined",
+      "displayName": "undefined"
+    },
+
+    provider: {
+      "objectType": context_preview,
+      "url": window.location.href,
+      "id": "unknown",
+      "displayName": "unknown",
+      "inquiryPhaseId": "unknown",
+      "inquiryPhaseName": "unknown",
+      "inquiryPhase": "unknown"
+    },
+
+    target: {
+      "storageId": "unknown",
+      "storageType": "unknown"
+    }
+  };
 
   ils = {
     // get the nickname of the student who is currently using the ils
@@ -20,8 +48,8 @@ requirements: this library uses jquery
       var username;
       var error = {"error" : "The username couldn't be obtained."};
 
-      ils.identifyContext(function (context) {
-        if (context == context_standalone_ils) {
+      ils.identifyContext(function (context_type) {
+        if (context_type == context_standalone_ils) {
           if (typeof(Storage) !== "undefined") {
             username = localStorage.getItem("graasp_user");
             if (username) {
@@ -37,7 +65,7 @@ requirements: this library uses jquery
               return cb(error);
             }
           }
-        } else if (context == context_graasp) {
+        } else if (context_type == context_graasp) {
           osapi.people.get({userId: '@viewer'}).execute(function(viewer) {
             username = viewer.displayName;
             if (username) {
@@ -253,13 +281,80 @@ requirements: this library uses jquery
     },
 
     // get the parameters that describe the context of the app (actor, generator, provider, target)
+    getContextFromMetadata: function(metadata, cb) {
+      if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName){
+        ils.getCurrentUser(function(viewer) {
+          if (viewer && viewer != "" && !viewer.error) {
+            //to be fixed once we have the temporary users (viewer.id/owner.id)
+            //to be fixed once we have the temporary users (viewer.id/owner.id)
+            context.actor.id = context.actor.id.replace("unknown", viewer);
+            context.actor.displayName = viewer;
+          }
+        });
+      }else{
+        context.actor = metadata.actor;
+      }
+
+      if (!metadata.generator || !metadata.generator.objectType || !metadata.generator.url || !metadata.generator.id
+          || !metadata.generator.displayName){
+        ils.getApp(function (app) {
+          if (app && app.id) {
+            context.generator.url = app.appUrl;
+            context.generator.id = app.id;
+            context.generator.displayName = app.displayName;
+          }
+        });
+      }else{
+        context.generator = metadata.generator;
+      }
+
+      if (!metadata.provider || !metadata.provider.objectType || !metadata.provider.url || !metadata.provider.id
+          || !metadata.provider.displayName || !metadata.provider.inquiryPhaseId || !metadata.provider.inquiryPhaseName
+          || !metadata.provider.inquiryPhase){
+        ils.getIls(function (space, subspace) {
+          if (space && space.id) {
+            context.actor.id = context.actor.id.replace("undefined", space.id);
+            context.provider.objectType = space.spaceType;
+            context.provider.url = space.profileUrl;
+            context.provider.id = space.id;
+            context.provider.displayName = space.displayName;
+
+            if (subspace && subspace.id && space.id != subspace.id) {
+              context.provider.inquiryPhaseId = subspace.id;
+              context.provider.inquiryPhaseName = subspace.displayName;
+              if (subspace.metadata && subspace.metadata.type) {
+                context.provider.inquiryPhase = subspace.metadata.type;
+              }
+            }
+          }
+        });
+      }else{
+        context.provider = metadata.provider;
+      }
+
+      if (!metadata.target || !metadata.target.storageId || !metadata.target.storageType){
+        ils.getVault(function (vault) {
+          if (vault && vault.id) {
+            context.target.storageId = vault.id;
+            context.target.storageType = vault.spaceType;
+          }
+        });
+      }else{
+        context.target = metadata.target;
+      }
+
+      return cb();
+
+    },
+
+    // get the parameters that describe the context of the app (actor, generator, provider, target)
     getAppContextParameters: function(cb) {
       ils.getCurrentUser(function(viewer) {
         osapi.people.get({userId: '@owner'}).execute(function(owner) {
           ils.getApp(function (app) {
             ils.getIls(function (space, subspace) {
               ils.getVault(function (vault) {
-                ils.setContextParameters(viewer, owner, app, space, subspace, vault, function (context){
+                ils.setContextParameters(viewer, owner, app, space, subspace, vault, function (){
                   return cb(context);
                 });
               });
@@ -270,35 +365,6 @@ requirements: this library uses jquery
     },
 
     setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){
-      var context = {
-        actor : {
-          "objectType": "person",
-          "id": "unknown@undefined",
-          "displayName": "unknown"
-        },
-        generator: {
-          "objectType": "application",
-          "url": gadgets.util.getUrlParameters().url,
-          "id": "undefined",
-          "displayName": "undefined"
-        },
-
-        provider: {
-          "objectType": "preview",
-          "url": window.location.href,
-          "id": "unknown",
-          "displayName": "unknown",
-          "inquiryPhaseId": "unknown",
-          "inquiryPhaseName": "unknown",
-          "inquiryPhase": "unknown"
-        },
-
-        target: {
-          "storageId": "unknown",
-          "storageType": "unknown"
-        }
-      };
-
       if (viewer && viewer != "" && !viewer.error) {
         //to be fixed once we have the temporary users (viewer.id/owner.id)
         context.actor.id = context.actor.id.replace("unknown", viewer);
@@ -332,7 +398,7 @@ requirements: this library uses jquery
         context.target.storageType = vault.spaceType;
       }
 
-      return cb(context);
+      return cb();
     },
 
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
@@ -347,7 +413,7 @@ requirements: this library uses jquery
                   if (!deleteResponse.error) {
                     ils.getApp(function (app) {
                       //log the action of adding this resource
-                      ils.logAction(username, vault.id, resourceId, app, "remove", function (logResponse) {
+                      ils.logAction(username, vault.id, resourceId, app.id, app.appUrl, "remove", function (logResponse) {
                         if (!logResponse.error) {
                           return cb(true);
                         } else {
@@ -503,18 +569,20 @@ requirements: this library uses jquery
     createResource: function(resourceName, content, metadata, cb) {
       var error = {};
       if (resourceName != null && resourceName != undefined) {
-        ils.getVault(function(vault) {
+        ils.getContextFromMetadata(metadata, function(){
+
+ //       ils.getVault(function(vault) {
            ils.getUniqueName(resourceName, function(uniqueName){
    //         if(nameList.indexOf(resourceName)==-1) {
-              ils.getCurrentUser(function(username){
-                var creator = username;
-                if (username.error) {
-                  creator = "unknown";
-                }
+//              ils.getCurrentUser(function(username){
+//                var creator = username;
+//                if (username.error) {
+//                  creator = "unknown";
+//                }
                 var params = {
                   "document": {
                     "parentType": "@space",
-                    "parentSpaceId": vault.id,
+                    "parentSpaceId": context.target.storageId,
                     "mimeType": "txt",
                     "fileName": uniqueName,
                     "content": JSON.stringify(content),
@@ -524,9 +592,9 @@ requirements: this library uses jquery
 
                 osapi.documents.create(params).execute(function(resource){
                   if (resource && !resource.error && resource.id ) {
-                    ils.getApp(function(app){
+ //                   ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(creator, vault.id, resource.id, app, "add", function(response){
+                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -537,7 +605,7 @@ requirements: this library uses jquery
                           return cb(error);
                         }
                       });
-                    });
+//                    });
                   } else {
                     error = {
                       "error" : "The resource couldn't be created.",
@@ -546,12 +614,13 @@ requirements: this library uses jquery
                     return cb(error);
                   }
                 });
-              });
+//              });
 //            }else{
 //              error = {"error" : "The resourceName already exists in the space."};
 //              return cb(error);
 //            }
           });
+ //       });
         });
       } else {
         error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
@@ -640,7 +709,7 @@ requirements: this library uses jquery
                     if (resource && !resource.error && resource.id) {
                       ils.getApp(function (app) {
                       //log the action of adding this resource
-                        ils.logAction(creator, space.id, resource.id, app, "add", function (response) {
+                        ils.logAction(creator, space.id, resource.id, app.id, app.appUrl, "add", function (response) {
                           if (!response.error) {
                             return cb(resource);
                           } else {
@@ -715,7 +784,7 @@ requirements: this library uses jquery
                 ils.getApp(function(app){
                   //log the action of adding this resource
                   ils.getVault(function(vault) {
-                      ils.logAction(username, vault.id, resource.id, app, "add", function(response){
+                      ils.logAction(username, vault.id, resource.id, app.id, app.appUrl, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -857,7 +926,7 @@ requirements: this library uses jquery
 
 
     // log the action of adding a resource in the Vault
-    logAction: function(userName, spaceId, resourceId, app, actionType, cb) {
+    logAction: function(userName, spaceId, resourceId, appId, appUrl, actionType, cb) {
       var params = {
         "userId": "@viewer",
         "groupId": "@self",
@@ -877,9 +946,9 @@ requirements: this library uses jquery
         "graasp_object": "true"
       };
       params.activity.generator = {
-        "id": app.id,
+        "id": appId,
         "objectType": "Widget",
-        "url": app.appUrl,
+        "url": appUrl,
         "graasp_object": "true"
       };
 

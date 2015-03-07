@@ -13,7 +13,7 @@
             <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery-1.8.0.min.js"></script>
             <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/jquery.cookie.js"></script>
             <script type="text/javascript" src="http://graasp.epfl.ch/gadget/libs/underscore-min.js"></script>
-            <script type="text/javascript" src="http://iamac146.epfl.ch/ils_lib/main/ils_graaspeu.js"></script>
+            <script type="text/javascript" src="http://graasp.epfl.ch/ils_lib/main/ils_graaspeu.js"></script>
             
             <script type="text/javascript">
             
@@ -404,7 +404,7 @@
                                         // deletes the configuration file
                                         ils.deleteResource(newConfigurationFileId, function(responseDRC){
                                             console.log("Trying to delete the resource already removed)");
-                                            $('#delete_config_1').append(" " + responseDRC.error);
+                                            $('#delete_config_1').append(" " + responseDRC);
 
                                             // checks if the configuration file still exist
                                             ils.existResource(newConfigurationFileId, function(responseERC){

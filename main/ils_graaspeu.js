@@ -334,7 +334,8 @@ requirements: this library uses jquery
     getContextFromMetadata: function(metadata, cb) {
       counter_getContextFromMetadata++;
       console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
-      if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName || metadata.actor.id.contains("unknown") ){
+      if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName
+          || metadata.actor.id.indexOf("unknown")>-1 ){
         ils.getCurrentUser(function(viewer) {
           if (viewer && viewer != "" && !viewer.error) {
             //to be fixed once we have the temporary users (viewer.id/owner.id)
@@ -348,7 +349,7 @@ requirements: this library uses jquery
       }
 
       if (!metadata.generator || !metadata.generator.objectType || !metadata.generator.url || !metadata.generator.id
-          || !metadata.generator.displayName || metadata.generator.id.contains("undefined")){
+          || !metadata.generator.displayName || metadata.generator.id.indexOf("undefined")>-1){
         ils.getApp(function (app) {
           if (app && app.id) {
             context.generator.url = app.appUrl;
@@ -362,7 +363,7 @@ requirements: this library uses jquery
 
       if (!metadata.provider || !metadata.provider.objectType || !metadata.provider.url || !metadata.provider.id
           || !metadata.provider.displayName || !metadata.provider.inquiryPhaseId || !metadata.provider.inquiryPhaseName
-          || !metadata.provider.inquiryPhase || metadata.provider.id.contains("undefined")){
+          || !metadata.provider.inquiryPhase || metadata.provider.id.indexOf("undefined")>-1){
         ils.getIls(function (space, subspace) {
           if (space && space.id) {
             context.actor.id = context.actor.id.replace("undefined", space.id);
@@ -384,7 +385,7 @@ requirements: this library uses jquery
         context.provider = metadata.provider;
       }
 
-      if (!metadata.storageId || !metadata.storageType || metadata.storageId.contains("undefined")){
+      if (!metadata.storageId || !metadata.storageType || metadata.storageId.indexOf("undefined")>-1){
         ils.getVault(function (vault) {
           if (vault && vault.id) {
             context.storageId = vault.id;

@@ -408,7 +408,7 @@ requirements: this library uses jquery
         osapi.people.get({userId: '@owner'}).execute(function(owner) {
           ils.getApp(function (app) {
             ils.getIls(function (space, subspace) {
-              ils.getVault(function (vault) {
+              ils.getVaultByIlsId( space.id, function (vault) {
                 ils.setContextParameters(viewer, owner, app, space, subspace, vault, function (){
                   return cb(context);
                 });

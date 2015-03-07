@@ -36,10 +36,9 @@ requirements: this library uses jquery
       "inquiryPhase": "unknown"
     },
 
-    target: {
-      "storageId": "unknown",
-      "storageType": "unknown"
-    }
+    "storageId": "unknown",
+    "storageType": "unknown"
+
   };
   var counter_getCurrentUser = 0;
   var counter_identifyContext = 0;
@@ -70,6 +69,7 @@ requirements: this library uses jquery
   var counter_listVaultNames = 0;
   var counter_listConfigurationNames = 0;
   var counter_listVaultExtended = 0;
+  var counter_listVaultExtendedById = 0;
   var counter_logAction = 0;
   var counter_getAction = 0;
 
@@ -384,15 +384,16 @@ requirements: this library uses jquery
         context.provider = metadata.provider;
       }
 
-      if (!metadata.target || !metadata.target.storageId || !metadata.target.storageType){
+      if (!metadata.storageId || !metadata.storageType){
         ils.getVault(function (vault) {
           if (vault && vault.id) {
-            context.target.storageId = vault.id;
-            context.target.storageType = vault.spaceType;
+            context.storageId = vault.id;
+            context.storageType = vault.spaceType;
           }
         });
       }else{
-        context.target = metadata.target;
+        context.storageId = metadata.storageId;
+        context.storageType = metadata.storageType;
       }
 
       return cb();
@@ -450,8 +451,8 @@ requirements: this library uses jquery
       }
 
       if (vault && vault.id) {
-        context.target.storageId = vault.id;
-        context.target.storageType = vault.spaceType;
+        context.storageId = vault.id;
+        context.storageType = vault.spaceType;
       }
 
       return cb();
@@ -652,8 +653,8 @@ requirements: this library uses jquery
 //                }
                 var params = {
                   "document": {
-                    "parentType": "@space",
-                    "parentSpaceId": context.target.storageId,
+                    "parentType": context.storageType,
+                    "parentSpaceId": context.storageId,
                     "mimeType": "txt",
                     "fileName": uniqueName,
                     "content": JSON.stringify(content),
@@ -665,7 +666,7 @@ requirements: this library uses jquery
                   if (resource && !resource.error && resource.id ) {
  //                   ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "create", function(response){
+                      ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "create", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -852,8 +853,8 @@ requirements: this library uses jquery
               var params = {
                 "contextId": resourceId,
                 "document": {
-                  "parentType": context.target.storageId,
-                  "parentSpaceId": context.target.storageId,
+                  "parentType": context.storageType,
+                  "parentSpaceId": context.storageId,
                   "mimeType": "txt",
                   "fileName": metadata.target.displayName,
                   "content": newContent,
@@ -866,7 +867,7 @@ requirements: this library uses jquery
  //                 ils.getApp(function (app) {
                     //log the action of adding this resource
  ///                   ils.getVault(function (vault) {
-                      ils.logAction(context.actor.displayName, context.target.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
+                      ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
                         if (!response.error) {
                           return cb(resource);
                         } else {
@@ -994,20 +995,21 @@ requirements: this library uses jquery
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
           if (resources.list) {
            if (resources.list.length > 0) {
-            ils.getIls(function (parentIls) {
-              $.each(resources.list, function(index, value) {
+//            ils.getIls(function (parentIls) {
+//              $.each(resources.list, function(index, value) {
                 // get the associated activity of this resource
                 // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-                ils.getAction(vault.id, value.id, function (action) {
-                  var metadata = "";
-                  if (value.metadata) {
-                    metadata = value.metadata;
-                  }
+                //TODO: those resources without metadada should be enriched based on the actions registered
+//                ils.getAction(vault.id, value.id, function (action) {
+//                  var metadata = "";
+//                  if (value.metadata) {
+//                    metadata = value.metadata;
+//                  }
                   // append the metadata to the resource object
-                  value["metadata"] = metadata;
-                });
-              });
-            });
+//                  value["metadata"] = metadata;
+//                });
+//              });
+//            });
           }
           return cb(resources.list);
         }else{
@@ -1018,7 +1020,41 @@ requirements: this library uses jquery
     },
 
 
-
+    // get a list of all resources in the Vault (including all the metadata extracted from the actions) based on the VaultId
+    listVaultExtendedById: function(vaultId, cb) {
+      counter_listVaultExtendedById++;
+      console.log("counter_listVaultExtendedById " + counter_listVaultExtended);
+      var error = {"error": "No resource available in the Vault."};
+      if (vaultId && vaultId != "") {
+        osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {
+          if (resources.list) {
+            if (resources.list.length > 0) {
+  //            ils.getIls(function (parentIls) {
+  //              $.each(resources.list, function(index, value) {
+              // get the associated activity of this resource
+              // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
+              //TODO: those resources without metadada should be enriched based on the actions registered
+  //                ils.getAction(vault.id, value.id, function (action) {
+  //                  var metadata = "";
+  //                  if (value.metadata) {
+  //                    metadata = value.metadata;
+  //                  }
+              // append the metadata to the resource object
+  //                  value["metadata"] = metadata;
+  //                });
+  //              });
+  //            });
+            }
+            return cb(resources.list);
+          } else {
+            return cb(error);
+          }
+        });
+      }else{
+          error = {"error" : "There Vault identifier cannot be empty. The files could not be obtained"};
+          return cb(error);
+      }
+    },
 
     // log the action of adding a resource in the Vault
     logAction: function(userName, spaceId, resourceId, appId, appUrl, actionType, cb) {

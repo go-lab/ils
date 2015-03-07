@@ -296,7 +296,7 @@
                                                             if(resources4.length==0){
                                                                $('#list_vault_4').append("There is no resource in the Vault space"); 
                                                             }else{
-                                                                $.each(resources1, function(index, value) {
+                                                                $.each(resources4, function(index, value) {
                                                                     $('#list_vault_4').append("<div>- resource: " + value.id + " - " + value.displayName + "</div>");
                                                                 });
                                                             }

@@ -41,10 +41,43 @@ requirements: this library uses jquery
       "storageType": "unknown"
     }
   };
+  var counter_getCurrentUser = 0;
+  var counter_identifyContext = 0;
+  var counter_getParent = 0;
+  var counter_getParentInquiryPhase = 0;
+  var counter_getIls = 0;
+  var counter_getVault = 0;
+  var counter_getVaultByIlsId = 0;
+  var counter_getApp = 0;
+  var counter_getAppId = 0;
+  var counter_getContextFromMetadata = 0;
+  var counter_getAppContextParameters = 0;
+  var counter_setContextParameters = 0;
+  var counter_deleteResource = 0;
+  var counter_existResource = 0;
+  var counter_readResource = 0;
+  var counter_getMetadata = 0;
+  var counter_obtainMetadataFromAction = 0;
+  var counter_createResource = 0;
+  var counter_getUniqueName = 0;
+  var counter_createConfigurationSpace = 0;
+  var counter_getConfiguration = 0;
+  var counter_createConfigurationFile = 0;
+  var counter_updateResource = 0;
+  var counter_listFilesBySpaceId = 0;
+  var counter_listVault = 0;
+  var counter_listConfiguration = 0;
+  var counter_listVaultNames = 0;
+  var counter_listConfigurationNames = 0;
+  var counter_listVaultExtended = 0;
+  var counter_logAction = 0;
+  var counter_getAction = 0;
 
   ils = {
     // get the nickname of the student who is currently using the ils
     getCurrentUser: function(cb) {
+      counter_getCurrentUser++;
+      console.log(counter_getCurrentUser);
       var username;
       var error = {"error" : "The username couldn't be obtained."};
 
@@ -86,6 +119,9 @@ requirements: this library uses jquery
     },
 
     identifyContext: function(cb) {
+      counter_identifyContext++;
+      console.log(counter_identifyContext);
+
       if (typeof osapi === "undefined" || osapi === null){
         return cb(context_standalone_html);
 
@@ -109,6 +145,8 @@ requirements: this library uses jquery
 
     // get the parent space of the widget 
     getParent: function(cb) {
+      counter_getParent++;
+      console.log(counter_getParent);
       var error = {"error" : "The parent space couldn't be obtained."};
       osapi.context.get().execute(function(context_space) {
         if (context_space != undefined && context_space != null) {
@@ -139,6 +177,8 @@ requirements: this library uses jquery
 
     // get the type of inquiry phase where the app is running in
     getParentInquiryPhase: function(cb) {
+      counter_getParentInquiryPhase++;
+      console.log(counter_getParentInquiryPhase);
       var error;
       this.getParent(function(parent) {
         if (!parent.error) {
@@ -160,6 +200,8 @@ requirements: this library uses jquery
 
     // get the current ILS of the app
     getIls: function(cb) {
+      counter_getIls++;
+      console.log(counter_getIls);
       var error;
       osapi.context.get().execute(function(space) {
         if (!space.error) {
@@ -208,6 +250,8 @@ requirements: this library uses jquery
 
     // get the Vault of the current ILS
     getVault: function(cb) {
+      counter_getVault++;
+      console.log(counter_getVault);
       var error = {};
       ils.getIls(function(parentIls) {
         if (!parentIls.error) {
@@ -231,6 +275,8 @@ requirements: this library uses jquery
 
     // get the Vault of the current ILS
     getVaultByIlsId: function(ilsId, cb) {
+      counter_getVaultByIlsId++;
+      console.log(counter_getVaultByIlsId);
       var error = {};
       if(ilsId && ilsId != ""){
         osapi.spaces.get({contextId: ilsId, contextType: "@space"}).execute(
@@ -249,6 +295,8 @@ requirements: this library uses jquery
 
     // get the info of the current app
     getApp: function(cb) {
+      counter_getApp++;
+      console.log(counter_getApp);
       osapi.apps.get({contextId: "@self"}).execute(function(response){
         if (!response.error) {
           return cb(response);
@@ -264,6 +312,8 @@ requirements: this library uses jquery
 
     // get the current appId
     getAppId: function(cb) {
+      counter_getAppId++;
+      console.log(counter_getAppId);
       ils.getApp(function(app) {
         if (app.id) { //for os apps
           return cb(app.id);
@@ -282,6 +332,8 @@ requirements: this library uses jquery
 
     // get the parameters that describe the context of the app (actor, generator, provider, target)
     getContextFromMetadata: function(metadata, cb) {
+      counter_getContextFromMetadata++;
+      console.log(counter_getContextFromMetadata);
       if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName){
         ils.getCurrentUser(function(viewer) {
           if (viewer && viewer != "" && !viewer.error) {
@@ -349,6 +401,8 @@ requirements: this library uses jquery
 
     // get the parameters that describe the context of the app (actor, generator, provider, target)
     getAppContextParameters: function(cb) {
+      counter_getAppContextParameters++;
+      console.log(counter_getAppContextParameters);
       ils.getCurrentUser(function(viewer) {
         osapi.people.get({userId: '@owner'}).execute(function(owner) {
           ils.getApp(function (app) {
@@ -365,6 +419,8 @@ requirements: this library uses jquery
     },
 
     setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){
+      counter_setContextParameters++;
+      console.log(counter_setContextParameters);
       if (viewer && viewer != "" && !viewer.error) {
         //TODO to be fixed once we have the temporary users (viewer.id/owner.id)
         context.actor.id = context.actor.id.replace("unknown", viewer);
@@ -403,6 +459,8 @@ requirements: this library uses jquery
 
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {
+      counter_deleteResource++;
+      console.log(counter_deleteResource);
       var error = {};
       ils.existResource(resourceId, function (exists) {
         if (exists) {
@@ -448,6 +506,8 @@ requirements: this library uses jquery
 
     // verifies whether there is a resource by the resourceId, the result is true/false
     existResource: function(resourceId, cb) {
+      counter_existResource++;
+      console.log(counter_existResource);
       var error = {};
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
@@ -465,6 +525,9 @@ requirements: this library uses jquery
 
     // read a resource by the resourceId, the result is the combination of resource content and the metadata
     readResource: function(resourceId, cb) {
+      counter_readResource++;
+      console.log(counter_readResource);
+
       var error = {};
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
@@ -472,7 +535,7 @@ requirements: this library uses jquery
  //           ils.getIls(function(parentIls) {
               // get the associated activity of this resource
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-            //TODO: those resources without metatada should be enriched based on the actions registered
+            //TODO: those resources without metadada should be enriched based on the actions registered
 //              ils.getAction(resource.parentId, resourceId, function(action) {
 //                var metadata = "";
 //                if (resource.metadata) {
@@ -500,6 +563,8 @@ requirements: this library uses jquery
 
     // returns the metadata related to a resource by the resourceId
     getMetadata: function(resourceId, cb) {
+      counter_getMetadata++;
+      console.log(counter_getMetadata);
       var error = {};
       if (resourceId && resourceId != "") {
         osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function(resource){
@@ -532,6 +597,8 @@ requirements: this library uses jquery
 
     // returns the basic metadata inferred from the history
     obtainMetadataFromAction: function(metadata, action, parentIls) {
+      counter_obtainMetadataFromAction++;
+      console.log(counter_obtainMetadataFromAction);
         var extendedMetadata = "";
         if(metadata){
           extendedMetadata= JSON.parse(metadata);
@@ -569,6 +636,8 @@ requirements: this library uses jquery
     // create a resource in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, metadata and content should be in JSON format
     createResource: function(resourceName, content, metadata, cb) {
+      counter_createResource++;
+      console.log(counter_createResource);
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getContextFromMetadata(metadata, function(){
@@ -632,6 +701,8 @@ requirements: this library uses jquery
 
   // ensure unique filenames
   getUniqueName: function(resourceName, cb) {
+    counter_getUniqueName++;
+    console.log(counter_getUniqueName);
     ils.listVaultNames(function(nameList){
       if(nameList.indexOf(resourceName)==-1 && nameList.indexOf(resourceName+".txt")==-1) {
         return cb(resourceName);
@@ -647,6 +718,8 @@ requirements: this library uses jquery
   },
 
   createConfigurationSpace: function(vaultId, cb) {
+    counter_createConfigurationSpace++;
+    console.log(counter_createConfigurationSpace);
     osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){
       return cb(space);
     });
@@ -654,6 +727,8 @@ requirements: this library uses jquery
 
     //Returns the Configuration Space based on the VaultId
   getConfiguration: function(cb) {
+    counter_getConfiguration++;
+    console.log(counter_getConfiguration);
     var error = {};
     ils.getVault(function(vault) {
       if (!vault.error) {
@@ -686,6 +761,8 @@ requirements: this library uses jquery
     // create a configuration file in the Vault, resourceName and content need to be passed
     // resourceName should be in string format, content should be in JSON format
   createConfigurationFile: function(resourceName, content, metadata, cb) {
+    counter_createConfigurationFile++;
+    console.log(counter_createConfigurationFile);
     var error = {};
     if (resourceName != null && resourceName != undefined) {
       ils.getConfiguration(function (space) {
@@ -749,6 +826,8 @@ requirements: this library uses jquery
   // updates a resource in the Vault, resourceId, content and metadata need to be passed
   // content should be in JSON format
   updateResource: function(resourceId, content, metadata, cb) {
+    counter_updateResource++;
+    console.log(counter_updateResource);
     var error = {};
     if (resourceId && resourceId != "") {
       ils.getContextFromMetadata(metadata, function(){
@@ -827,6 +906,8 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Space
     listFilesBySpaceId: function(spaceId, cb) {
+      counter_listFilesBySpaceId++;
+      console.log(counter_listFilesBySpaceId);
       var error = {"error" : "The spaceId cannot be empty."};
       if (spaceId && spaceId != "") {
         osapi.documents.get({contextId: spaceId, contextType: "@space"}).execute(function (resources) {
@@ -842,6 +923,8 @@ requirements: this library uses jquery
 
   // get a list of all resources in the Vault
     listVault: function(cb) {
+      counter_listVault++;
+      console.log(counter_listVault);
       ils.getVault(function(space) {
         if(!space.error) {
           ils.listFilesBySpaceId(space.id, function(list){
@@ -855,6 +938,8 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Vault
     listConfiguration: function(cb) {
+      counter_listConfiguration++;
+      console.log(counter_listConfiguration);
       ils.getConfiguration(function(space) {
         if(!space.error) {
           ils.listFilesBySpaceId(space.id, function(list){
@@ -868,6 +953,8 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Vault
     listVaultNames: function(cb) {
+      counter_listVaultNames++;
+      console.log(counter_listVaultNames);
       var nameList = [];
       ils.listVault(function(resourceList) {
         if(!resourceList.error){
@@ -883,6 +970,8 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Configuration
     listConfigurationNames: function(cb) {
+      counter_listConfigurationNames++;
+      console.log(counter_listConfigurationNames);
       var nameList = [];
       ils.listConfiguration(function(resourceList) {
         if(!resourceList.error){
@@ -898,6 +987,8 @@ requirements: this library uses jquery
 
     // get a list of all resources in the Vault including all the metadata extracted from the actions
     listVaultExtended: function(cb) {
+      counter_listVaultExtended++;
+      console.log(counter_listVaultExtended);
       var error = {"error" : "No resource available in the Vault."};
       ils.getVault(function(vault) {
         osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function(resources) {
@@ -931,6 +1022,8 @@ requirements: this library uses jquery
 
     // log the action of adding a resource in the Vault
     logAction: function(userName, spaceId, resourceId, appId, appUrl, actionType, cb) {
+      counter_logAction++;
+      console.log(counter_logAction);
       var params = {
         "userId": "@viewer",
         "groupId": "@self",
@@ -985,6 +1078,8 @@ requirements: this library uses jquery
 
     // get the action of adding the resource in the Vault based on resourceId and vaultId
     getAction: function(vaultId, resourceId, cb) {
+      counter_getAction++;
+      console.log(counter_getAction);
       var error;
       var params = {
         contextId: vaultId,

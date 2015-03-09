@@ -414,19 +414,24 @@ requirements: this library uses jquery
     getAppContextParameters: function(cb) {
       counter_getAppContextParameters++;
       console.log("counter_getAppContextParameters " + counter_getAppContextParameters);
-      ils.getCurrentUser(function(viewer) {
-        osapi.people.get({userId: '@owner'}).execute(function(owner) {
-          ils.getApp(function (app) {
-            ils.getIls(function (space, subspace) {
-              ils.getVaultByIlsId( space.id, function (vault) {
-                ils.setContextParameters(viewer, owner, app, space, subspace, vault, function (){
-                  return cb(context);
+      if (context.actor.id != "unknown@undefined"  && context.generator.id != "undefined"
+          && context.provider.id != "undefined" && context.storageId != "undefined" ) {
+        return cb(context);
+      } else {
+        ils.getCurrentUser(function (viewer) {
+          osapi.people.get({userId: '@owner'}).execute(function (owner) {
+            ils.getApp(function (app) {
+              ils.getIls(function (space, subspace) {
+                ils.getVaultByIlsId(space.id, function (vault) {
+                  ils.setContextParameters(viewer, owner, app, space, subspace, vault, function () {
+                    return cb(context);
+                  });
                 });
               });
             });
           });
         });
-      });
+      }
     },
 
     setContextParameters: function (viewer, owner, app, space, subspace, vault, cb){

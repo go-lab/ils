@@ -1041,7 +1041,7 @@ requirements: this library uses jquery
     // get a list of all resources in the Vault (including all the metadata extracted from the actions) based on the VaultId
     listVaultExtendedById: function(vaultId, cb) {
       counter_listVaultExtendedById++;
-      console.log("counter_listVaultExtendedById " + counter_listVaultExtended);
+      console.log("counter_listVaultExtendedById " + counter_listVaultExtendedById);
       var error = {"error": "No resource available in the Vault."};
       if (vaultId && vaultId != "") {
         osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {

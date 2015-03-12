@@ -128,7 +128,7 @@ window.golab.ils.context.unknown = "unknown"
 class window.golab.ils.metadata.MetadataHandler
 
   constructor: (metadata, cb) ->
-    @_debug = false
+    @_debug = true
     if @_debug then console.log("Initializing MetadataHandler.")
     # the context might already be set through subclass-constructors. if not, do it now.
     @_context = @_context or @identifyContext()
@@ -235,8 +235,8 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
             else
               findUsername.resolve(userResult)
         else if @getContext() is window.golab.ils.context.graasp
-          osapi.people.getViewer().execute (viewer) ->
-            findUsername.resolve(viewer.displayName)
+          osapi.people.get({userId:'@viewer'}).execute (person) ->
+            findUsername.resolve(person.displayName)
         else
           findUsername.resolve("unknown")
 
@@ -327,6 +327,8 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
       catch error
        console.warn "error during metadata retrieval:"
        console.warn error
+       console.log "metadata so far:"
+       console.log metadata
     else
       if @_debug then console.log "Running outside osapi/ils, using given metadata."
       super metadata
@@ -381,8 +383,10 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
       window.document.title = "[#{userNickname}] #{windowTitle}"
 
     metadata.actor.displayName = userNickname
-    actorId = userNickname.toLowerCase()+"@"+metadata.provider.id
+    actorId = userNickname.toLowerCase() + "@" + metadata.provider.id
     metadata.actor.id = actorId
+
+    metadata.generator.id = metadata.generator.displayName + "@" + metadata.provider.url
 
     # set the metadata in the super-constructor
     # and return it via callback

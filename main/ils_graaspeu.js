@@ -109,6 +109,214 @@ requirements: this library uses jquery
       });
     },
 
+    // get the type of inquiry phase where the app is running in
+    getParentInquiryPhase: function(cb) {
+      var error;
+      this.getParent(function(parent) {
+        if (!parent.error) {
+          if (parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
+            return cb(parent.metadata.type);
+          } else {
+            error = {"error" : "The parent inquiry phase couldn't be obtained."}
+            return cb(error);
+          }
+        }else{
+          error = {
+            "error": "The parent inquiry phase couldn't be obtained.",
+            "log": parent.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the current ILS of the app
+    getIls: function(cb) {
+      var error;
+      osapi.context.get().execute(function(space) {
+        if (!space.error) {
+          osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
+            if (!parentSpace.error) {
+              //app at the ils level
+              if(parentSpace.spaceType === 'ils'){
+                return cb(parentSpace, parentSpace);
+              }else{
+                osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
+                  if (!parentIls.error) {
+                    //app at the phase level
+                    if (parentIls.spaceType === 'ils') {
+                      return cb(parentIls, parentSpace);
+                    } else {
+                      error = {"error" : "The app is not located in an ILS or in one of its phases."};
+                      return cb(error);
+                    }
+                  } else {
+                    error = {
+                      "error" : "The ils where the app is located is not available.",
+                      "log" : parentIls.error
+                    };
+                    return cb(error);
+                  }
+                });
+              }
+            } else {
+              error = {
+                "error" : "The space where the app is located is not available.",
+                "log" : parentSpace.error
+              };
+              return cb(error);
+
+            }
+          });
+        } else {
+          error = {
+            "error" : "The id of the space where the app is located is not available.",
+            "log" : space.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the Vault of the current ILS
+    getVault: function(cb) {
+      var error = {};
+      ils.getIls(function(parentIls) {
+        if (!parentIls.error) {
+          ils.getVaultByIlsId(parentIls.id, function(vault) {
+            if (vault){
+              return cb(vault);
+            }else {
+              error = {"error" : "There is no Vault available."};
+              return cb(error);
+            }
+          });
+        } else {
+          error = {
+            "error" : "The space is not available.",
+            "log" : parentIls.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the Vault of the current ILS
+    getVaultByIlsId: function(ilsId, cb) {
+      var error = {};
+      if(ilsId && ilsId != ""){
+        osapi.spaces.get({contextId: ilsId, contextType: "@space"}).execute(
+            function(items) {
+              var vault = _.find(items.list, function(item){
+                return item.spaceType && item.metadata && item.metadata.type === "Vault";
+              });
+              return cb(vault);
+            }
+        );
+      }else{
+        error = {"error" : "There ILS identifier cannot be empty. The Vault space could not be obtained"};
+        return cb(error);
+      }
+    },
+
+    // get the info of the current app
+    getApp: function(cb) {
+      osapi.apps.get({contextId: "@self"}).execute(function(response){
+        if (!response.error) {
+          return cb(response);
+        } else {
+          var error = {
+            "error": "The app couldn't be obtained.",
+            "log": response.error
+          };
+          return cb(error);
+        }
+      });
+    },
+
+    // get the current appId
+    getAppId: function(cb) {
+      ils.getApp(function(app) {
+        if (app.id) { //for os apps
+          return cb(app.id);
+        } else {
+          ils.getIls(function(space) {
+            if(space.id){ //for metawidget
+              return cb(space.id);
+            }else{
+              var error = {"error": "The appId couldn't be obtained. No Open Social App or metawidget was found."};
+              return cb(error);
+            }
+          });
+        }
+      });
+    },
+
+    // get the parameters that describe the context of the app (actor, generator, provider, target)
+    getAppContextParameters: function(cb) {
+      var context = {};
+      ils.getCurrentUser(function(viewer) {
+        osapi.people.get({userId: '@owner'}).execute(function(owner) {
+          var userName = "unknown";
+          var userId;
+          if (viewer && viewer != "" && !viewer.error) {
+            userName = viewer;
+            if (owner && owner.displayName && owner.displayName.toLowerCase() != viewer) {
+              userId = viewer + "@" + owner.id;
+            } else {
+              userId = owner.id;
+            }
+
+            context.actor = {
+              "objectType": "person",
+              "id": userId,
+              "displayName": userName
+            }
+
+            ils.getApp(function (app) {
+              if (app && app.id) {
+                context.generator = {
+                  "objectType": "application",
+                  "url": app.appUrl,
+                  "id": app.id,
+                  "displayName": app.displayName
+                }
+
+                ils.getIls(function (space, subspace) {
+                if (space && space.id) {
+                  context.provider = {
+                    "objectType": space.spaceType,
+                    "url": space.profileUrl,
+                    "id": space.id,
+                    "displayName": space.displayName
+                  }
+
+                  if (subspace && subspace.id && space.id != subspace.id) {
+                    context.provider.inquiryPhaseId = subspace.id;
+                    context.provider.inquiryPhaseName = subspace.displayName;
+                    if (subspace.metadata && subspace.metadata.type) {
+                      context.provider.inquiryPhase = subspace.metadata.type;
+                    }
+                  }
+
+                  ils.getVault(function (vault) {
+                    if (vault && vault.id) {
+                      context.target = {
+                        "storageId": vault.id,
+                        "storageType": vault.spaceType
+                      }
+                    }
+                    return cb(context);
+                  });
+                }
+              });
+            }
+          });
+        }
+        });
+      });
+    },
+
     // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
     deleteResource: function(resourceId, cb) {
       var error = {};
@@ -118,10 +326,10 @@ requirements: this library uses jquery
             ils.getCurrentUser(function (username) {
               osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
                 if (deleteResponse){
-                  if (deleteResponse.error) {
+                  if (!deleteResponse.error) {
                     ils.getApp(function (app) {
                       //log the action of adding this resource
-                      ils.logAction(username, vault, resourceId, app, "remove", function (logResponse) {
+                      ils.logAction(username, vault.id, resourceId, app, "remove", function (logResponse) {
                         if (!logResponse.error) {
                           return cb(true);
                         } else {
@@ -215,7 +423,7 @@ requirements: this library uses jquery
               // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
               ils.getAction(resource.parentId, resourceId, function(action) {
                 if(resource.metadata) {
-                  return cb(resource.metadata);
+                  return cb(JSON.parse(resource.metadata));
                 } else {
                   error = {"error": "The resource has no metadata."};
                   return cb(error);
@@ -273,13 +481,13 @@ requirements: this library uses jquery
     },
 
     // create a resource in the Vault, resourceName and content need to be passed
-    // resourceName should be in string format, content should be in JSON format
+    // resourceName should be in string format, metadata and content should be in JSON format
     createResource: function(resourceName, content, metadata, cb) {
       var error = {};
       if (resourceName != null && resourceName != undefined) {
         ils.getVault(function(vault) {
-          ils.listVaultNames(function(nameList){
-            if(nameList.indexOf(resourceName)==-1) {
+           ils.getUniqueName(resourceName, function(uniqueName){
+   //         if(nameList.indexOf(resourceName)==-1) {
               ils.getCurrentUser(function(username){
                 var creator = username;
                 if (username.error) {
@@ -290,7 +498,7 @@ requirements: this library uses jquery
                     "parentType": "@space",
                     "parentSpaceId": vault.id,
                     "mimeType": "txt",
-                    "fileName": resourceName,
+                    "fileName": uniqueName,
                     "content": JSON.stringify(content),
                     "metadata": metadata
                   }
@@ -300,7 +508,7 @@ requirements: this library uses jquery
                   if (resource && !resource.error && resource.id ) {
                     ils.getApp(function(app){
                       //log the action of adding this resource
-                      ils.logAction(creator, vault, resource.id, app, "add", function(response){
+                      ils.logAction(creator, vault.id, resource.id, app, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -321,10 +529,10 @@ requirements: this library uses jquery
                   }
                 });
               });
-            }else{
-              error = {"error" : "The resourceName already exists in the space."};
-              return cb(error);
-            }
+//            }else{
+//              error = {"error" : "The resourceName already exists in the space."};
+//              return cb(error);
+//            }
           });
         });
       } else {
@@ -332,6 +540,122 @@ requirements: this library uses jquery
         return cb(error);
       }
     },
+
+  // ensure unique filenames
+  getUniqueName: function(resourceName, cb) {
+    ils.listVaultNames(function(nameList){
+      if(nameList.indexOf(resourceName)==-1 && nameList.indexOf(resourceName+".txt")==-1) {
+        return cb(resourceName);
+      }else{
+        //The resourceName already exists in the space
+        ils.getCurrentUser(function (username) {
+          var timeStamp = new Date().getTime();
+          var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+          return cb(uniqueName);
+        });
+      }
+    });
+  },
+
+  createConfigurationSpace: function(vaultId, cb) {
+    osapi.spaces.create({contextId:vaultId, params:{"displayName": "Configuration"}}).execute(function(space){
+      return cb(space);
+    });
+  },
+
+    //Returns the Configuration Space based on the VaultId
+  getConfiguration: function(cb) {
+    var error = {};
+    ils.getVault(function(vault) {
+      if (!vault.error) {
+        osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
+          function (items) {
+            var configurationSpace = _.find(items.list, function (item) {
+              return item.spaceType && item.displayName === "Configuration";
+            });
+
+            if (configurationSpace) {
+              return cb(configurationSpace);
+            } else {
+              ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
+                return cb(newConfigurationSpace);
+              });
+            }
+          }
+        );
+      } else {
+        error = {
+          "error": "The Vault is not available.",
+          "log": vault.error
+        };
+        return cb(error);
+      }
+    });
+
+  },
+
+    // create a configuration file in the Vault, resourceName and content need to be passed
+    // resourceName should be in string format, content should be in JSON format
+  createConfigurationFile: function(resourceName, content, metadata, cb) {
+    var error = {};
+    if (resourceName != null && resourceName != undefined) {
+      ils.getConfiguration(function (space) {
+            ils.listConfigurationNames(function (nameList) {
+              if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
+                ils.getCurrentUser(function (username) {
+                  var creator = username;
+                  if (username.error) {
+                    creator = "unknown";
+                  }
+                  var params = {
+                    "document": {
+                      "parentType": "@space",
+                      "parentSpaceId": space.id,
+                      "mimeType": "txt",
+                      "fileName": resourceName,
+                      "content": JSON.stringify(content),
+                      "metadata": metadata
+                    }
+                  };
+
+                  osapi.documents.create(params).execute(function (resource) {
+                    if (resource && !resource.error && resource.id) {
+                      ils.getApp(function (app) {
+                      //log the action of adding this resource
+                        ils.logAction(creator, space.id, resource.id, app, "add", function (response) {
+                          if (!response.error) {
+                            return cb(resource);
+                          } else {
+                            error = {
+                              "error": "The resource creation couldn't be logged.",
+                              "log": response.error
+                            };
+                            return cb(error);
+                          }
+                        });
+                      });
+                    } else {
+                      error = {
+                        "error": "The resource couldn't be created.",
+                        "log": resource.error
+                      };
+                      return cb(error);
+                    }
+                  });
+                });
+              } else {
+                error = {"error": "The resourceName already exists in the space."};
+                return cb(error);
+              }
+            });
+          });
+
+    } else {
+      error = {"error" : "The resourceName cannot be empty. The resource couldn't be created."};
+      return cb(error);
+    }
+
+  },
 
   // updates a resource in the Vault, resourceId, content and metadata need to be passed
   // content should be in JSON format
@@ -373,7 +697,7 @@ requirements: this library uses jquery
                 ils.getApp(function(app){
                   //log the action of adding this resource
                   ils.getVault(function(vault) {
-                      ils.logAction(username, vault, resource.id, app, "add", function(response){
+                      ils.logAction(username, vault.id, resource.id, app, "add", function(response){
                         if (!response.error) {
                           return cb(resource);
                         }else{
@@ -410,20 +734,43 @@ requirements: this library uses jquery
     }
   },
 
+    // get a list of all resources in the Space
+    listFilesBySpaceId: function(spaceId, cb) {
+      var error = {"error" : "The spaceId cannot be empty."};
+      if (spaceId && spaceId != "") {
+        osapi.documents.get({contextId: spaceId, contextType: "@space"}).execute(function (resources) {
+          if (resources.list)
+            return cb(resources.list);
+          else
+            return cb(error);
+        });
+      }else{
+        return cb(space.error);
+      }
+    },
 
   // get a list of all resources in the Vault
     listVault: function(cb) {
-      var error = {"error" : "No resource available in the Vault."};
-      ils.getVault(function(vault) {
-        if(!vault.error) {
-          osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
-            if (resources.list)
-              return cb(resources.list);
-            else
-              return cb(error);
+      ils.getVault(function(space) {
+        if(!space.error) {
+          ils.listFilesBySpaceId(space.id, function(list){
+            return cb(list);
           });
         }else{
-          return cb(vault.error);
+          return cb(space.error);
+        }
+      });
+    },
+
+    // get a list of all resources in the Vault
+    listConfiguration: function(cb) {
+      ils.getConfiguration(function(space) {
+        if(!space.error) {
+          ils.listFilesBySpaceId(space.id, function(list){
+            return cb(list);
+          });
+        }else{
+          return cb(space.error);
         }
       });
     },
@@ -437,9 +784,24 @@ requirements: this library uses jquery
             nameList.push(resourceList[i].displayName);
           }
           return cb(nameList);
-      }else{
+        }else{
           return cb(resourceList.error);
-      }
+        }
+      });
+    },
+
+    // get a list of all resources in the Configuration
+    listConfigurationNames: function(cb) {
+      var nameList = [];
+      ils.listConfiguration(function(resourceList) {
+        if(!resourceList.error){
+          for (i = 0; i < resourceList.length; i++) {
+            nameList.push(resourceList[i].displayName);
+          }
+          return cb(nameList);
+        }else{
+          return cb(resourceList.error);
+        }
       });
     },
 
@@ -473,190 +835,61 @@ requirements: this library uses jquery
       });
     },
 
-    // get the current ILS of the app
-    getIls: function(cb) {
-      var error;
-      osapi.context.get().execute(function(space) {
-        if (!space.error) {
-          osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
-            if (!parentSpace.error) {
-              //app at the ils level
-              if(parentSpace.spaceType === 'ils'){
-                return cb(parentSpace, parentSpace);
-              }else{
-                osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls){
-                  if (!parentIls.error) {
-                    //app at the phase level
-                     if (parentIls.spaceType === 'ils') {
-                       return cb(parentIls, parentSpace);
-                     } else {
-                       error = {"error" : "The app is not located in an ILS or in one of its phases."};
-                       return cb(error);
-                     }
-                  } else {
-                    error = {
-                      "error" : "The ils where the app is located is not available.",
-                      "log" : parentIls.error
-                    };
-                    return cb(error);
-                  }
-                });
-              }
-            } else {
-              error = {
-                "error" : "The space where the app is located is not available.",
-                "log" : parentSpace.error
-              };
-              return cb(error);
-
-            }
-          });
-        } else {
-          error = {
-            "error" : "The id of the space where the app is located is not available.",
-            "log" : space.error
-          };
-          return cb(error);
-        }
-      });
-    },
 
 
-
-    // get the Vault of the current ILS
-    getVault: function(cb) {
-      var error = {};
-      ils.getIls(function(parentIls) {
-        if (!parentIls.error) {
-        osapi.spaces.get({contextId: parentIls.id, contextType: "@space"}).execute(
-          function(subspaces) {
-            if (subspaces.totalResults != 0) {
-              var item, vault;
-              vault = (function() {
-                var i, len, ref, results;
-                ref = subspaces.list;
-                results = [];
-                for (i = 0, len = ref.length; i < len; i++) {
-                  item = ref[i];
-                   if (item.hasOwnProperty("metadata") && item.metadata != undefined) {
-                    if (item.metadata.type === "Vault") {
-                      results.push(item);
-                  }
-                }
-              }
-              return results;
-            })();
-            return cb(vault[0]);
-          } else {
-            error = {"error" : "No subspaces in current ILS."};
-            return cb(error);
-          }
-        });
-      } else {
-        error = {
-          "error" : "The space is not available.",
-          "log" : parentIls.error
-        };
-        return cb(error);
-      }
-    });
-    },
-
-    // get the info of the current app
-    getApp: function(cb) {
-      osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error) {
-          return cb(response);
-        } else {
-          var error = {
-            "error": "The app couldn't be obtained.",
-            "log": response.error
-          };
-          return cb(error);
-        }
-      });
-    },
-
-    // get the current appId
-    getAppId: function(cb) {
-      var error;
-      osapi.apps.get({contextId: "@self"}).execute(function(response){
-        if (!response.error){
-          if (response.id) { //for os apps
-            return cb(response.id);
-          } else {
-            ils.getIls(function(space) {
-              if(space.id){ //for metawidget
-                return cb(space.id);
-              }else{
-                error = {"error": "The appId couldn't be obtained. No App or metawidget was found."};
-                return cb(error);
-              }
-            });
-          }
-        }else{
-            error = {
-              "error": "The appId couldn't be obtained.",
-              "log": response.error
-            };
-            return cb(error);
-        }
-      });
-    },
 
     // log the action of adding a resource in the Vault
-    logAction: function(userName, vault, resourceId, app, actionType, cb) {
+    logAction: function(userName, spaceId, resourceId, app, actionType, cb) {
       var params = {
         "userId": "@viewer",
         "groupId": "@self",
+        "published": new Date().toISOString(),
+        "verb": actionType,
         "activity": {
-        "verb": actionType
         }
       };
-      params.activity.actor = {
-        "id": userName + "@" + vault.parentId.toString(), //the id of the ILS
-        "objectType": "person",
-        "name": userName
-      };
       params.activity.object = {
-        "id": resourceId.toString(),
+        "id": resourceId,
         "objectType": "Asset",
         "graasp_object": "true"
       };
       params.activity.target = {
-        "id": vault.id.toString(),
+        "id": spaceId,
         "objectType": "Space",
         "graasp_object": "true"
       };
       params.activity.generator = {
-        "id": app.id.toString(),
+        "id": app.id,
         "objectType": "Widget",
         "url": app.appUrl,
         "graasp_object": "true"
       };
 
       ils.getIls(function(parentSpace) {
+        params.activity.actor = {
+          "id": userName + "@" + parentSpace.id,
+          "objectType": "person",
+          "name": userName
+        };
         params.activity.provider = {
           "objectType": "ils",
           "url": parentSpace.profileUrl,
-          "id": parentSpace.id.toString(),
+          "id": parentSpace.id,
           "displayName": parentSpace.displayName
         };
+
+        osapi.activitystreams.create(params).execute(function(response){
+          if (response.id && !response.error) {
+            return cb(response);
+          } else {
+            var error = {
+              "error": "The activity couldn't be logged.",
+              "log": response.error
+            };
+            return cb(error);
+          }
+        });
       });
-
-
-      osapi.activitystreams.create(params).execute(function(response){
-        if (!response.error) {
-          return cb(response);
-        } else {
-          var error = {
-            "error": "The activity couldn't be created.",
-            "log": response.error
-          };
-          return cb(error);
-        }
-      });
-
     },
 
     // get the action of adding the resource in the Vault based on resourceId and vaultId
@@ -684,27 +917,6 @@ requirements: this library uses jquery
           error = {
             "error": "The activity couldn't be obtained.",
             "log": response.error
-          };
-          return cb(error);
-        }
-      });
-    },
-
-  // get the type of inquiry phase where the app is running in
-    getParentInquiryPhase: function(cb) {
-      var error;
-      this.getParent(function(parent) {
-        if (!parent.error) {
-          if (parent.hasOwnProperty("metadata") && parent.metadata.hasOwnProperty("type")) {
-            return cb(parent.metadata.type);
-          } else {
-            error = {"error" : "The parent inquiry phase couldn't be obtained."}
-            return cb(error);
-          }
-        }else{
-          error = {
-            "error": "The parent inquiry phase couldn't be obtained.",
-            "log": parent.error
           };
           return cb(error);
         }

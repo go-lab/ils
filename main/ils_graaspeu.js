@@ -586,18 +586,15 @@
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
                     if (!resource.error) {
-                        ils.getIls(function (parentIls) {
-                            // get the associated activity of this resource
-                            // e.g. student mario has added a concept map via the app Concept Mapper in ILS 1000
-                            ils.getAction(resource.parentId, resourceId, function (action) {
-                                if (resource.metadata) {
-                                    return cb(JSON.parse(resource.metadata));
-                                } else {
-                                    error = {"error": "The resource has no metadata."};
-                                    return cb(error);
-                                }
-                            });
-                        });
+                        //TODO: those resources without metadada should be enriched based on the actions registered
+                        //ils.getAction(resource.parentId, resourceId, function (action) {
+                        if (resource.metadata) {
+                            return cb(JSON.parse(resource.metadata));
+                        } else {
+                            error = {"error": "The resource has no metadata."};
+                            return cb(error);
+                        }
+                        //});
                     } else {
                         error = {
                             "error": "The resource is not available.",

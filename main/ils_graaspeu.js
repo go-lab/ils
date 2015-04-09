@@ -958,7 +958,7 @@
                         return cb(error);
                 });
             } else {
-                return cb(space.error);
+                return cb(error);
             }
         },
 

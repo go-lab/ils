@@ -37,8 +37,6 @@
         },
 
         target: {
-            "storageId": "undefined",
-            "storageType": "undefined"
         },
 
         "storageId": "undefined",
@@ -455,8 +453,7 @@
                 context.provider = metadata.provider;
             }
 
-            if ((!metadata.storageId || !metadata.storageType || metadata.storageId.indexOf("undefined") > -1) &&
-                (!metadata.target.storageId || !metadata.target.storageType || metadata.target.storageId.indexOf("undefined") > -1)) {
+            if (!metadata.storageId || !metadata.storageType || metadata.storageId.indexOf("undefined") > -1) {
                 ils.getVault(function (vault) {
                     if (vault && vault.id) {
                         context.storageId = vault.id;
@@ -466,9 +463,6 @@
             } else {
                 context.storageId = metadata.storageId;
                 context.storageType = metadata.storageType;
-                //TODO to be removed once it' fixed in the metadata handler
-                context.target.storageId = metadata.storageId;
-                context.target.storageType = metadata.storageType;
             }
 
             return cb();
@@ -533,9 +527,6 @@
             if (vault && vault.id) {
                 context.storageId = vault.id;
                 context.storageType = vault.spaceType;
-                //TODO to be removed once the metadata handler is fixed
-                context.target.storageId = vault.id;
-                context.target.storageType = vault.spaceType;
             }
 
             return cb();

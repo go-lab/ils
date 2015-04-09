@@ -51,6 +51,9 @@
     //var counter_getParent = 0;
     //var counter_getParentInquiryPhase = 0;
     //var counter_getIls = 0;
+    //var counter_getItemsBySpaceId = 0;
+    //var counter_getSubspacesBySpaceId = 0;
+    //var counter_getAppsBySpaceId = 0;
     //var counter_getVault = 0;
     //var counter_getVaultByIlsId = 0;
     //var counter_getApp = 0;
@@ -249,6 +252,66 @@
                     error = {
                         "error": "The id of the space where the app is located is not available.",
                         "log": space.error
+                    };
+                    return cb(error);
+                }
+            });
+        },
+
+        // get the items of the spaceId
+        getItemsBySpaceId: function (spaceId, cb) {
+            //counter_getItemsBySpaceId++;
+            //console.log("counter_getItemsBySpaceId " + counter_getItemsBySpaceId);
+            var error;
+            osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function(items){
+                if (!items.error && items.list){
+                    return cb(items.list);
+                }else{
+                    error = {
+                        "error": "The list of items could not be obtained.",
+                        "log": items.error
+                    };
+                    return cb(error);
+                }
+            });
+        },
+
+        // get the subspaces of the spaceId
+        getSubspacesBySpaceId: function (spaceId, cb) {
+            //counter_getSubspacesBySpaceId++;
+            //console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
+            var error;
+            ils.getItemsBySpaceId(spaceId, function(items){
+                if (!items.error){
+                    var subspaces = _.filter(items, function (item) {
+                        return item.spaceType;
+                    });
+                    return cb(subspaces);
+                }else{
+                    error = {
+                        "error": "The list of spaces could not be obtained.",
+                        "log": items.error
+                    };
+                    return cb(error);
+                }
+            });
+        },
+
+        // get the apps of the spaceId
+        getAppsBySpaceId: function (spaceId, cb) {
+            //counter_getAppsBySpaceId++;
+            //console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
+            var error;
+            ils.getItemsBySpaceId(spaceId, function(items){
+                if (!items.error){
+                    var apps = _.filter(items, function (item) {
+                        return item.itemType && item.itemType === "Application";
+                    });
+                    return cb(apps);
+                }else{
+                    error = {
+                        "error": "The list of apps could not be obtained.",
+                        "log": items.error
                     };
                     return cb(error);
                 }

@@ -126,7 +126,6 @@ window.golab.ils.context.standalone = "standalone"
 window.golab.ils.context.unknown = "unknown"
 
 class window.golab.ils.metadata.MetadataHandler
-
   constructor: (metadata, cb) ->
     @_debug = true
     if @_debug then console.log("Initializing MetadataHandler.")
@@ -148,28 +147,49 @@ class window.golab.ils.metadata.MetadataHandler
     @
 
   identifyContext: () =>
-    if @_debug
-      console.log "MetadataHandler.identifyContext. document.referrer:"
-      console.log document.referrer
-    if not osapi?
-      @_context = window.golab.ils.context.standalone
-    else if document.referrer.indexOf("golabz.eu") isnt -1
-      @_context = window.golab.ils.context.preview
-    #else if document.referrer.indexOf("ils_metawidget") isnt -1
-    else if document.referrer.indexOf("ils") isnt -1
-      @_context = window.golab.ils.context.ils
-    else if document.referrer.indexOf("graasp.eu") isnt -1
-      @_context = window.golab.ils.context.graasp
-    else if document.referrer is ""
-      @_context = window.golab.ils.context.direct
-    else
-      @_context = window.golab.ils.context.unknown
+    @_context = null
+    contextURLParameter = getParameterFromUrl("context")
+    if (contextURLParameter)
+      switch contextURLParameter.toLowerCase()
+        when window.golab.ils.context.graasp, window.golab.ils.context.ils, window.golab.ils.context.preview, window.golab.ils.context.direct, window.golab.ils.context.standalone, window.golab.ils.context.unknown
+          @_context = contextURLParameter.toLowerCase()
+        else
+          console.warn("unknown url context parameter value: #{contextURLParameter}")
+    if (!@_context)
+      if @_debug
+        console.log "MetadataHandler.identifyContext. document.referrer:"
+        console.log document.referrer
+      if not osapi?
+        @_context = window.golab.ils.context.standalone
+      else if document.referrer.indexOf("golabz.eu") isnt -1
+        @_context = window.golab.ils.context.preview
+        #else if document.referrer.indexOf("ils_metawidget") isnt -1
+      else if document.referrer.indexOf("ils") isnt -1
+        @_context = window.golab.ils.context.ils
+      else if document.referrer.indexOf("graasp.eu") isnt -1
+        @_context = window.golab.ils.context.graasp
+      else if document.referrer is ""
+        @_context = window.golab.ils.context.direct
+      else
+        @_context = window.golab.ils.context.unknown
     if @_debug
       console.log "identified context:"
       console.log @_context
 
   getContext: () =>
     @_context
+
+  getParameterFromUrl = (key) ->
+    key = key.toLowerCase()
+    parameter = null
+    queryPart = location.search.trim().toLowerCase()
+    if (queryPart && queryPart[0] == "?")
+      parts = queryPart.substring(1).split("&")
+      for part in parts
+        partParts = part.split("=")
+        if (partParts.length == 2 && partParts[0] == key)
+          parameter = partParts[1]
+    parameter
 
   setId: (newId) ->
     @_metadata.id = newId
@@ -225,6 +245,79 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
           throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library)."
         if not ils
           throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
+        ils.getAppContextParameters (context) =>
+          console.log "received appContextParameters from ILS library:"
+          console.log context
+          # ----- information about the user
+          metadata.actor.displayName = context.actor.displayName
+          metadata.actor.id = context.actor.id
+          metadata.actor.objectType = context.actor.objectType
+          # ------ information about the ILS and phase
+          metadata.provider.displayName = context.provider.displayName
+          metadata.provider.id = context.provider.id
+          metadata.provider.objectType = context.provider.objectType
+          metadata.provider.inquiryPhase = context.provider.inquiryPhase
+          metadata.provider.inquiryPhaseId = context.provider.inquiryPhaseId
+          metadata.provider.inquiryPhaseName = context.provider.inquiryPhaseName
+          metadata.provider.url = context.provider.url
+          # ------ information about the tool (in case of ILS metawidget, tool = provider
+          # metadata.generator.displayName is given through the metadata in the constructor paramter
+          if context.provider.id is undefined or context.provider.id is "unknown"
+            # golabz preview context
+            console.log "MetadataHandler: preview context"
+            metadata.provider.objectType = "unknown"
+            metadata.provider.id = "unknown"
+            metadata.provider.displayName = "unknown"
+            metadata.provider.url = window.location.href
+            metadata.generator.url = gadgets.util.getUrlParameters().url
+            metadata.provider.inquiryPhase = undefined
+            metadata.provider.inquiryPhaseId = undefined
+            metadata.provider.inquiryPhaseName = undefined
+          else if context.provider.inquiryPhaseId is undefined or context.provider.inquiryPhaseId is "unknown"
+            # ILS metawidget context
+            console.log "MetadataHandler: ILS metawidget context"
+            metadata.provider.inquiryPhase = "ils"
+            metadata.provider.inquiryPhaseId = undefined
+            metadata.provider.inquiryPhaseName = undefined
+            metadata.generator.displayName = metadata.provider.displayName
+            metadata.generator.id = metadata.provider.id
+            metadata.generator.objectType = "ils"
+            metadata.generator.url = metadata.provider.url
+          else
+            console.log "MetadataHandler: application context"
+            metadata.generator.id = context.generator.id
+            metadata.generator.objectType = context.generator.objectType
+            metadata.generator.url = context.generator.url
+          # ------ information about the content and storage
+          # metadata.target.id, displayName, objectType are given through constructor paramter
+          metadata.storageId = context.storageId
+          metadata.storageType = context.storageType
+          # metadata generation finished, call super and trigger callback
+          super metadata
+          cb(null, @)
+      catch error
+        console.warn "error during metadata retrieval:"
+        console.warn error
+        console.log "metadata so far:"
+        console.log metadata
+    else
+      if @_debug then console.log "Running outside osapi/ils, using given metadata."
+      super metadata
+      cb(null, @)
+
+  old_constructor: (metadata, cb) ->
+    @identifyContext()
+    if osapi?
+      # we in an OpenSocial context, try to get information from there...
+      try
+        if not $.cookie
+          throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library)."
+        if not ils
+          throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
+
+        ils.getAppContextParameters (context) ->
+          console.log "received appContextParameters from ILS library:"
+          console.log context
 
         findUsername = $.Deferred()
         if @getContext() is window.golab.ils.context.ils
@@ -299,7 +392,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                 metadata.provider.url = ilsSpace.profileUrl
                 if phaseSpace? and phaseSpace.spaceType is "folder"
                   # we have the new graasp and are in a phase space
-                  if @_debug then console.log "MetadataHandler: new Graasp, phase space."
+                  console.log "MetadataHandler: new Graasp, phase space."
                   metadata.generator.url = gadgets.util.getUrlParameters().url
                   metadata.provider.inquiryPhaseId = phaseSpace.id
                   metadata.provider.inquiryPhaseName = phaseSpace.displayName
@@ -309,7 +402,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
                     metadata.provider.inquiryPhase = "unknown"
                 else
                   # we have the new graasp and are in an ILS space
-                  if @_debug then console.log "MetadataHandler: new Graasp, ILS space."
+                  console.log "MetadataHandler: new Graasp, ILS space."
                   metadata.provider.inquiryPhase = "ils"
                   # in an ILS space, generator, and target share the provider properties
                   metadata.generator = {}
@@ -322,6 +415,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
 
               actorId = metadata.actor.displayName+"@"+metadata.provider.id
               metadata.actor.id = actorId
+
               super metadata
               cb(null, @)
       catch error
@@ -333,7 +427,6 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
       if @_debug then console.log "Running outside osapi/ils, using given metadata."
       super metadata
       cb(null, @)
-
 
 class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 

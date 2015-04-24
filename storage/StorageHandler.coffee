@@ -5,14 +5,21 @@ window.golab.ils = window.golab.ils || {}
 window.golab.ils.storage = window.golab.ils.storage || {}
 window.golab.ils.storage.memory = window.golab.ils.storage.memory || {}
 
+dummy = {
+  metadata: {}
+  support: {}
+}
+
 ###
   Superclass for all storage handlers.
   A resource has the structure { id, content: {}, metadata: {} }.
 ###
 class window.golab.ils.storage.StorageHandler
 
-  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = false, @_customFilter = null, @_filterForAppId = false) ->
+  constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = true, @_customFilter = null, @_filterForAppId = true) ->
+    @className = "golab.ils.storage.StorageHandler"
     @_debug = false
+#    @_debug = true
     if @_debug then console.log "Initializing StorageHandler."
     @_lastResourceId = undefined
     try
@@ -20,6 +27,9 @@ class window.golab.ils.storage.StorageHandler
       @metadataHandler = metadataHandler
     catch error
       throw "StorageHandler needs a MetadataHandler at construction!"
+
+  getDebugLabel: ->
+    "#{@className}(#{@metadataHandler.getTarget().objectType})"
 
   generateUUID: () ->
     d = new Date().getTime()
@@ -37,11 +47,35 @@ class window.golab.ils.storage.StorageHandler
   # e.g. the default setting
   # configureFilters(true, true, true)
   # returns only resources that match the resource type, provider id and users id
-  configureFilters: (filterForResourceType, filterForUser, filterForProvider, filterForAppId = false) ->
+  configureFilters: (filterForResourceType, filterForUser, filterForProvider, filterForAppId = true) ->
     @_filterForResourceType = filterForResourceType
     @_filterForUser = filterForUser
     @_filterForProvider = filterForProvider
     @_filterForAppId = filterForAppId
+
+  setForResourceTypeFilter: (filterForResourceType)->
+    @_filterForResourceType = filterForResourceType
+
+  getForResourceTypeFilter: ()->
+    @_filterForResourceType
+
+  setForUserFilter: (filterForUser)->
+    @_filterForUser = filterForUser
+
+  getForUserFilter: ()->
+    @_filterForUser
+
+  setForProviderFilter: (filterForProvider)->
+    @_filterForProvider = filterForProvider
+
+  getForProviderFilter: ()->
+    @_filterForProvider
+
+  setForAppIdFilter: (filterForAppId)->
+    @_filterForAppId = filterForAppId
+
+  getAppIdFilter: ()->
+    @_filterForAppId
 
   setCustomFilter: (customFilter)->
     @_customFilter = customFilter
@@ -55,21 +89,35 @@ class window.golab.ils.storage.StorageHandler
   # bundles and returns the most important/interesting features of a resource (for load/save dialogs)
   # for convenience only
   getResourceDescription: (resource)->
-    {
-    id: resource.metadata.id
-    title: resource.metadata.target.displayName
-    type: resource.metadata.target.objectType
-    tool: resource.metadata.generator.displayName
-    author: resource.metadata.actor.displayName
-    modified: new Date(resource.metadata.published)
-    }
+    errorAnswer = (noLabel) ->
+      errorMessage = "unknown, no #{noLabel}"
+      {
+        id: errorMessage
+        title: errorMessage
+        type: errorMessage
+        tool: errorMessage
+        author: errorMessage
+        modified: errorMessage
+      }
+    if (!resource)
+      errorAnswer("resource")
+    else if (!resource.metadata)
+      errorAnswer("metadata")
+    else
+      {
+      id: resource.metadata.id
+      title: resource.metadata.target.displayName
+      type: resource.metadata.target.objectType
+      tool: resource.metadata.generator.displayName
+      author: resource.metadata.actor.displayName
+      modified: new Date(resource.metadata.published)
+      }
 
   # internal function, typically not used external
   applyFilters: (metadatas) =>
     if @_debug
       console.log "StorageHandler.applyFilters:"
-      console.log "filter for type, user, provider:"
-      console.log @_filterForResourceType, @_filterForUser, @_filterForProvider
+      console.log "filter for type: #{@_filterForResourceType}, user: #{@_filterForUser}, appId: #{@_filterForAppId}, provider: #{@_filterForProvider}"
       console.log metadatas
     # it's important to filter provider before user, since the userId contains the providerId, and therefore we then filter for user displayName
     if @_filterForResourceType
@@ -98,6 +146,21 @@ class window.golab.ils.storage.StorageHandler
       metadata: metadata,
       content: thisContent
     }
+
+  _findLatestResourceId: (objectType, metadatas) ->
+    latestDate = new Date(1970,0,1)
+    latestId = undefined
+    for entry in metadatas
+      if objectType? and objectType isnt entry.metadata.target.objectType
+        # skip entry if an objectType is give, but it doesn't match
+        continue
+      if entry.metadata.published?
+        # search for the latest date
+        date = new Date(entry.metadata.published)
+        if date > latestDate
+          latestDate = date
+          latestId = entry.metadata.id
+    latestId
 
   readLatestResource: (objectType, cb) =>
     if @_debug then console.log "StorageHandler: searching for latest resource of type '#{objectType}'"
@@ -188,6 +251,16 @@ class window.golab.ils.storage.StorageHandler
   listResourceMetaDatas: (cb) ->
     throw "Abstract function listResourceMetaDatas - implement in subclass."
 
+  ###
+    This is an optional call, which is needed if you want to use the CachingStorageHandler.
+    Calls back with all (relevant) resources to cache at the client side.
+    This means all resources for the current user for all tools.
+    If desired, the content part of the resources can be skipped.
+    Takes a callback with (err, metadatas), where metadatas is an Array of
+    { id, metadata: {} } objects. err is null or contains the error if any error
+    occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
+  ###
+#  listAllResourcesForCaching: (cb)->
 
 ###
   Implementation of an object storage handler
@@ -283,20 +356,22 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
 class window.golab.ils.storage.MemoryStorageHandler extends window.golab.ils.storage.ObjectStorageHandler
   constructor: (metadataHandler)->
     super(metadataHandler, {})
+    @className = "golab.ils.storage.MemoryStorageHandler"
     if @_debug then console.log "Initializing MemoryStorageHandler, debug: #{@_debug}."
     @
 
 ###
   Implementation of a local (browser) storage handler.
 ###
-if false
-  # let intellij know that localStorage does exits
-  localStorage = localStorage || {}
+#if false
+#  # let intellij know that localStorage does exits
+#  localStorage = localStorage || {}
 
 goLabLocalStorageKey = "_goLab_"
 class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler) ->
     super
+    @className = "golab.ils.storage.LocalStorageHandler"
     if @_debug then console.log "Initializing LocalStorageHandler."
     @localStorage = window.localStorage
     @
@@ -328,7 +403,7 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       , 0)
     else
       setTimeout(->
-        cb "Can't delete resource - doesn't exist."
+        cb new Error "Can't delete resource - doesn't exist."
       , 0)
 
   createResource: (content, cb) =>
@@ -395,12 +470,25 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       cb(null, metadatas)
     , 0)
 
+  listAllResourcesForCaching: (cb) =>
+    metadatas = []
+    for id, resourceString of @localStorage when @isGoLabKey(id)
+      resource = JSON.parse(resourceString)
+      metadatas.push {
+        id: resource.metadata.id
+        metadata: resource.metadata
+      }
+    setTimeout(->
+      cb(null, metadatas)
+    , 0)
+
 ###
   Implementation of a Vault (Graasp/ILS) storage handler.
 ###
 class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler) ->
     super
+    @className = "golab.ils.storage.VaultStorageHandler"
     if @_debug then console.log "Initializing VaultStorageHandler."
     if not ils?
       throw "The ILS library needs to be present for the VaultStorageHandler"
@@ -519,13 +607,13 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
   listResourceIds: (cb) ->
     throw "Not yet implemented."
 
-  listResourceMetaDatas: (cb) ->
+  _listResourceMetaDatas: (forCaching, cb) ->
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
     try
-      ils.listVaultExtended (result) =>
-        if @_debug? then console.log "ils.listVaultExtended returns:"
+      ils.listVaultExtendedById @metadataHandler.getMetadata().storageId, (result) =>
+        if @_debug? then console.log "ils.listVaultExtendedById returns:"
         if @_debug? then console.log result
         if result.error?
           if result.error is "No resource available in the Vault."
@@ -538,21 +626,31 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
             # do a quick sanity check:
             try
               item = {}
-              item.id = resource.id
-              item.metadata = JSON.parse(resource.metadata)
-              if item.metadata? and item.metadata.target?
-                # to prevent potential inconsistencies:
-                item.metadata.id = resource.id
-                returnedMetadatas.push item
+              if (resource.metadata)
+                item.id = resource.id
+                item.metadata = JSON.parse(resource.metadata)
+                if item.metadata? and item.metadata.target?
+                  # to prevent potential inconsistencies:
+                  item.metadata.id = resource.id
+                  if (forCaching && resource.content)
+                    item.content = JSON.parse(resource.content)
+                  returnedMetadatas.push item
             catch error
               console.log "caught an error when parsing metadata from Vault"
               console.log error
-          returnedMetadatas = @applyFilters(returnedMetadatas)
+          if (!forCaching)
+            returnedMetadatas = @applyFilters(returnedMetadatas)
           cb null, returnedMetadatas
     catch error
       console.warn "Something went wrong when trying to list the resources in the vault:"
       console.warn error
       cb error
+
+  listResourceMetaDatas: (cb) ->
+    @_listResourceMetaDatas(false, cb)
+
+  listAllResourcesForCaching: (cb) ->
+    @_listResourceMetaDatas(true, cb)
 
 ###
   Implementation of a MongoDB storage handler.
@@ -560,6 +658,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
 class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @urlPrefix) ->
     super metadataHandler, true, true, true
+    @className = "golab.ils.storage.MongoStorageHandler"
     if @urlPrefix?
       if @_debug then console.log "Initializing MongoStorageHandler."
       @
@@ -728,6 +827,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
 class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @urlPrefix) ->
     super metadataHandler, true, true, true
+    @className = "golab.ils.storage.MongoIISStorageHandler"
     if @urlPrefix?
       if @_debug then console.log "Initializing MongoStorageHandler."
       @
@@ -795,15 +895,9 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.error error
       cb error
 
-  listResourceMetaDatas: (cb) =>
+  _listResourceMetaDatas: (filterString, applyLocalFilters, cb) =>
     try
       urlString = "/listMetadatas.js"
-      filterString = ""
-      if @_filterForProvider then filterString = "providerId=#{@metadataHandler.getProvider().id}"
-      if @_filterForUser
-        if filterString?
-          filterString = filterString+"&"
-        filterString = filterString + "actorId=#{@metadataHandler.getActor().id}"
       if filterString?
         urlString = urlString + "?" + filterString
       $.ajax({
@@ -815,7 +909,10 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
           if @_debug
             console.log("GET listResourceMetaDatas success, response (before filters):")
             console.log responseData
-          metadatas = @applyFilters(responseData)
+          metadatas = if (applyLocalFilters)
+            @applyFilters(responseData)
+          else
+            responseData
           cb undefined, metadatas
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET listResourceMetaDatas failed, response:"
@@ -826,6 +923,20 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.warn "Something went wrong when retrieving the metedatas:"
       console.warn error
       cb error
+
+  listResourceMetaDatas: (cb) =>
+    filterString = ""
+    if @_filterForProvider then filterString = "providerId=#{@metadataHandler.getProvider().id}"
+    if @_filterForUser
+      if filterString?
+        filterString = filterString+"&"
+      filterString = filterString + "actorId=#{@metadataHandler.getActor().id}"
+    @_listResourceMetaDatas(filterString, true, cb)
+
+  listAllResourcesForCaching: (cb) =>
+    filterString = ""
+    if @_filterForProvider then filterString = "providerId=#{@metadataHandler.getProvider().id}"
+    @_listResourceMetaDatas(filterString, false, cb)
 
   readResource: (resourceId, cb) ->
     try
@@ -892,3 +1003,202 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.warn "Something went wrong when retrieving the resource:"
       console.warn error
       cb error
+
+window.golab.ils.storage.utils = window.golab.ils.storage.utils || {}
+
+class ErrorHandler
+  constructor: (@errors, @languageHandler, @logError)->
+
+  reportError: (displayMessage, consoleMessage)->
+    if (!consoleMessage)
+      consoleMessage = displayMessage
+    if (@logError)
+      console.error(consoleMessage)
+    @errors.push({
+      display: displayMessage
+      message: consoleMessage
+    })
+
+  reportErrorKey: (key, parameters...)->
+    errorMessage = if (@languageHandler)
+      @languageHandler.getMessage(key, parameters...)
+    else
+      key
+    @reportError(errorMessage)
+
+
+window.golab.ils.storage.utils.validateResourceJson = (resourceJson, languageHandler = null, logErrors = true, errors = [])->
+  errorHandler = new ErrorHandler(errors, languageHandler, logErrors)
+  if (typeof resourceJson != "object")
+    errorHandler.reportErrorKey("resourceJson.failure.noObject")
+  if (!resourceJson.metadata)
+    errorHandler.reportErrorKey("resourceJson.failure.noMetadata")
+  if (!resourceJson.content)
+    errorHandler.reportErrorKey("resourceJson.failure.noContent")
+  errors
+
+window.golab.ils.storage.utils.validateResourceJsonArray = (resourceJsonArray, languageHandler = null, logErrors = true, errors = [])->
+  errorHandler = new ErrorHandler(errors, languageHandler, logErrors)
+  if (!Array.isArray(resourceJsonArray))
+    errorHandler.reportErrorKey("resourceJson.failure.noArray")
+  else
+    for resourceJson in resourceJsonArray
+      window.golab.ils.storage.utils.validateResourceJson(resourceJson, languageHandler, logErrors, errors)
+  errors
+
+window.golab.ils.storage.utils.importResourceJson = (storageHandler, resourceJson, languageHandler, callback)->
+  originalMetadataString = JSON.stringify(storageHandler.getMetadataHandler().getMetadata())
+  resourceTitle = ""
+  if (resourceJson && resourceJson.metadata.target && resourceJson.metadata.target.displayName)
+    resourceTitle = resourceJson.metadata.target.displayName
+  storageHandler.getMetadataHandler().setMetadata(resourceJson.metadata)
+  try
+    storageHandler.createResource(resourceJson.content, (error, resource)->
+      try
+        storageHandler.getMetadataHandler().setMetadata(JSON.parse(originalMetadataString))
+        if (error)
+          callback({
+            display: languageHandler.getMessage("resourceImport.failure.createResource", resourceTitle, error),
+            message: "Failed to create resource (name=#{resourceTitle}): #{JSON.stringify(error)}"
+          })
+        else
+          callback(null, resource.metadata.id)
+      catch unexpectedError
+        callback({
+          display: languageHandler.getMessage("resourceImport.failure.createResource.inCallback.unexpected", resourceTitle, unexpectedError),
+          message: "Unexpected error in callback of create resource (name=#{resourceTitle}): #{JSON.stringify(unexpectedError)}"
+        })
+    )
+  catch error
+    storageHandler.getMetadataHandler().setMetadata(JSON.parse(originalMetadataString))
+    callback({
+      display:languageHandler.getMessage("resourceImport.failure.createResource.unexpected", resourceTitle, error),
+      message: "Unexpected error during resource import (name=#{resourceTitle}): #{JSON.stringify(error)}"
+    })
+
+window.golab.ils.storage.utils.importResourceJsonArray = (storageHandler, resourceJsonArray, overwrite, languageHandler, callback)->
+  errors = []
+  loadedResourceIds = []
+  allTargetIds = {}
+  getTargetId = (resourceJson)->
+    if (resourceJson.metadata.target && resourceJson.metadata.target.id)
+      resourceJson.metadata.target.id
+    else
+      null
+
+  setAllTargetIds = (allMetadatas) ->
+    for metadata in allMetadatas
+      targetId = getTargetId(metadata)
+      if (targetId)
+        allTargetIds[targetId] = metadata
+
+  getExistingResourceMetadata = (resourceJson)->
+    targetId = getTargetId(resourceJson)
+    if (targetId)
+      allTargetIds[targetId]
+    else
+      null
+
+  jsonArray = resourceJsonArray
+  finishedLoading = ->
+    callback(errors, loadedResourceIds)
+
+  importNextResource = ->
+    if (jsonArray.length)
+      resourceJson = jsonArray.pop()
+      existingResourceMetadata = getExistingResourceMetadata(resourceJson)
+      if (!existingResourceMetadata || overwrite)
+        importResource = ->
+          window.golab.ils.storage.utils.importResourceJson(storageHandler, resourceJson, languageHandler, (error, resourceId)->
+            if (error)
+              errors.push(error)
+            else
+              loadedResourceIds.push(resourceId)
+            importNextResource()
+          )
+        if (existingResourceMetadata)
+          storageHandler.deleteResource(existingResourceMetadata.metadata.id, (error)->
+            if (error)
+              resourceTitle = ""
+              if (resourceJson && resourceJson.metadata.target && resourceJson.metadata.target.displayName)
+                resourceTitle = resourceJson.metadata.target.displayName
+              errors.push({
+                display: languageHandler.getMessage("resourceImport.failure.deleteResource", resourceTitle, error),
+                message: "Failed to delete resource (name=#{resourceTitle}): #{JSON.stringify(error)}"
+              })
+              importNextResource()
+            else
+              importResource()
+          )
+        else
+          importResource()
+      else
+        importNextResource()
+    else
+      finishedLoading()
+
+  currentForResourceTypeFilter = storageHandler.getForResourceTypeFilter()
+  storageHandler.setForResourceTypeFilter(false)
+  try
+    storageHandler.listResourceMetaDatas((error, metadatas)->
+      storageHandler.setForResourceTypeFilter(currentForResourceTypeFilter)
+      if (error)
+        errors.push({
+          display:languageHandler.getMessage("resourceImport.failure.listResourceMetaDatas", error),
+          message: "Failed to load list of resource metadatas: #{JSON.stringify(error)}"
+        })
+        finishedLoading()
+      else
+        setAllTargetIds(metadatas)
+        importNextResource()
+    )
+  catch exception
+    storageHandler.setForResourceTypeFilter(currentForResourceTypeFilter)
+    errors.push({
+      display:languageHandler.getMessage("resourceImport.failure.listResourceMetaDatas.unexpected", exception),
+      message: "Unexpected error during load list of resource metadatas: #{JSON.stringify(exception)}"
+    })
+    finishedLoading()
+
+window.golab.ils.storage.utils.importFromUrl = (storageHandler, url, overwrite, languageHandler, callback) ->
+  try
+    $.ajax({
+      async: true
+      type: "GET",
+      url: url,
+      crossDomain: true,
+      success: (responseData, textStatus, jqXHR) ->
+        resourceJsonArray = responseData
+        validationsErrors = window.golab.ils.storage.utils.validateResourceJsonArray(resourceJsonArray, languageHandler)
+        if (validationsErrors.length==0)
+          window.golab.ils.storage.utils.importResourceJsonArray(storageHandler, resourceJsonArray, overwrite, languageHandler, callback)
+        else
+          callback(validationsErrors, [])
+      error: (responseData, textStatus, errorThrown) ->
+        callback([{
+          display: languageHandler.getMessage("resourceImport.failure.loadJson", url, errorThrown),
+          message: "Failed to load json from #{url}: #{JSON.stringify(errorThrown)}"
+        }])
+    })
+  catch error
+    callback([{
+      display: languageHandler.getMessage("resourceImport.failure.loadJson.unexpected", url, error),
+      message: "Unexpected error during load json from #{url}: #{JSON.stringify(error)}"
+    }])
+
+window.golab.ils.storage.utils.simpleImportFromUrl = (storageHandler, url, overwrite, languageHandler, callback) ->
+  window.golab.ils.storage.utils.importFromUrl(storageHandler, url, overwrite, languageHandler, (errors, loadedResourceIds)->
+    for error in errors
+      console.error(error.message)
+    if (loadedResourceIds)
+      console.log("loaded #{loadedResourceIds.length} resources")
+    callback()
+  )
+
+window.golab.ils.storage.utils.loadPreviewResources = (metadataHandler, storageHandler, languageHandler, previewResourcesUrl,
+                                                       callback, loadResources = true)->
+  if (loadResources && metadataHandler.getContext() == window.golab.ils.context.preview)
+    window.golab.ils.storage.utils.simpleImportFromUrl(storageHandler, previewResourcesUrl, false, languageHandler,
+      callback)
+  else
+    callback()

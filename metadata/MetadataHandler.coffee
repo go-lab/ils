@@ -233,6 +233,14 @@ class window.golab.ils.metadata.MetadataHandler
   setTargetId: (newId) ->
     @_metadata.target.id = newId
 
+  setMetadataFlag: (flag, value)->
+    @_metadata.flags = @_metadata.flags || {}
+    @_metadata.flags[flag] = value
+
+  getMetadataFlag: (flag) ->
+    @_metadata.flags = @_metadata.flags || {}
+    @_metadata.flags[flag]
+
 
 class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.metadata.MetadataHandler
 
@@ -479,7 +487,18 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
     actorId = userNickname.toLowerCase() + "@" + metadata.provider.id
     metadata.actor.id = actorId
 
-    metadata.generator.id = metadata.generator.displayName + "@" + metadata.provider.url
+    removeQueryAndFragmentFromUrl = (url) ->
+      urlString = "#{url}"
+      removePart = (character)->
+        lastIndex = urlString.lastIndexOf(character)
+        if (lastIndex>=0)
+          urlString = urlString.substr(0, lastIndex)
+
+      removePart("?")
+      removePart("#")
+      urlString
+
+    metadata.generator.id = metadata.generator.displayName + "@" + removeQueryAndFragmentFromUrl(metadata.provider.url)
 
     # set the metadata in the super-constructor
     # and return it via callback

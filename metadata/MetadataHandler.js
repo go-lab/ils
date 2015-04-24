@@ -283,6 +283,16 @@ phase:
       return this._metadata.target.id = newId;
     };
 
+    MetadataHandler.prototype.setMetadataFlag = function(flag, value) {
+      this._metadata.flags = this._metadata.flags || {};
+      return this._metadata.flags[flag] = value;
+    };
+
+    MetadataHandler.prototype.getMetadataFlag = function(flag) {
+      this._metadata.flags = this._metadata.flags || {};
+      return this._metadata.flags[flag];
+    };
+
     return MetadataHandler;
 
   })();
@@ -512,7 +522,7 @@ phase:
     __extends(LocalMetadataHandler, _super);
 
     function LocalMetadataHandler(metadata, cb) {
-      var actorId, getIdentifyingUrl, userNickname, windowTitle;
+      var actorId, getIdentifyingUrl, removeQueryAndFragmentFromUrl, userNickname, windowTitle;
       this.identifyContext();
       getIdentifyingUrl = function() {
         var path, subPaths;
@@ -566,7 +576,21 @@ phase:
       metadata.actor.displayName = userNickname;
       actorId = userNickname.toLowerCase() + "@" + metadata.provider.id;
       metadata.actor.id = actorId;
-      metadata.generator.id = metadata.generator.displayName + "@" + metadata.provider.url;
+      removeQueryAndFragmentFromUrl = function(url) {
+        var removePart, urlString;
+        urlString = "" + url;
+        removePart = function(character) {
+          var lastIndex;
+          lastIndex = urlString.lastIndexOf(character);
+          if (lastIndex >= 0) {
+            return urlString = urlString.substr(0, lastIndex);
+          }
+        };
+        removePart("?");
+        removePart("#");
+        return urlString;
+      };
+      metadata.generator.id = metadata.generator.displayName + "@" + removeQueryAndFragmentFromUrl(metadata.provider.url);
       LocalMetadataHandler.__super__.constructor.call(this, metadata);
       cb(null, this);
     }

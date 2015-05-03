@@ -49,6 +49,7 @@
     //var counter_getParent = 0;
     //var counter_getParentInquiryPhase = 0;
     //var counter_getIls = 0;
+    //var counter_getSpaceBySpaceId = 0;
     //var counter_getItemsBySpaceId = 0;
     //var counter_getSubspacesBySpaceId = 0;
     //var counter_getAppsBySpaceId = 0;
@@ -249,6 +250,23 @@
                 } else {
                     error = {
                         "error": "The id of the space where the app is located is not available.",
+                        "log": space.error
+                    };
+                    return cb(error);
+                }
+            });
+        },
+
+        // get the description of an space based on the spaceId
+        getSpaceBySpaceId: function (spaceId, cb) {
+            //counter_getSpaceBySpaceId++;
+            //console.log("counter_getSpaceBySpaceId " + counter_getSpaceBySpaceId);
+            osapi.spaces.get({contextId: spaceId}).execute(function (space) {
+                if (!space.error && space.id) {
+                        return cb(space);
+                } else {
+                    error = {
+                        "error": "The space is not available.",
                         "log": space.error
                     };
                     return cb(error);

@@ -908,19 +908,15 @@
             var error = {};
             if (resourceId && resourceId != "") {
                 ils.getContextFromMetadata(metadata, function () {
-                    var newContent;
-                    var newMetadata;
+                    var newContent = "";
+                    var newMetadata = [];
 
                     if (content && content != "") {
                         newContent = JSON.stringify(content);
-                    } else {
-                        newContent = resource.content;
                     }
 
                     if (metadata && metadata != "") {
                         newMetadata = metadata;
-                    } else {
-                        newMetadata = resource.metadata;
                     }
 
                     var params = {

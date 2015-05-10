@@ -861,6 +861,27 @@
                                     }
                                 };
 
+
+                                ils.getApp(function(app){
+                                    var appParams = {
+                                        "contextId": app.id,
+                                        "application": {
+                                            "metadata": {}
+                                        }
+                                    };
+
+                                    if (app.metadata){
+                                        appParams.metadata = app.metadata;
+                                    }
+                                    appParams.metadata.settings = content;
+
+                                    osapi.apps.update(appParams).execute(function (response) {
+                                        console.log(response);
+
+                                    });
+                                });
+
+
                                 osapi.documents.create(params).execute(function (resource) {
                                     if (resource && !resource.error && resource.id) {
                                         ils.getApp(function (app) {

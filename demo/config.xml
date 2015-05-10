@@ -1,0 +1,130 @@
+<Module>
+    <ModulePrefs title="Vault Demo"
+        author_email="mariarodrigueztriana@epfl.ch"
+        author="Maria Jesus Rodriguez Triana" 
+        description="Shows how to use the new ils javascript library"
+        width="800"
+        height="800">
+        <Require feature="opensocial" />
+        <Require feature="osapi" />
+    </ModulePrefs>
+    <Content type="html" view="default,canvas,home,profile">
+        <![CDATA[
+            <script type="text/javascript" src="http://shindig2.epfl.ch/gadget/libs/jquery-1.8.0.min.js"></script>
+            <script type="text/javascript" src="http://shindig2.epfl.ch/gadget/libs/jquery.cookie.js"></script>
+            <script type="text/javascript" src="http://shindig2.epfl.ch/gadget/libs/underscore-min.js"></script>
+            <script type="text/javascript" src="http://iamac146.epfl.ch/ils_lib/main/ils_graaspeu.js"></script>
+            
+            <script type="text/javascript">
+            
+                var getData = function() {
+
+                    //----------------------- FIRST STEP: APP update ---------------------------------------//
+
+                    var params = {};
+
+                    ils.getApp(function(app){
+                        console.log(app);
+                        params = {
+                            "contextId": app.id,
+                            "application": {
+                                "metadata": {
+                                    "settings" : "Alex super fixer"
+                                }
+                            }
+                        };
+
+                        osapi.apps.update(params).execute(function (response) {
+                            console.log(response);
+
+                            ils.getApp(function(app_desc){
+                                console.log(app_desc);
+                            });
+                        });
+                    });
+
+
+
+
+                }
+
+                gadgets.util.registerOnLoadHandler(getData);
+
+              </script>
+
+          <br/>
+          <p>(*) Check the console for further details about the outputs</p>
+          <br/>
+          <a>1. - INITIAL STATUS</a>
+          <div id="get_current_user"><b>ils.getCurrentUser:</b> </div>
+          <div id="get_ils"><b>ils.getIls(*):</b> </div>
+          <div id="get_parent"><b>ils.getParent(*):</b> </div>
+          <div id="get_parent_phase"><b>ils.getParentInquiryPhase:</b> </div>
+          <div id="get_vault"><b>ils.getVault(*):</b> </div>
+          <div id="list_vault_1"><b>ils.listVault(*):</b> </div>
+          <div id="get_configuration"><b>ils.getConfiguration(*):</b> </div>
+          <div id="list_configuration_1"><b>ils.listConfiguration(*):</b> </div>
+          <div id="get_parameters"><b>ils.getAppContextParameters(*):</b> </div>
+          <br/>
+          <br/>
+          <a>2. - CREATION OF A RESOURCE WITH ADDITIONAL METADATA (test1.txt)</a>
+          <div id="create_resource_1"><b>ils.createResource(*):</b> </div>
+          <div id="exist_resource_1"><b>ils.existResource:</b> </div>
+          <div id="read_resource_1"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_1"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>3. - CREATION OF A RESOURCE WITHOUT ADDITIONAL METADATA (test2.txt)</a>
+          <div id="create_resource_2"><b>ils.createResource(*):</b> </div>
+          <div id="exist_resource_2"><b>ils.existResource:</b> </div>
+          <div id="read_resource_2"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_2"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>4. - VAULT CONTENT AFTER THE CREATION OF RESOURCES</a>
+          <div id="list_vault_2"><b>ils.listVault(*):</b> </div>
+          <div id="list_vault_3"><b>ils.listVaultExtended(*):</b> </div>
+          <br/>
+          <br/>
+          <a>5. - CREATION OF A CONFIGURATION FILE (configuration1.txt)</a>
+          <div id="create_configuration_1"><b>ils.createConfigurationFile(*):</b> </div>
+          <div id="exist_configuration_1"><b>ils.existResource:</b> </div>
+          <div id="read_configuration_1"><b>ils.readResource(*):</b> </div>
+          <div id="get_configuration_metadata_1"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>6. - CONFIGURATION CONTENT AFTER THE CREATION OF THE FILES</a>
+          <div id="list_configuration_2"><b>ils.listConfiguration(*):</b> </div>
+          <br/>
+          <br/>
+          <a>7. - CREATION OF A RESOURCE WITH AN ALREADY EXISTING NAME (test1.txt)</a>
+          <div id="create_resource_1bis"><b>ils.createResource(*):</b> </div>
+          <br/>
+          <br/>
+          <a>8. - RESOURCE UPDATE (test1.txt)</a>
+          <div id="update_resource"><b>ils.updateResource(*):</b> </div>
+          <div id="read_resource_3"><b>ils.readResource(*):</b> </div>
+          <div id="get_metadata_3"><b>ils.getMetadata(*):</b> </div>
+          <br/>
+          <br/>
+          <a>9. - REMOVING RESOURCES</a>
+          <div id="delete_resource_1"><b>ils.deleteResource(test1.txt):</b> </div>
+          <div id="delete_resource_2"><b>ils.deleteResource(test2.txt):</b> </div>
+          <div id="delete_config_1"><b>ils.deleteResource(configuration1.txt):</b> </div>
+          <div id="exist_resource_3"><b>ils.existResource(test1.txt):</b> </div>
+          <div id="exist_resource_4"><b>ils.existResource(test2.txt):</b> </div>
+          <div id="exist_configuration_2"><b>ils.existResource(configuration1.txt):</b> </div>
+          <div id="read_resource_4"><b>ils.readResource(configuration1.txt):</b> </div>
+          <div id="delete_resource_3"><b>ils.deleteResource(test2.txt):</b> </div>
+          <br/>
+          <br/>
+          <a>10. - VAULT CONTENT AFTER REMOVING RESOURCES</a>
+          <div id="list_vault_4"><b>ils.listVault:</b> </div>
+          <div id="list_configuration_3"><b>ils.listConfiguration(*):</b> </div>
+          <br/>
+        ]]>
+
+    </Content>
+
+</Module>
+  

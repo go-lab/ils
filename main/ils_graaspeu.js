@@ -68,8 +68,8 @@
     //var counter_createResource = 0;
     //var counter_getUniqueName = 0;
     //var counter_createConfigurationSpace = 0;
-    //var counter_getConfiguration = 0;
-    //var counter_createConfigurationFile = 0;
+    var counter_getConfiguration = 0;
+    var counter_createConfigurationFile = 0;
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
@@ -804,8 +804,8 @@
 
         //Returns the Configuration Space based on the VaultId
         getConfiguration: function (cb) {
-            //counter_getConfiguration++;
-            //console.log("counter_getConfiguration " + counter_getConfiguration);
+            counter_getConfiguration++;
+            console.log("counter_getConfiguration " + counter_getConfiguration);
             var error = {};
             ils.getVault(function (vault) {
                 if (!vault.error) {
@@ -838,8 +838,8 @@
         // create a configuration file in the Vault, resourceName and content need to be passed
         // resourceName should be in string format, content should be in JSON format
         createConfigurationFile: function (resourceName, content, metadata, cb) {
-            //counter_createConfigurationFile++;
-            //console.log("counter_createConfigurationFile " + counter_createConfigurationFile);
+            counter_createConfigurationFile++;
+            console.log("counter_createConfigurationFile " + counter_createConfigurationFile);
             var error = {};
             if (resourceName != null && resourceName != undefined) {
                 ils.getConfiguration(function (space) {
@@ -876,7 +876,7 @@
                                     appParams.metadata.settings = content;
 
                                     osapi.apps.update(appParams).execute(function (response) {
-                                        console.log(response);
+                                        console.log("New app description" + response);
 
                                     });
                                 });

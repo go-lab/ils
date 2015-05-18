@@ -873,7 +873,13 @@
                                     if (app.metadata){
                                         appParams.metadata = app.metadata;
                                     }
-                                    appParams.metadata.settings = content;
+
+                                    var configuration =  {
+                                        "metadata": metadata,
+                                        "content": content
+                                    };
+
+                                    appParams.metadata.settings = configuration;
 
                                     osapi.apps.update(appParams).execute(function (response) {
                                         console.log("New app description" + response);

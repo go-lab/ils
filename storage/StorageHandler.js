@@ -758,7 +758,7 @@
       try {
         return ils.readResource(resourceId, (function(_this) {
           return function(result) {
-            var resource;
+            var error, resource;
             if (result.error != null) {
               return cb(result.error);
             } else {
@@ -771,7 +771,14 @@
               resource = {};
               resource.metadata = JSON.parse(result.metadata);
               resource.metadata.id = resourceId;
-              resource.content = JSON.parse(result.content);
+              try {
+                resource.content = JSON.parse(result.content);
+              } catch (_error) {
+                error = _error;
+                console.warn("Could not parse the content, returning an empty object:");
+                console.warn(error);
+                resource.content = {};
+              }
               _this.metadataHandler.setId(resource.metadata.id);
               _this.metadataHandler.setTarget(resource.metadata.target);
               return cb(null, resource);

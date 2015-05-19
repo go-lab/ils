@@ -510,7 +510,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
           resource = {}
           resource.metadata = JSON.parse(result.metadata)
           resource.metadata.id = resourceId
-          resource.content = JSON.parse(result.content)
+          try
+            resource.content = JSON.parse(result.content)
+          catch error
+            console.warn "Could not parse the content, returning an empty object:"
+            console.warn error
+            resource.content = {}
           # update the metadata with new properties
           @metadataHandler.setId resource.metadata.id
           @metadataHandler.setTarget(resource.metadata.target)

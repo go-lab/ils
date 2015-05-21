@@ -842,7 +842,7 @@
             console.log("counter_createConfigurationFile " + counter_createConfigurationFile);
             //var error = {};
 
-            ils.createResource(resourceName, content, metadata, function(){
+            ils.createResource(resourceName, content, metadata, function(resource){
                 ils.getApp(function(app){
                     var appParams = {
                         "contextId": app.id,
@@ -863,8 +863,12 @@
                     appParams.application.metadata.settings = configuration;
 
                     osapi.apps.update(appParams).execute(function (response) {
-                        console.log("New app description");
-                        console.log(response);
+                        console.log("App description updated");
+                        var equalMetadata = appParams.application.metadata.settings.metadata == resource.metadata;
+                        var equalContent = appParams.application.metadata.settings.content == resource.content;
+                        console.log("Matching between app metadata = " + equalMetadata );
+                        console.log("Matching between app content = " + equalContent );
+                        return cb (resource);
                     });
                 });
             });

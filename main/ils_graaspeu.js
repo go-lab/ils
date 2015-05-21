@@ -850,13 +850,16 @@
                                 if (username.error) {
                                     creator = "unknown";
                                 }
+
+                                var stringifyContent = JSON.stringify(content);
+
                                 var params = {
                                     "document": {
                                         "parentType": "@space",
                                         "parentSpaceId": space.id,
                                         "mimeType": "txt",
                                         "fileName": resourceName,
-                                        "content": JSON.stringify(content),
+                                        "content": stringifyContent,
                                         "metadata": metadata
                                     }
                                 };
@@ -876,7 +879,7 @@
 
                                     var configuration =  {
                                         "metadata": metadata,
-                                        "content": content
+                                        "content": stringifyContent
                                     };
 
                                     appParams.application.metadata.settings = configuration;

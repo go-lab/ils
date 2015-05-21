@@ -856,18 +856,16 @@
                     }
 
                     var configuration =  {
-                        "metadata": metadata,
+                        "metadata": JSON.stringify(metadata),
                         "content": JSON.stringify(content)
                     };
 
                     appParams.application.metadata.settings = configuration;
 
                     osapi.apps.update(appParams).execute(function (response) {
-                        console.log("App description updated");
-                        var equalMetadata = appParams.application.metadata.settings.metadata == resource.metadata;
-                        var equalContent = appParams.application.metadata.settings.content == resource.content;
-                        console.log("Matching between app metadata = " + equalMetadata );
-                        console.log("Matching between app content = " + equalContent );
+                        console.log("Settings added to the app description: ");
+                        console.log(response);
+
                         return cb (resource);
                     });
                 });

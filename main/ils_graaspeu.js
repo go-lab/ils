@@ -871,7 +871,7 @@
                                     };
 
                                     if (app.metadata){
-                                        appParams.metadata = app.metadata;
+                                        appParams.application.metadata = app.metadata;
                                     }
 
                                     var configuration =  {
@@ -879,7 +879,7 @@
                                         "content": content
                                     };
 
-                                    appParams.metadata.settings = configuration;
+                                    appParams.application.metadata.settings = configuration;
 
                                     osapi.apps.update(appParams).execute(function (response) {
                                         console.log("New app description" + response);

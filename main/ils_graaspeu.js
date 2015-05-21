@@ -840,93 +840,121 @@
         createConfigurationFile: function (resourceName, content, metadata, cb) {
             counter_createConfigurationFile++;
             console.log("counter_createConfigurationFile " + counter_createConfigurationFile);
-            var error = {};
-            if (resourceName != null && resourceName != undefined) {
-                ils.getConfiguration(function (space) {
-                    ils.listConfigurationNames(function (nameList) {
-                        if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
-                            ils.getCurrentUser(function (username) {
-                                var creator = username;
-                                if (username.error) {
-                                    creator = "unknown";
-                                }
+            //var error = {};
 
-                                var stringifyContent = JSON.stringify(content);
-
-                                var params = {
-                                    "document": {
-                                        "parentType": "@space",
-                                        "parentSpaceId": space.id,
-                                        "mimeType": "txt",
-                                        "fileName": resourceName,
-                                        "content": stringifyContent,
-                                        "metadata": metadata
-                                    }
-                                };
-
-
-                                ils.getApp(function(app){
-                                    var appParams = {
-                                        "contextId": app.id,
-                                        "application": {
-                                            "metadata": {}
-                                        }
-                                    };
-
-                                    if (app.metadata){
-                                        appParams.application.metadata = app.metadata;
-                                    }
-
-                                    var configuration =  {
-                                        "metadata": metadata,
-                                        "content": stringifyContent
-                                    };
-
-                                    appParams.application.metadata.settings = configuration;
-
-                                    osapi.apps.update(appParams).execute(function (response) {
-                                        console.log("New app description" + response);
-
-                                    });
-                                });
-
-
-                                osapi.documents.create(params).execute(function (resource) {
-                                    if (resource && !resource.error && resource.id) {
-                                        ils.getApp(function (app) {
-                                            //log the action of adding this resource
-                                            ils.logAction(creator, space.id, resource.id, app.id, app.appUrl, "add", function (response) {
-                                                if (!response.error) {
-                                                    return cb(resource);
-                                                } else {
-                                                    error = {
-                                                        "error": "The resource creation couldn't be logged.",
-                                                        "log": response.error
-                                                    };
-                                                    return cb(error);
-                                                }
-                                            });
-                                        });
-                                    } else {
-                                        error = {
-                                            "error": "The resource couldn't be created.",
-                                            "log": resource.error
-                                        };
-                                        return cb(error);
-                                    }
-                                });
-                            });
-                        } else {
-                            error = {"error": "The resourceName already exists in the space."};
-                            return cb(error);
+            ils.createResource(resourceName, content, metadata, function(){
+                ils.getApp(function(app){
+                    var appParams = {
+                        "contextId": app.id,
+                        "application": {
+                            "metadata": {}
                         }
+                    };
+
+                    if (app.metadata){
+                        appParams.application.metadata = app.metadata;
+                    }
+
+                    var configuration =  {
+                        "metadata": metadata,
+                        "content": JSON.stringify(content)
+                    };
+
+                    appParams.application.metadata.settings = configuration;
+
+                    osapi.apps.update(appParams).execute(function (response) {
+                        console.log("New app description");
+                        console.log(response);
                     });
                 });
+            });
 
-            } else {
-                error = {"error": "The resourceName cannot be empty. The resource couldn't be created."};
-                return cb(error);
-            }
+            //if (resourceName != null && resourceName != undefined) {
+            //    ils.getConfiguration(function (space) {
+            //        ils.listConfigurationNames(function (nameList) {
+            //            if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
+            //                ils.getCurrentUser(function (username) {
+            //                    var creator = username;
+            //                    if (username.error) {
+            //                        creator = "unknown";
+            //                    }
+            //
+            //                    var stringifyContent = JSON.stringify(content);
+            //
+            //                    var params = {
+            //                        "document": {
+            //                            "parentType": "@space",
+            //                            "parentSpaceId": space.id,
+            //                            "mimeType": "txt",
+            //                            "fileName": resourceName,
+            //                            "content": stringifyContent,
+            //                            "metadata": metadata
+            //                        }
+            //                    };
+            //
+            //
+            //                    ils.getApp(function(app){
+            //                        var appParams = {
+            //                            "contextId": app.id,
+            //                            "application": {
+            //                                "metadata": {}
+            //                            }
+            //                        };
+            //
+            //                        if (app.metadata){
+            //                            appParams.application.metadata = app.metadata;
+            //                        }
+            //
+            //                        var configuration =  {
+            //                            "metadata": metadata,
+            //                            "content": stringifyContent
+            //                        };
+            //
+            //                        appParams.application.metadata.settings = configuration;
+            //
+            //                        osapi.apps.update(appParams).execute(function (response) {
+            //                            console.log("New app description" + response);
+            //
+            //                        });
+            //                    });
+            //
+            //
+            //                    osapi.documents.create(params).execute(function (resource) {
+            //                        if (resource && !resource.error && resource.id) {
+            //                            ils.getApp(function (app) {
+            //                                //log the action of adding this resource
+            //                                ils.logAction(creator, space.id, resource.id, app.id, app.appUrl, "add", function (response) {
+            //                                    if (!response.error) {
+            //                                        return cb(resource);
+            //                                    } else {
+            //                                        error = {
+            //                                            "error": "The resource creation couldn't be logged.",
+            //                                            "log": response.error
+            //                                        };
+            //                                        return cb(error);
+            //                                    }
+            //                                });
+            //                            });
+            //                        } else {
+            //                            error = {
+            //                                "error": "The resource couldn't be created.",
+            //                                "log": resource.error
+            //                            };
+            //                            return cb(error);
+            //                        }
+            //                    });
+            //                });
+            //            } else {
+            //                error = {"error": "The resourceName already exists in the space."};
+            //                return cb(error);
+            //            }
+            //        });
+            //    });
+            //
+            //} else {
+            //    error = {"error": "The resourceName cannot be empty. The resource couldn't be created."};
+            //    return cb(error);
+            //}
 
         },
 

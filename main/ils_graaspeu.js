@@ -864,20 +864,33 @@
                             ilsConfigurations.push(app.metadata.settings);
                         }
                     });
-                }
 
-                ils.getSubspacesBySpaceId(ilsId, function (subspaceList){
-                    _.each(subspaceList, function(subspace, i){
-                        ils.getAppsBySpaceId(subspace.id, function(subspaceApps){
-                            _.each(subspaceApps, function(app, i) {
-                                if(app.metadata && app.metadata.settings) {
-                                    ilsConfigurations.push(app.metadata.settings);
-                                }
+                    ils.getSubspacesBySpaceId(ilsId, function (subspaceList) {
+                        if (!subspaceList.error) {
+                            _.each(subspaceList, function (subspace, j) {
+                                ils.getAppsBySpaceId(subspace.id, function (subspaceApps) {
+                                    if(!subspaceApps.error){
+                                        _.each(subspaceApps, function (app, k) {
+                                            if (app.metadata && app.metadata.settings) {
+                                                ilsConfigurations.push(app.metadata.settings);
+                                            }
+                                        });
+                                    }else{
+                                        return cb(!subspaceApps.error);
+                                    }
+                                });
                             });
-                        });
+                            return cb(ilsConfigurations);
+                        }else{
+                            return cb(!subspaceList.error);
+                        }
 
                     });
-                });
+                }else{
+                    return cb(!spaceApps.error);
+                }
+
+
             });
         },
 

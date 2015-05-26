@@ -69,6 +69,7 @@
     //var counter_getUniqueName = 0;
     //var counter_createConfigurationSpace = 0;
     var counter_getConfiguration = 0;
+    var counter_getAllConfigurations = 0;
     var counter_createConfigurationFile = 0;
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
@@ -807,32 +808,77 @@
             counter_getConfiguration++;
             console.log("counter_getConfiguration " + counter_getConfiguration);
             var error = {};
-            ils.getVault(function (vault) {
-                if (!vault.error) {
-                    osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
-                        function (items) {
-                            var configurationSpace = _.find(items.list, function (item) {
-                                return item.spaceType && item.displayName === "Configuration";
-                            });
 
-                            if (configurationSpace) {
-                                return cb(configurationSpace);
-                            } else {
-                                ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
-                                    return cb(newConfigurationSpace);
-                                });
-                            }
+            ils.getApp(function (app) {
+                if (app.metadata && app.metadata.settings) {
+                    return cb(app.metadata.settings);
+                } else { // To be removed when all configs are stored as metadata
+                    ils.getVault(function (vault) {
+                        if (!vault.error) {
+                            osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
+                                function (items) {
+                                    var configurationSpace = _.find(items.list, function (item) {
+                                        return item.spaceType && item.displayName === "Configuration";
+                                    });
+
+                                    if (configurationSpace) {
+                                        return cb(configurationSpace);
+                                    } else {
+                                        ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
+                                            return cb(newConfigurationSpace);
+                                        });
+                                    }
+                                }
+                            );
+                        } else {
+                            error = {
+                                "error": "The Vault is not available.",
+                                "log": vault.error
+                            };
+                            return cb(error);
                         }
-                    );
-                } else {
-                    error = {
-                        "error": "The Vault is not available.",
-                        "log": vault.error
-                    };
-                    return cb(error);
+                    });
                 }
             });
 
+        },
+
+        //Returns the Configuration Space based on the VaultId
+        getAllConfigurations: function (cb) {
+            counter_getAllConfigurations++;
+            console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
+            var error = {};
+            var ilsId = context.provider.id;
+            var ilsConfigurations = [];
+
+            if (ilsId=="undefined"){
+                ils.getIls(function(space){
+                    ilsId = space.id;
+                });
+
+            }
+            ils.getAppsBySpaceId(ilsId, function(spaceApps) {
+                if (!spaceApps.error) {
+                    _.each(spaceApps, function(app, i) {
+                        if(app.metadata && app.metadata.settings) {
+                            ilsConfigurations.push(app.metadata.settings);
+                        }
+                    });
+                }
+
+                ils.getSubspacesBySpaceId(ilsId, function (subspaceList){
+                    _.each(subspaceList, function(subspace, i){
+                        ils.getAppsBySpaceId(subspace.id, function(subspaceApps){
+                            _.each(subspaceApps, function(app, i) {
+                                if(app.metadata && app.metadata.settings) {
+                                    ilsConfigurations.push(app.metadata.settings);
+                                }
+                            });
+                        });
+
+                    });
+                });
+            });
         },
 
         // create a configuration file in the Vault, resourceName and content need to be passed

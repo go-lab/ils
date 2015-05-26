@@ -249,6 +249,12 @@
                             });
                         });
 
+                         // get the Configuration space and print it
+                        ils.getAllConfigurations(function(configurations){
+                            console.log("Printing all configurations");
+                            console.log(configurations);
+                        });
+
                         // obtains the context parameters of the app
                         ils.getAppContextParameters(function(parameters){
                             console.log("Getting app parameters");

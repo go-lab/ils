@@ -90,8 +90,23 @@
             var error = {"error": "The username couldn't be obtained."};
 
             ils.identifyContext(function (context_type) {
+                //TODO once we merge the ils2 branch, the user will be obtained via osapi in any case
                 if (context_type == context_standalone_ils) {
-                    if (typeof(Storage) !== "undefined") {
+                    if (document.referrer.indexOf("ils2") > -1) {
+                        osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
+                            username = viewer.displayName;
+                            if (username) {
+                                return cb(username.toLowerCase());
+                            } else if (viewer.error) {
+                                return cb(error);
+                            } else {
+                                error = {
+                                    "error": "The username couldn't be obtained.",
+                                    "log": viewer.error
+                                };
+                            }
+                        });
+                    }else if (typeof(Storage) !== "undefined") {
                         username = localStorage.getItem("graasp_user");
                         if (username) {
                             return cb(username.toLowerCase());

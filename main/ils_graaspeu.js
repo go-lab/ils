@@ -49,6 +49,7 @@
     //var counter_getParent = 0;
     //var counter_getParentInquiryPhase = 0;
     //var counter_getIls = 0;
+    //var counter_getIlsId = 0;
     //var counter_getSpaceBySpaceId = 0;
     //var counter_getItemsBySpaceId = 0;
     //var counter_getSubspacesBySpaceId = 0;
@@ -256,6 +257,22 @@
                     return cb(error);
                 }
             });
+        },
+
+
+        // get the Id of the current ILS
+        getIlsId: function (cb) {
+            //counter_getIlsId++;
+            //console.log("counter_getIlsId " + counter_getIlsId);
+            var ilsId = context.provider.id;
+
+            if (ilsId=="undefined"){
+                ils.getIls(function(space){
+                    return cb(space.id);
+                });
+            }else{
+                return cb(ilsId);
+            }
         },
 
         // get the description of an space based on the spaceId
@@ -848,49 +865,41 @@
             counter_getAllConfigurations++;
             console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
             var error = {};
-            var ilsId = context.provider.id;
             var ilsConfigurations = [];
 
-            if (ilsId=="undefined"){
-                ils.getIls(function(space){
-                    ilsId = space.id;
-                });
+            ils.getIlsId(function(ilsId){
+                ils.getAppsBySpaceId(ilsId, function(spaceApps) {
+                    if (!spaceApps.error) {
+                        _.each(spaceApps, function(app, i) {
+                            if(app.metadata && app.metadata.settings) {
+                                ilsConfigurations.push(app.metadata.settings);
+                            }
+                        });
 
-            }
-            ils.getAppsBySpaceId(ilsId, function(spaceApps) {
-                if (!spaceApps.error) {
-                    _.each(spaceApps, function(app, i) {
-                        if(app.metadata && app.metadata.settings) {
-                            ilsConfigurations.push(app.metadata.settings);
-                        }
-                    });
-
-                    ils.getSubspacesBySpaceId(ilsId, function (subspaceList) {
-                        if (!subspaceList.error) {
-                            _.each(subspaceList, function (subspace, j) {
-                                ils.getAppsBySpaceId(subspace.id, function (subspaceApps) {
-                                    if(!subspaceApps.error){
-                                        _.each(subspaceApps, function (app, k) {
-                                            if (app.metadata && app.metadata.settings) {
-                                                ilsConfigurations.push(app.metadata.settings);
-                                            }
-                                        });
-                                    }else{
-                                        return cb(!subspaceApps.error);
-                                    }
+                        ils.getSubspacesBySpaceId(ilsId, function (subspaceList) {
+                            if (!subspaceList.error) {
+                                _.each(subspaceList, function (subspace, j) {
+                                    ils.getAppsBySpaceId(subspace.id, function (subspaceApps) {
+                                        if(!subspaceApps.error){
+                                            _.each(subspaceApps, function (app, k) {
+                                                if (app.metadata && app.metadata.settings) {
+                                                    ilsConfigurations.push(app.metadata.settings);
+                                                }
+                                            });
+                                        }else{
+                                            return cb(!subspaceApps.error);
+                                        }
+                                    });
                                 });
-                            });
-                            return cb(ilsConfigurations);
-                        }else{
-                            return cb(!subspaceList.error);
-                        }
-
-                    });
-                }else{
-                    return cb(!spaceApps.error);
-                }
-
-
+                                return cb(ilsConfigurations);
+                            }else{
+                                return cb(!subspaceList.error);
+                            }
+                        });
+                    }else{
+                        return cb(!spaceApps.error);
+                    }
+                });
             });
         },
 

@@ -91,7 +91,7 @@
 
             ils.identifyContext(function (context_type) {
                 //Old ils implementation
-                if (context_type == context_standalone_ils && (document.referrer.indexOf("ils1") > -1)) {
+                if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
                     if (typeof(Storage) !== "undefined") {
                         username = localStorage.getItem("graasp_user");
                         if (username) {

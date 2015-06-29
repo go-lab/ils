@@ -90,23 +90,9 @@
             var error = {"error": "The username couldn't be obtained."};
 
             ils.identifyContext(function (context_type) {
-                //TODO once we merge the ils2 branch, the user will be obtained via osapi in any case
-                if (context_type == context_standalone_ils) {
-                    if (document.referrer.indexOf("ils2") > -1) {
-                        osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                            username = viewer.displayName;
-                            if (username) {
-                                return cb(username.toLowerCase());
-                            } else if (viewer.error) {
-                                return cb(error);
-                            } else {
-                                error = {
-                                    "error": "The username couldn't be obtained.",
-                                    "log": viewer.error
-                                };
-                            }
-                        });
-                    }else if (typeof(Storage) !== "undefined") {
+                //Old ils implementation
+                if (context_type == context_standalone_ils && (document.referrer.indexOf("ils1") > -1)) {
+                    if (typeof(Storage) !== "undefined") {
                         username = localStorage.getItem("graasp_user");
                         if (username) {
                             return cb(username.toLowerCase());
@@ -121,7 +107,8 @@
                             return cb(error);
                         }
                     }
-                } else if (context_type == context_graasp) {
+                    //real or temporary users
+                } else if (context_type == context_graasp || context_type == context_standalone_ils) {
                     osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
                         username = viewer.displayName;
                         if (username) {

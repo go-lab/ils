@@ -36,14 +36,13 @@
             "inquiryPhase": "undefined"
         },
 
-        target: {
-        },
+        target: {},
 
         "storageId": "undefined",
         "storageType": "undefined"
 
     };
-    
+
     //var counter_getCurrentUser = 0;
     //var counter_identifyContext = 0;
     //var counter_getParent = 0;
@@ -265,7 +264,7 @@
             //console.log("counter_getSpaceBySpaceId " + counter_getSpaceBySpaceId);
             osapi.spaces.get({contextId: spaceId}).execute(function (space) {
                 if (!space.error && space.id) {
-                        return cb(space);
+                    return cb(space);
                 } else {
                     error = {
                         "error": "The space is not available.",
@@ -281,10 +280,10 @@
             //counter_getItemsBySpaceId++;
             //console.log("counter_getItemsBySpaceId " + counter_getItemsBySpaceId);
             var error;
-            osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function(items){
-                if (!items.error && items.list){
+            osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function (items) {
+                if (!items.error && items.list) {
                     return cb(items.list);
-                }else{
+                } else {
                     error = {
                         "error": "The list of items could not be obtained.",
                         "log": items.error
@@ -299,13 +298,13 @@
             //counter_getSubspacesBySpaceId++;
             //console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function(items){
-                if (!items.error){
+            ils.getItemsBySpaceId(spaceId, function (items) {
+                if (!items.error) {
                     var subspaces = _.filter(items, function (item) {
                         return item.spaceType;
                     });
                     return cb(subspaces);
-                }else{
+                } else {
                     error = {
                         "error": "The list of spaces could not be obtained.",
                         "log": items.error
@@ -320,13 +319,13 @@
             //counter_getAppsBySpaceId++;
             //console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function(items){
-                if (!items.error){
+            ils.getItemsBySpaceId(spaceId, function (items) {
+                if (!items.error) {
                     var apps = _.filter(items, function (item) {
                         return item.itemType && item.itemType === "Application";
                     });
                     return cb(apps);
-                }else{
+                } else {
                     error = {
                         "error": "The list of apps could not be obtained.",
                         "log": items.error
@@ -909,51 +908,61 @@
             //console.log("counter_updateResource " + counter_updateResource);
             var error = {};
             if (resourceId && resourceId != "") {
-                ils.getContextFromMetadata(metadata, function () {
-                    var newContent = "";
-                    var newMetadata = [];
+                ils.readResource(resourceId, function (originalResource) {
+                    if (originalResource && !originalResource.error && originalResource.displayName) {
+                        ils.getContextFromMetadata(metadata, function () {
+                            var newContent = "";
+                            var newMetadata = [];
 
-                    if (content && content != "") {
-                        newContent = JSON.stringify(content);
-                    }
+                            if (content && content != "") {
+                                newContent = JSON.stringify(content);
+                            }
 
-                    if (metadata && metadata != "") {
-                        newMetadata = metadata;
-                    }
+                            if (metadata && metadata != "") {
+                                newMetadata = metadata;
+                            }
 
-                    var params = {
-                        "contextId": resourceId,
-                        "document": {
-                            "parentType": context.storageType,
-                            "parentSpaceId": context.storageId,
-                            "mimeType": "txt",
-                            "fileName": metadata.target.displayName,
-                            "content": newContent,
-                            "metadata": newMetadata
-                        }
-                    };
+                            var params = {
+                                "contextId": resourceId,
+                                "document": {
+                                    "parentType": context.storageType,
+                                    "parentSpaceId": context.storageId,
+                                    "mimeType": "txt",
+                                    "fileName": originalResource.displayName,
+                                    "content": newContent,
+                                    "metadata": newMetadata
+                                }
+                            };
 
-                    osapi.documents.update(params).execute(function (resource) {
-                        if (resource && !resource.error && resource.id) {
-                            ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
-                                if (!response.error) {
-                                    return cb(resource);
+                            osapi.documents.update(params).execute(function (resource) {
+                                if (resource && !resource.error && resource.id) {
+                                    ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
+                                        if (!response.error) {
+                                            return cb(resource);
+                                        } else {
+                                            error = {
+                                                "error": "The resource update couldn't be logged.",
+                                                "log": response.error
+                                            };
+                                            return cb(error);
+                                        }
+                                    });
                                 } else {
                                     error = {
-                                        "error": "The resource update couldn't be logged.",
-                                        "log": response.error
+                                        "error": "The resource couldn't be updated.",
+                                        "log": resource.error
                                     };
                                     return cb(error);
                                 }
                             });
-                        } else {
-                            error = {
-                                "error": "The resource couldn't be updated.",
-                                "log": resource.error
-                            };
-                            return cb(error);
-                        }
-                    });
+                        });
+                    } else {
+                        error = {
+                            "error": "The resource couldn't be updated.",
+                            "log": originalResource.error
+                        };
+                        return cb(error);
+                    }
                 });
             } else {
                 error = {"error": "The resourceName cannot be null. The resource couldn't be updated."};

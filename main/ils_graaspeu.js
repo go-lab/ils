@@ -58,7 +58,6 @@
     //var counter_getAppId = 0;
     //var counter_getContextFromMetadata = 0;
     //var counter_getAppContextParameters = 0;
-    //var counter_setContextParameters = 0;
     //var counter_deleteResource = 0;
     //var counter_existResource = 0;
     //var counter_readResource = 0;
@@ -93,6 +92,8 @@
                 if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
                     if (typeof(Storage) !== "undefined") {
                         username = localStorage.getItem("graasp_user");
+                        context.actor.id = context.actor.id.replace("unknown", username);
+                        context.actor.displayName = username;
                         if (username) {
                             return cb(username.toLowerCase());
                         } else {
@@ -110,6 +111,8 @@
                 } else if (context_type == context_graasp || context_type == context_standalone_ils) {
                     osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
                         username = viewer.displayName;
+                        context.actor.id = viewer.id;
+                        context.actor.displayName = username;
                         if (username) {
                             return cb(username.toLowerCase());
                         } else if (viewer.error) {
@@ -216,15 +219,30 @@
             osapi.context.get().execute(function (space) {
                 if (!space.error) {
                     osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
-                        if (!parentSpace.error) {
+                        if (!parentSpace.error && parentSpace.id) {
                             //app at the ils level
                             if (parentSpace.spaceType === 'ils') {
+                                context.actor.id = context.actor.id.replace("undefined", parentSpace.id);
+                                context.provider.objectType = parentSpace.spaceType;
+                                context.provider.url = parentSpace.profileUrl;
+                                context.provider.id = parentSpace.id;
+                                context.provider.displayName = parentSpace.displayName;
                                 return cb(parentSpace, parentSpace);
                             } else {
                                 osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls) {
                                     if (!parentIls.error) {
                                         //app at the phase level
                                         if (parentIls.spaceType === 'ils') {
+                                            context.actor.id = context.actor.id.replace("undefined", parentIls.id);
+                                            context.provider.objectType = parentIls.spaceType;
+                                            context.provider.url = parentIls.profileUrl;
+                                            context.provider.id = parentIls.id;
+                                            context.provider.displayName = parentIls.displayName;
+                                            context.provider.inquiryPhaseId = parentSpace.id;
+                                            context.provider.inquiryPhaseName = parentSpace.displayName;
+                                            if (parentSpace.metadata && parentSpace.metadata.type) {
+                                                context.provider.inquiryPhase = parentSpace.metadata.type;
+                                            }
                                             return cb(parentIls, parentSpace);
                                         } else {
                                             error = {"error": "The app is not located in an ILS or in one of its phases."};
@@ -343,7 +361,9 @@
             ils.getIls(function (parentIls) {
                 if (!parentIls.error) {
                     ils.getVaultByIlsId(parentIls.id, function (vault) {
-                        if (vault) {
+                        if (vault && vault.id) {
+                            context.storageId = vault.id;
+                            context.storageType = vault.spaceType;
                             return cb(vault);
                         } else {
                             error = {"error": "There is no Vault available."};
@@ -385,7 +405,10 @@
             //counter_getApp++;
             //console.log("counter_getApp " + counter_getApp);
             osapi.apps.get({contextId: "@self"}).execute(function (response) {
-                if (!response.error) {
+                if (!response.error && response.id) {
+                    context.generator.url = response.appUrl;
+                    context.generator.id = response.id;
+                    context.generator.displayName = response.displayName;
                     return cb(response);
                 } else {
                     var error = {
@@ -423,14 +446,7 @@
             //console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
             if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName
                 || metadata.actor.id.indexOf("unknown") > -1) {
-                ils.getCurrentUser(function (viewer) {
-                    if (viewer && viewer != "" && !viewer.error) {
-                        //to be fixed once we have the temporary users (viewer.id/owner.id)
-                        //to be fixed once we have the temporary users (viewer.id/owner.id)
-                        context.actor.id = context.actor.id.replace("unknown", viewer);
-                        context.actor.displayName = viewer;
-                    }
-                });
+                ils.getCurrentUser(function (viewer) {});
             } else {
                 context.actor = metadata.actor;
             }
@@ -497,14 +513,10 @@
                 return cb(context);
             } else {
                 ils.getCurrentUser(function (viewer) {
-                    osapi.people.get({userId: '@owner'}).execute(function (owner) {
-                        ils.getApp(function (app) {
-                            ils.getIls(function (space, subspace) {
-                                ils.getVaultByIlsId(space.id, function (vault) {
-                                    ils.setContextParameters(viewer, owner, app, space, subspace, vault, function () {
-                                        return cb(context);
-                                    });
-                                });
+                   ils.getApp(function (app) {
+                        ils.getIls(function (space, subspace) {
+                            ils.getVaultByIlsId(space.id, function (vault) {
+                                return cb(context);
                             });
                         });
                     });
@@ -512,44 +524,6 @@
             }
         },
 
-        setContextParameters: function (viewer, owner, app, space, subspace, vault, cb) {
-            //counter_setContextParameters++;
-            //console.log("counter_setContextParameters " + counter_setContextParameters);
-            if (viewer && viewer != "" && !viewer.error) {
-                //TODO to be fixed once we have the temporary users (viewer.id/owner.id)
-                context.actor.id = context.actor.id.replace("unknown", viewer);
-                context.actor.displayName = viewer;
-            }
-
-            if (app && app.id) {
-                context.generator.url = app.appUrl;
-                context.generator.id = app.id;
-                context.generator.displayName = app.displayName;
-            }
-
-            if (space && space.id) {
-                context.actor.id = context.actor.id.replace("undefined", space.id);
-                context.provider.objectType = space.spaceType;
-                context.provider.url = space.profileUrl;
-                context.provider.id = space.id;
-                context.provider.displayName = space.displayName;
-
-                if (subspace && subspace.id && space.id != subspace.id) {
-                    context.provider.inquiryPhaseId = subspace.id;
-                    context.provider.inquiryPhaseName = subspace.displayName;
-                    if (subspace.metadata && subspace.metadata.type) {
-                        context.provider.inquiryPhase = subspace.metadata.type;
-                    }
-                }
-            }
-
-            if (vault && vault.id) {
-                context.storageId = vault.id;
-                context.storageType = vault.spaceType;
-            }
-
-            return cb();
-        },
 
         // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
         deleteResource: function (resourceId, cb) {
@@ -1139,9 +1113,9 @@
 
             ils.getIls(function (parentSpace) {
                 params.activity.actor = {
-                    "id": userName + "@" + parentSpace.id,
+                    "id": context.actor.id,
                     "objectType": "person",
-                    "name": userName
+                    "name": context.actor.displayName
                 };
                 params.activity.provider = {
                     "objectType": "ils",

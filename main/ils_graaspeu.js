@@ -362,8 +362,6 @@
                 if (!parentIls.error) {
                     ils.getVaultByIlsId(parentIls.id, function (vault) {
                         if (vault && vault.id) {
-                            context.storageId = vault.id;
-                            context.storageType = vault.spaceType;
                             return cb(vault);
                         } else {
                             error = {"error": "There is no Vault available."};
@@ -391,7 +389,14 @@
                         var vault = _.find(items.list, function (item) {
                             return item.spaceType && item.metadata && item.metadata.type === "Vault";
                         });
-                        return cb(vault);
+                        if (vault && vault.id) {
+                            context.storageId = vault.id;
+                            context.storageType = vault.spaceType;
+                            return cb(vault);
+                        } else {
+                            error = {"error": "There is no Vault available."};
+                            return cb(error);
+                        }
                     }
                 );
             } else {

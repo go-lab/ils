@@ -972,6 +972,7 @@
                     }
                 });
             });
+
         },
 
         // updates a resource in the Vault, resourceId, content and metadata need to be passed

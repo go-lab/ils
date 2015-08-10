@@ -916,11 +916,11 @@
             });
         },
 
-        getFixedConfiguration: function (appId, appName, phaseId, phaseType, phaseName) {
+        getFixedConfiguration: function (appId, appName, appSettings, phaseId, phaseType, phaseName) {
             try {
                 var configuration = {};
-                configuration.metadata = JSON.parse(app.metadata.settings.metadata);
-                configuration.content = JSON.parse(app.metadata.settings.content);
+                configuration.metadata = JSON.parse(appSettings.metadata);
+                configuration.content = JSON.parse(appSettings.content);
 
                 //configuration.metadata.actor remains the same
 
@@ -952,7 +952,7 @@
                 return configuration;
             } catch(error) {
                 console.warn("error during JSON-parsing of the following configuration:");
-                console.warn(rawConfiguration);
+                console.warn(appSettings);
                 console.warn(error);
                 return undefined;
             }

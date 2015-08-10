@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app, space);
+                                var configuration = ils.getFixedConfiguration(app, null);
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -912,7 +912,7 @@
             });
         },
 
-        getFixedConfiguration: function (app, space) {
+        getFixedConfiguration: function (app, phase) {
             try {
                 var configuration = {};
                 configuration.metadata = JSON.parse(app.metadata.settings.metadata);
@@ -928,12 +928,16 @@
 
                 configuration.metadata.provider.displayName = context.provider.displayName;
                 configuration.metadata.provider.id = context.provider.id;
-                if (space.metadata) {
-                    configuration.metadata.provider.inquiryPhase = space.metadata.type;
+                configuration.metadata.provider.inquiryPhase = "undefined";
+                configuration.metadata.provider.inquiryPhaseId = "undefined";
+                configuration.metadata.provider.inquiryPhaseName = "undefined";
+                if (phase) {
+                    if (phase.metadata) {
+                        configuration.metadata.provider.inquiryPhase = phase.metadata.type;
+                    }
+                    configuration.metadata.provider.inquiryPhaseId = phase.id;
+                    configuration.metadata.provider.inquiryPhaseName = phase.displayName;
                 }
-                configuration.metadata.provider.inquiryPhaseId = space.id;
-                configuration.metadata.provider.inquiryPhaseName = space.displayName;
-
                 configuration.metadata.provider.objectType = context.provider.objectType;
                 configuration.metadata.provider.url = context.provider.url;
 

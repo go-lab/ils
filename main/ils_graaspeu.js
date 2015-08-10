@@ -847,7 +847,7 @@
         //Returns the Configuration Space based on the VaultId
         getAllConfigurations: function (cb) {
             counter_getAllConfigurations++;
-            console.log("counter_getAllConfigurations... " + counter_getAllConfigurations);
+            console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
             var error = {};
             var ilsConfigurations = [];
             ils.getIlsId(function(ilsId){

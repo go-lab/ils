@@ -809,7 +809,7 @@
             ils.getApp(function (app) {
                 if (app.metadata && app.metadata.settings) {
                     ils.getIlsId( function(ilsId) {
-                        return cb(ils.getFixedConfiguration(app.metadata.settings, app.id, ilsId));
+                        return cb(ils.getFixedConfiguration(app, space));
                     });
                 } else { // To be removed when all configs are stored as metadata
                     ils.getVault(function (vault) {
@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app.metadata.settings, app.id, ilsId);
+                                var configuration = ils.getFixedConfiguration(app, space);
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -869,13 +869,13 @@
                         if (!subspaceList.error) {
 
                             // define the promise function to retrieve the configurations from a subspace
-                            function retrieveSubspaceConfigurations(subspaceId) {
+                            function retrieveSubspaceConfigurations(subspace) {
                                 var deferred = new $.Deferred();
                                 ils.getAppsBySpaceId(subspaceId, function(subspaceApps) {
                                     if(!subspaceApps.error){
                                         _.each(subspaceApps, function (app, k) {
                                             if (app.metadata && app.metadata.settings) {
-                                                var configuration = ils.getFixedConfiguration(app.metadata.settings, app.id, ilsId);
+                                                var configuration = ils.getFixedConfiguration(app, subspace);
                                                 if (configuration) {
                                                     ilsConfigurations.push(configuration);
                                                 }
@@ -893,7 +893,7 @@
                             // create array of promises
                             var retrieveAppConfigurationPromises = []
                             _.each(subspaceList, function (subspace, j) {
-                                retrieveAppConfigurationPromises.push(retrieveSubspaceConfigurations(subspace.id));
+                                retrieveAppConfigurationPromises.push(retrieveSubspaceConfigurations(subspace));
                             });
                             // execute the promises
                             $.when.apply($, retrieveAppConfigurationPromises).done(function() {
@@ -912,15 +912,39 @@
             });
         },
 
-        getFixedConfiguration: function (rawConfiguration, appId, ilsId) {
+        getFixedConfiguration: function (app, space) {
             try {
                 var configuration = {};
-                configuration.metadata = JSON.parse(rawConfiguration.metadata);
-                configuration.content = JSON.parse(rawConfiguration.content);
-                // correcting potential wrong metadata entries
-                // appId and ilsId need to be correct, because they are potentially used for filtering
-                configuration.metadata.generator.id = appId;
-                configuration.metadata.provider.id = ilsId;
+                configuration.metadata = JSON.parse(app.metadata.settings.metadata);
+                configuration.content = JSON.parse(app.metadata.settings.content);
+
+                //configuration.metadata.actor remains the same
+
+                configuration.metadata.generator.displayName = app.displayName;
+                configuration.metadata.generator.id = app.id;
+                configuration.metadata.generator.objectType = "application";
+
+                //configuration.metadata.id is not changed
+
+                configuration.metadata.provider.displayName = context.provider.displayName;
+                configuration.metadata.provider.id = context.provider.id;
+                if (space.metadata) {
+                    configuration.metadata.provider.inquiryPhase = space.metadata.type;
+                }
+                configuration.metadata.provider.inquiryPhaseId = space.id;
+                configuration.metadata.provider.inquiryPhaseName = space.displayName;
+
+                configuration.metadata.provider.objectType = context.provider.objectType;
+                configuration.metadata.provider.url = context.provider.url;
+
+                //configuration.metadata.published is not changed
+
+                configuration.metadata.storageId = context.storageId;
+
+                configuration.metadata.storageType = context.storageType;
+
+                //configuration.metadata.target is not changed
+
                 return configuration;
             } catch(error) {
                 console.warn("error during JSON-parsing of the following configuration:");

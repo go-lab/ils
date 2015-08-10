@@ -882,7 +882,7 @@
                                             }
                                         });
                                     } else {
-                                        console.warn("retrieving subspace apps for space "+subspaceId+" returned an error:");
+                                        console.warn("retrieving subspace apps for space "+subspace.id+" returned an error:");
                                         console.warn(subspaceApps.error);
                                     }
                                     deferred.resolve();

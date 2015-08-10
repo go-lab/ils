@@ -809,7 +809,7 @@
             ils.getApp(function (app) {
                 if (app.metadata && app.metadata.settings) {
                     ils.getIlsId( function(ilsId) {
-                        return cb(ils.getFixedConfiguration(app, space));
+                        return cb(ils.getFixedConfiguration(app.id, app.displayName, null, null, null));
                     });
                 } else { // To be removed when all configs are stored as metadata
                     ils.getVault(function (vault) {
@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app, null);
+                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, null, null, null);
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -875,7 +875,11 @@
                                     if(!subspaceApps.error){
                                         _.each(subspaceApps, function (app, k) {
                                             if (app.metadata && app.metadata.settings) {
-                                                var configuration = ils.getFixedConfiguration(app, subspace);
+                                                var phaseId = subspace.id;
+                                                var phaseName = subspace.displayName;
+                                                var phaseType = "undefined";
+                                                if (subspace.metadata && subspace.metadata.type) {phaseType=subspace.metadata.type;}
+                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, phaseId, phaseType, phaseName);
                                                 if (configuration) {
                                                     ilsConfigurations.push(configuration);
                                                 }
@@ -912,7 +916,7 @@
             });
         },
 
-        getFixedConfiguration: function (app, phase) {
+        getFixedConfiguration: function (appId, appName, phaseId, phaseType, phaseName) {
             try {
                 var configuration = {};
                 configuration.metadata = JSON.parse(app.metadata.settings.metadata);
@@ -920,8 +924,8 @@
 
                 //configuration.metadata.actor remains the same
 
-                configuration.metadata.generator.displayName = app.displayName;
-                configuration.metadata.generator.id = app.id;
+                configuration.metadata.generator.displayName = appName;
+                configuration.metadata.generator.id = appId;
                 configuration.metadata.generator.objectType = "application";
 
                 //configuration.metadata.id is not changed
@@ -931,13 +935,9 @@
                 configuration.metadata.provider.inquiryPhase = "undefined";
                 configuration.metadata.provider.inquiryPhaseId = "undefined";
                 configuration.metadata.provider.inquiryPhaseName = "undefined";
-                if (phase) {
-                    if (phase.metadata) {
-                        configuration.metadata.provider.inquiryPhase = phase.metadata.type;
-                    }
-                    configuration.metadata.provider.inquiryPhaseId = phase.id;
-                    configuration.metadata.provider.inquiryPhaseName = phase.displayName;
-                }
+                if (phaseType) {configuration.metadata.provider.inquiryPhase = phaseType;}
+                if (phaseId) {configuration.metadata.provider.inquiryPhaseId = phaseId;}
+                if (phaseName) {configuration.metadata.provider.inquiryPhaseName = phaseName;}
                 configuration.metadata.provider.objectType = context.provider.objectType;
                 configuration.metadata.provider.url = context.provider.url;
 

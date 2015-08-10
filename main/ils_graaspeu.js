@@ -809,7 +809,7 @@
             ils.getApp(function (app) {
                 if (app.metadata && app.metadata.settings) {
                     ils.getIlsId( function(ilsId) {
-                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, null, null, null));
+                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, "undefined", "undefined", "undefined"));
                     });
                 } else { // To be removed when all configs are stored as metadata
                     ils.getVault(function (vault) {
@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, null, null, null);
+                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, "undefined", "undefined", "undefined");
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -924,27 +924,26 @@
 
                 //configuration.metadata.actor remains the same
 
-                configuration.metadata.generator.displayName = appName;
-                configuration.metadata.generator.id = appId;
-                configuration.metadata.generator.objectType = "application";
-
+                configuration.metadata.generator = {
+                    "displayName": appName,
+                    "id": appId,
+                    "objectType": "application"
+                };
                 //configuration.metadata.id is not changed
 
-                configuration.metadata.provider.displayName = context.provider.displayName;
-                configuration.metadata.provider.id = context.provider.id;
-                configuration.metadata.provider.inquiryPhase = "undefined";
-                configuration.metadata.provider.inquiryPhaseId = "undefined";
-                configuration.metadata.provider.inquiryPhaseName = "undefined";
-                if (phaseType) {configuration.metadata.provider.inquiryPhase = phaseType;}
-                if (phaseId) {configuration.metadata.provider.inquiryPhaseId = phaseId;}
-                if (phaseName) {configuration.metadata.provider.inquiryPhaseName = phaseName;}
-                configuration.metadata.provider.objectType = context.provider.objectType;
-                configuration.metadata.provider.url = context.provider.url;
+                configuration.metadata.provider = {
+                    "displayName": context.provider.displayName,
+                    "id": context.provider.id,
+                    "inquiryPhase": phaseType,
+                    "inquiryPhaseId": phaseId,
+                    "inquiryPhaseName": phaseName,
+                    "objectType": context.provider.objectType,
+                    "url": context.provider.url
+                }
 
                 //configuration.metadata.published is not changed
 
                 configuration.metadata.storageId = context.storageId;
-
                 configuration.metadata.storageType = context.storageType;
 
                 //configuration.metadata.target is not changed
@@ -974,7 +973,10 @@
                 };
 
                 if (app.metadata){
-                    appParams.application.metadata = app.metadata;
+                    appParams.application.metadata.actor = app.metadata.actor;
+                    appParams.application.metadata.id = app.metadata.id;
+                    appParams.application.metadata.published = app.metadata.published;
+                    appParams.application.metadata.target = app.metadata.target;
                 }
 
                 var configuration =  {

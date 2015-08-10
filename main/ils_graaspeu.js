@@ -937,7 +937,6 @@
             console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
             var error = {};
 
-
             ils.getApp(function(app){
                 var appParams = {
                     "contextId": app.id,

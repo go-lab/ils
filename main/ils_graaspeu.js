@@ -871,7 +871,7 @@
                             // define the promise function to retrieve the configurations from a subspace
                             function retrieveSubspaceConfigurations(subspace) {
                                 var deferred = new $.Deferred();
-                                ils.getAppsBySpaceId(subspaceId, function(subspaceApps) {
+                                ils.getAppsBySpaceId(subspace.id, function(subspaceApps) {
                                     if(!subspaceApps.error){
                                         _.each(subspaceApps, function (app, k) {
                                             if (app.metadata && app.metadata.settings) {

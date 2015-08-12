@@ -920,11 +920,14 @@
             try {
                 var intrinsicMetadada = JSON.parse(appSettings);
                 var configuration = {
-
-
+                    "metadata": {
+                        "actor": intrinsicMetadada.actor || {},
+                        "id": intrinsicMetadada.id || "",
+                        "published": intrinsicMetadada.published || "",
+                        "target": intrinsicMetadada.target || {}
+                    },
+                    "content": intrinsicMetadada.content
                 };
-
-                //configuration.metadata.actor remains the same
 
                 configuration.metadata.generator = {
                     "displayName": appName,
@@ -932,7 +935,6 @@
                     "objectType": "application",
                     "url": appUrl
                 };
-                //configuration.metadata.id is not changed
 
                 configuration.metadata.provider = {
                     "displayName": context.provider.displayName,
@@ -943,13 +945,9 @@
                     "objectType": context.provider.objectType,
                     "url": context.provider.url
                 }
-
-                //configuration.metadata.published is not changed
-
+                
                 configuration.metadata.storageId = context.storageId;
                 configuration.metadata.storageType = context.storageType;
-
-                //configuration.metadata.target is not changed
 
                 return configuration;
             } catch(error) {

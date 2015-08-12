@@ -809,7 +809,7 @@
             ils.getApp(function (app) {
                 if (app.metadata && app.metadata.settings) {
                     ils.getIlsId( function(ilsId) { //phaseId, phaseType, phaseName
-                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
+                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.appurl, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
                     });
                 } else { // To be removed when all configs are stored as metadata
                     ils.getVault(function (vault) {
@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, "undefined", "undefined", "undefined");
+                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appurl, app.metadata.settings, "undefined", "undefined", "undefined");
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -879,7 +879,7 @@
                                                 var phaseName = subspace.displayName;
                                                 var phaseType = "undefined";
                                                 if (subspace.metadata && subspace.metadata.type) {phaseType=subspace.metadata.type;}
-                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, phaseId, phaseType, phaseName);
+                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appurl, app.metadata.settings, phaseId, phaseType, phaseName);
                                                 if (configuration) {
                                                     ilsConfigurations.push(configuration);
                                                 }

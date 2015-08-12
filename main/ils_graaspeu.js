@@ -808,8 +808,8 @@
 
             ils.getApp(function (app) {
                 if (app.metadata && app.metadata.settings) {
-                    ils.getIlsId( function(ilsId) {
-                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, "undefined", "undefined", "undefined"));
+                    ils.getIlsId( function(ilsId) { //phaseId, phaseType, phaseName
+                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
                     });
                 } else { // To be removed when all configs are stored as metadata
                     ils.getVault(function (vault) {
@@ -855,7 +855,7 @@
                     if (!spaceApps.error) {
                         _.each(spaceApps, function(app, i) {
                             if(app.metadata && app.metadata.settings) {
-                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, "undefined", "undefined", "undefined");
+                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, "undefined", "undefined", "undefined");
                                 if (configuration) {
                                     ilsConfigurations.push(configuration);
                                 }
@@ -879,7 +879,7 @@
                                                 var phaseName = subspace.displayName;
                                                 var phaseType = "undefined";
                                                 if (subspace.metadata && subspace.metadata.type) {phaseType=subspace.metadata.type;}
-                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.metadata.settings, phaseId, phaseType, phaseName);
+                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.url, app.metadata.settings, phaseId, phaseType, phaseName);
                                                 if (configuration) {
                                                     ilsConfigurations.push(configuration);
                                                 }
@@ -916,18 +916,21 @@
             });
         },
 
-        getFixedConfiguration: function (appId, appName, appSettings, phaseId, phaseType, phaseName) {
+        getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
-                var configuration = {};
-                configuration.metadata = JSON.parse(appSettings.metadata);
-                configuration.content = JSON.parse(appSettings.content);
+                var intrinsicMetadada = JSON.parse(appSettings);
+                var configuration = {
+
+
+                };
 
                 //configuration.metadata.actor remains the same
 
                 configuration.metadata.generator = {
                     "displayName": appName,
                     "id": appId,
-                    "objectType": "application"
+                    "objectType": "application",
+                    "url": appUrl
                 };
                 //configuration.metadata.id is not changed
 
@@ -965,42 +968,42 @@
             var error = {};
 
             ils.getApp(function(app){
-                var appParams = {
-                    "contextId": app.id,
-                    "application": {
-                        "metadata": {}
-                    }
-                };
+                if (app && !app.error) {
+                    var appParams = {
+                        "contextId": app.id,
+                        "application": {
+                            "metadata": app.metadata || {}
+                        }
+                    };
 
-                if (app.metadata){
-                    appParams.application.metadata.actor = app.metadata.actor;
-                    appParams.application.metadata.id = app.metadata.id;
-                    appParams.application.metadata.published = app.metadata.published;
-                    appParams.application.metadata.target = app.metadata.target;
+                    var configuration = {
+                        "actor": metadata.actor || app.metadata.actor || {},
+                        "id": metadata.id || app.metadata.id || "",
+                        "published": metadata.published || app.metadata.published|| "",
+                        "target": metadata.target || app.metadata.target || {},
+                        "content": content
+                    };
+
+                    appParams.application.metadata.settings = JSON.stringify(configuration);
+
+                    osapi.apps.update(appParams).execute(function (response) {
+                        if (!response.error) {
+                            console.log("The app configuration has been saved: ");
+                            console.log(response);
+                            return cb(response);
+                        } else {
+                            console.log("The app configuration couldn't saved: ");
+                            console.log(response);
+                            error = {
+                                "error": "The configuration couldn't be set.",
+                                "log": response.error
+                            };
+                            return cb(error);
+                        }
+                    });
+                } else {
+                    return cb(app);
                 }
-
-                var configuration =  {
-                    "metadata": JSON.stringify(metadata),
-                    "content": JSON.stringify(content)
-                };
-
-                appParams.application.metadata.settings = configuration;
-
-                osapi.apps.update(appParams).execute(function (response) {
-                    if (!response.error) {
-                        console.log("The app configuration has been saved: ");
-                        console.log(response);
-                        return cb(response);
-                    } else {
-                        console.log("The app configuration couldn't saved: ");
-                        console.log(response);
-                        error = {
-                            "error": "The configuration couldn't be set.",
-                            "log": response.error
-                        };
-                        return cb(error);
-                    }
-                });
             });
             
         },

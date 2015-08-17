@@ -918,7 +918,7 @@
 
         getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
-                var intrinsicMetadada = JSON.parse(appSettings);
+                var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
                 var configuration = {
                     "metadata": {
                         "actor": intrinsicMetadada.actor || {},
@@ -982,7 +982,7 @@
                         "content": content
                     };
 
-                    appParams.application.metadata.settings = JSON.stringify(configuration);
+                    appParams.application.metadata.settings = configuration;
 
                     osapi.apps.update(appParams).execute(function (response) {
                         if (!response.error) {

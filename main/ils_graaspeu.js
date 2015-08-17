@@ -21,7 +21,7 @@
         },
         generator: {
             "objectType": "application",
-            "url": (gadgets && gadgets.util && gadgets.util.getUrlParameters().url) ? gadgets.util.getUrlParameters().url : window.location.href,
+            "url": (typeof gadgets != "undefined") ? gadgets.util.getUrlParameters().url : window.location.href,
             "id": "undefined",
             "displayName": "undefined"
         },

@@ -88,7 +88,7 @@
             //console.log("counter_getCurrentUser " + counter_getCurrentUser);
             var username;
             var error = {"error": "The username couldn't be obtained."};
-            var context_type = identifyContext();
+            var context_type = ils.identifyContext();
 
             //Old ils implementation
             if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {

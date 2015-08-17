@@ -88,73 +88,73 @@
             //console.log("counter_getCurrentUser " + counter_getCurrentUser);
             var username;
             var error = {"error": "The username couldn't be obtained."};
+            var context_type = identifyContext();
 
-            ils.identifyContext(function (context_type) {
-                //Old ils implementation
-                if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
-                    if (typeof(Storage) !== "undefined") {
-                        username = localStorage.getItem("graasp_user");
-                        context.actor.id = context.actor.id.replace("unknown", username);
-                        context.actor.displayName = username;
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else {
-                            return cb(error);
-                        }
+            //Old ils implementation
+            if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
+                if (typeof(Storage) !== "undefined") {
+                    username = localStorage.getItem("graasp_user");
+                    context.actor.id = context.actor.id.replace("unknown", username);
+                    context.actor.displayName = username;
+                    if (username) {
+                        return cb(username.toLowerCase());
                     } else {
-                        username = $.cookie('graasp_user');
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else {
-                            return cb(error);
-                        }
+                        return cb(error);
                     }
-                    //real or temporary users
-                } else if (context_type == context_graasp || context_type == context_standalone_ils) {
-                    osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                        username = viewer.displayName;
-                        context.actor.id = viewer.id;
-                        context.actor.displayName = username;
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else if (viewer.error) {
-                            return cb(error);
-                        } else {
-                            error = {
-                                "error": "The username couldn't be obtained.",
-                                "log": viewer.error
-                            };
-                        }
-                    });
                 } else {
-                    return cb(error);
+                    username = $.cookie('graasp_user');
+                    if (username) {
+                        return cb(username.toLowerCase());
+                    } else {
+                        return cb(error);
+                    }
                 }
-            });
+                //real or temporary users
+            } else if (context_type == context_graasp || context_type == context_standalone_ils) {
+                osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
+                    username = viewer.displayName;
+                    context.actor.id = viewer.id;
+                    context.actor.displayName = username;
+                    if (username) {
+                        return cb(username.toLowerCase());
+                    } else if (viewer.error) {
+                        return cb(error);
+                    } else {
+                        error = {
+                            "error": "The username couldn't be obtained.",
+                            "log": viewer.error
+                        };
+                    }
+                });
+            } else {
+                return cb(error);
+            }
+
         },
 
         // Returns the type of context where the app is running
-        identifyContext: function (cb) {
+        identifyContext: function () {
             //counter_identifyContext++;
             //console.log("counter_identifyContext " + counter_identifyContext);
 
             if (typeof osapi === "undefined" || osapi === null) {
-                return cb(context_standalone_html);
+                return (context_standalone_html);
 
                 // http://www.golabz.eu/apps/ OR  http://composer.golabz.eu/
             } else if (document.referrer.indexOf("golabz.eu") > -1 || document.referrer == "") {
-                return cb(context_preview);
+                return (context_preview);
 
                 // http://localhost:9091/ils/ OR http://graasp.eu/ils/
             } else if (document.referrer.indexOf("ils") > -1) {
-                return cb(context_standalone_ils);
+                return (context_standalone_ils);
 
                 // http://localhost:9091/applications/    http://localhost:9091/spaces/
                 // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
             } else if (document.referrer.indexOf("graasp.eu") > -1 || document.referrer.indexOf("localhost") > -1) {
-                return cb(context_graasp);
+                return (context_graasp);
 
             } else {
-                return cb(context_unknown);
+                return (context_unknown);
             }
         },
 

@@ -811,32 +811,12 @@
                     ils.getIlsId( function(ilsId) { //phaseId, phaseType, phaseName
                         return cb(ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
                     });
-                } else { // To be removed when all configs are stored as metadata
-                    ils.getVault(function (vault) {
-                        if (!vault.error) {
-                            osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
-                                function (items) {
-                                    var configurationSpace = _.find(items.list, function (item) {
-                                        return item.spaceType && item.displayName === "Configuration";
-                                    });
-
-                                    if (configurationSpace) {
-                                        return cb(configurationSpace);
-                                    } else {
-                                        ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
-                                            return cb(newConfigurationSpace);
-                                        });
-                                    }
-                                }
-                            );
-                        } else {
-                            error = {
-                                "error": "The Vault is not available.",
-                                "log": vault.error
-                            };
-                            return cb(error);
-                        }
-                    });
+                } else {
+                    error = {
+                        "error": "The configuration could not be saved.",
+                        "log": app.error || ""
+                    };
+                    return cb(error);
                 }
             });
 
@@ -926,7 +906,7 @@
                         "published": intrinsicMetadada.published || "",
                         "target": intrinsicMetadada.target || {}
                     },
-                    "content": intrinsicMetadada.content
+                    "content": JSON.parse(intrinsicMetadada.content)
                 };
 
                 configuration.metadata.generator = {
@@ -979,7 +959,7 @@
                         "id": metadata.id || app.metadata.id || "",
                         "published": metadata.published || app.metadata.published|| "",
                         "target": metadata.target || app.metadata.target || {},
-                        "content": content
+                        "content": (typeof content === 'string') ? content : JSON.stringify(content)
                     };
 
                     appParams.application.metadata.settings = configuration;

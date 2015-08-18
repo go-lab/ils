@@ -13,6 +13,9 @@
     var context_standalone_ils = "standalone_ils";
     var context_standalone_html = "standalone_html";
     var context_unknown = "unknown";
+    var user_student = "graasp_student";
+    var user_viewer = "graasp_viewer";
+    var user_editor = "graasp_editor";
     var context = {
         actor: {
             "objectType": "person",
@@ -432,6 +435,21 @@
                     context.generator.url = response.appUrl;
                     context.generator.id = response.id;
                     context.generator.displayName = response.displayName;
+
+                    //TODO updates when graasp deals with the app permissions
+                    if (ils.identifyContext() === context_standalone_ils) {
+                        context.actor.objectType = user_student;
+                    } else if (response.memberships) {
+                            var isMember = _.filter(response.memberships, function (member) {
+                                return (member.userId === context.actor.id ) && (member.memberType === "owner" || member.memberType === "contributor");
+                            });
+                            if (isMember.length>0) {
+                                context.actor.objectType = user_editor;
+                            } else {
+                                context.actor.objectType = user_viewer;
+                            }
+                    }
+
                     return cb(response);
                 } else {
                     var error = {

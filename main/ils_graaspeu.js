@@ -66,7 +66,6 @@
     //var counter_obtainMetadataFromAction = 0;
     //var counter_createResource = 0;
     //var counter_getUniqueName = 0;
-    //var counter_createConfigurationSpace = 0;
     var counter_getConfiguration = 0;
     var counter_getAllConfigurations = 0;
     var counter_setAppConfiguration = 0;
@@ -788,17 +787,6 @@
             });
         },
 
-        //Creates a configuration spaces in the vault folder
-        createConfigurationSpace: function (vaultId, cb) {
-            //counter_createConfigurationSpace++;
-            //console.log("counter_createConfigurationSpace " + counter_createConfigurationSpace);
-            osapi.spaces.create({
-                contextId: vaultId,
-                params: {"displayName": "Configuration"}
-            }).execute(function (space) {
-                return cb(space);
-            });
-        },
 
         //Returns the Configuration Space based on the VaultId
         getConfiguration: function (cb) {
@@ -821,7 +809,6 @@
             });
 
         },
-
 
 
         //Returns the Configuration Space based on the VaultId

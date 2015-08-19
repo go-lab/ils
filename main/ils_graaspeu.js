@@ -925,45 +925,64 @@
             console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
             var error = {};
 
-            ils.getApp(function(app){
-                if (app && !app.error) {
-                    var appParams = {
-                        "contextId": app.id,
-                        "application": {
-                            "metadata": app.metadata || {}
-                        }
-                    };
-
-                    var configuration = {
-                        "actor": metadata.actor || app.metadata.actor || {},
-                        "id": metadata.id || app.metadata.id || "",
-                        "published": metadata.published || app.metadata.published|| "",
-                        "target": metadata.target || app.metadata.target || {},
-                        "content": (typeof content === 'string') ? content : JSON.stringify(content)
-                    };
-
-                    appParams.application.metadata.settings = configuration;
-
-                    osapi.apps.update(appParams).execute(function (response) {
-                        if (!response.error) {
-                            console.log("The app configuration has been saved: ");
-                            console.log(response);
-                            return cb(response);
-                        } else {
-                            console.log("The app configuration couldn't saved: ");
-                            console.log(response);
-                            error = {
-                                "error": "The configuration couldn't be set.",
-                                "log": response.error
+            ils.validateConfiguration(metadata, function(isValid){
+                if (isValid && !isValid.error){
+                    ils.getApp(function (app) {
+                        if (app && !app.error) {
+                            var appParams = {
+                                "contextId": app.id,
+                                "application": {
+                                    "metadata": app.metadata || {}
+                                }
                             };
-                            return cb(error);
+
+                            var configuration = {
+                                "actor": metadata.actor,
+                                "id": metadata.id,
+                                "published": metadata.published ,
+                                "target": metadata.target,
+                                "content": (typeof content === 'string') ? content : JSON.stringify(content)
+                            };
+
+                            appParams.application.metadata.settings = configuration;
+
+                            osapi.apps.update(appParams).execute(function (response) {
+                                if (!response.error) {
+                                    console.log("The app configuration has been saved: ");
+                                    console.log(response);
+                                    return cb(response);
+                                } else {
+                                    console.log("The app configuration couldn't saved: ");
+                                    console.log(response);
+                                    error = {
+                                        "error": "The configuration couldn't be saved.",
+                                        "log": response.error
+                                    };
+                                    return cb(error);
+                                }
+                            });
+                        } else {
+                            return cb(app);
                         }
                     });
-                } else {
-                    return cb(app);
+                }else{
+                    return cb(isValid.error);
                 }
             });
-            
+        },
+
+        // verifies the confituration metadata
+        validateConfiguration: function (metadata, cb){
+            if (metadata && metadata.actor && metadata.id && metadata.published && metadata.target &&
+                (typeof metadata.actor === 'object') && (typeof metadata.id === 'string') &&
+                (typeof metadata.published === 'string') && (typeof metadata.target === 'object')) {
+                return cb(true);
+            }else {
+                var error = {
+                    "error": "The metadata is not compliant."
+                };
+                return cb(error);
+            }
         },
 
         // updates a resource in the Vault, resourceId, content and metadata need to be passed

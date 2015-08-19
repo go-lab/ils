@@ -773,17 +773,10 @@
         getUniqueName: function (resourceName, cb) {
             //counter_getUniqueName++;
             //console.log("counter_getUniqueName " + counter_getUniqueName);
-            ils.listVaultNames(function (nameList) {
-                if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
-                    return cb(resourceName);
-                } else {
-                    //The resourceName already exists in the space
-                    ils.getCurrentUser(function (username) {
-                        var timeStamp = new Date().getTime();
-                        var uniqueName = username + "_" + timeStamp + "_" + resourceName;
-                        return cb(uniqueName);
-                    });
-                }
+            ils.getCurrentUser(function (username) {
+                var timeStamp = new Date().getTime();
+                var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+                return cb(uniqueName);
             });
         },
 

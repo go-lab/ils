@@ -69,7 +69,6 @@
     //var counter_obtainMetadataFromAction = 0;
     //var counter_createResource = 0;
     //var counter_getUniqueName = 0;
-    //var counter_createConfigurationSpace = 0;
     var counter_getConfiguration = 0;
     var counter_getAllConfigurations = 0;
     var counter_setAppConfiguration = 0;
@@ -792,31 +791,13 @@
         getUniqueName: function (resourceName, cb) {
             //counter_getUniqueName++;
             //console.log("counter_getUniqueName " + counter_getUniqueName);
-            ils.listVaultNames(function (nameList) {
-                if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
-                    return cb(resourceName);
-                } else {
-                    //The resourceName already exists in the space
-                    ils.getCurrentUser(function (username) {
-                        var timeStamp = new Date().getTime();
-                        var uniqueName = username + "_" + timeStamp + "_" + resourceName;
-                        return cb(uniqueName);
-                    });
-                }
+            ils.getCurrentUser(function (username) {
+                var timeStamp = new Date().getTime();
+                var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+                return cb(uniqueName);
             });
         },
 
-        //Creates a configuration spaces in the vault folder
-        createConfigurationSpace: function (vaultId, cb) {
-            //counter_createConfigurationSpace++;
-            //console.log("counter_createConfigurationSpace " + counter_createConfigurationSpace);
-            osapi.spaces.create({
-                contextId: vaultId,
-                params: {"displayName": "Configuration"}
-            }).execute(function (space) {
-                return cb(space);
-            });
-        },
 
         //Returns the Configuration Space based on the VaultId
         getConfiguration: function (cb) {
@@ -839,7 +820,6 @@
             });
 
         },
-
 
 
         //Returns the Configuration Space based on the VaultId

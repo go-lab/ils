@@ -822,7 +822,7 @@
         },
 
 
-        //Returns the Configuration Space based on the VaultId
+        //Returns all the configurations of the apps added to the ILS
         getAllConfigurations: function (cb) {
             counter_getAllConfigurations++;
             console.log("counter_getAllConfigurations " + counter_getAllConfigurations);

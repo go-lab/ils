@@ -231,6 +231,9 @@
                                 context.provider.url = parentSpace.profileUrl;
                                 context.provider.id = parentSpace.id;
                                 context.provider.displayName = parentSpace.displayName;
+                                if (parentSpace.metadata && parentSpace.metadata.ilsRef) {
+                                    context.provider.ilsRef = parentSpace.metadata.ilsRef;
+                                }
                                 return cb(parentSpace, parentSpace);
                             } else {
                                 osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls) {
@@ -246,6 +249,9 @@
                                             context.provider.inquiryPhaseName = parentSpace.displayName;
                                             if (parentSpace.metadata && parentSpace.metadata.type) {
                                                 context.provider.inquiryPhase = parentSpace.metadata.type;
+                                            }
+                                            if (parentIls.metadata && parentIls.metadata.ilsRef) {
+                                                context.provider.ilsRef = parentIls.metadata.ilsRef;
                                             }
                                             return cb(parentIls, parentSpace);
                                         } else {

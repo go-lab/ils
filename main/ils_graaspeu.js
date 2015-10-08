@@ -91,9 +91,31 @@
             var username;
             var error = {"error": "The username couldn't be obtained."};
             var context_type = ils.identifyContext();
+            var reviewer;
 
-            //Old ils implementation
-            if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
+            if(gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
+                var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
+                reviewer = view_params.reviewer;
+            }
+            
+            //reviewer accessing the ILS
+            if(reviewer){
+                username = reviewer.username;
+                context.actor.id = reviewer.id;
+                context.actor.displayName = username;
+                if (username) {
+                    return cb(username.toLowerCase());
+                } else if (viewer.error) {
+                    return cb(error);
+                } else {
+                    error = {
+                        "error": "The username couldn't be obtained.",
+                        "log": viewer.error
+                    };
+                }
+
+                //Old ils implementation
+            }else if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
                 if (typeof(Storage) !== "undefined") {
                     username = localStorage.getItem("graasp_user");
                     context.actor.id = context.actor.id.replace("unknown", username);

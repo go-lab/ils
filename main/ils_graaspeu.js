@@ -69,9 +69,9 @@
     //var counter_obtainMetadataFromAction = 0;
     //var counter_createResource = 0;
     //var counter_getUniqueName = 0;
-    var counter_getConfiguration = 0;
-    var counter_getAllConfigurations = 0;
-    var counter_setAppConfiguration = 0;
+    //var counter_getConfiguration = 0;
+    //var counter_getAllConfigurations = 0;
+    //var counter_setAppConfiguration = 0;
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
@@ -97,12 +97,13 @@
                 var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
                 reviewer = view_params.reviewer;
             }
-            
+
             //reviewer accessing the ILS
             if(reviewer){
                 username = reviewer.username;
                 context.actor.id = reviewer.id;
                 context.actor.displayName = username;
+                context.actor.objectType = user_owner;
                 if (username) {
                     return cb(username.toLowerCase());
                 } else if (viewer.error) {
@@ -113,13 +114,13 @@
                         "log": viewer.error
                     };
                 }
-
                 //Old ils implementation
             }else if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
                 if (typeof(Storage) !== "undefined") {
                     username = localStorage.getItem("graasp_user");
                     context.actor.id = context.actor.id.replace("unknown", username);
                     context.actor.displayName = username;
+                    context.actor.objectType = user_student;
                     if (username) {
                         return cb(username.toLowerCase());
                     } else {
@@ -153,7 +154,6 @@
             } else {
                 return cb(error);
             }
-
         },
 
         // Returns the type of context where the app is running
@@ -464,17 +464,15 @@
                     context.generator.displayName = response.displayName;
 
                     //TODO updates when graasp deals with the app permissions
-                    if (ils.identifyContext() === context_standalone_ils) {
-                        context.actor.objectType = user_student;
-                    } else if (response.memberships) {
-                            var isMember = _.filter(response.memberships, function (member) {
-                                return (member.userId === context.actor.id ) && (member.memberType === "owner" || member.memberType === "contributor");
-                            });
-                            if (isMember.length>0) {
-                                context.actor.objectType = user_editor;
-                            } else {
-                                context.actor.objectType = user_viewer;
-                            }
+                    if (!context.actor.objectType && response.memberships) {
+                        var isMember = _.filter(response.memberships, function (member) {
+                            return (member.userId === context.actor.id ) && (member.memberType === "owner" || member.memberType === "contributor");
+                        });
+                        if (isMember.length>0) {
+                            context.actor.objectType = user_editor;
+                        } else {
+                            context.actor.objectType = user_viewer;
+                        }
                     }
 
                     return cb(response);

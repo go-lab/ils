@@ -827,8 +827,8 @@
 
         //Returns the Configuration Space based on the VaultId
         getConfiguration: function (cb) {
-            counter_getConfiguration++;
-            console.log("counter_getConfiguration " + counter_getConfiguration);
+            //counter_getConfiguration++;
+            //console.log("counter_getConfiguration " + counter_getConfiguration);
             var error = {};
 
             ils.getApp(function (app) {
@@ -850,8 +850,8 @@
 
         //Returns all the configurations of the apps added to the ILS
         getAllConfigurations: function (cb) {
-            counter_getAllConfigurations++;
-            console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
+            //counter_getAllConfigurations++;
+            //console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
             var error = {};
             var ilsConfigurations = [];
             ils.getIlsId(function(ilsId){
@@ -965,8 +965,8 @@
         // sets the configuration of the app, content and metadata need to be passed
         // content should be in JSON format
         setAppConfiguration: function (content, metadata, cb) {
-            counter_setAppConfiguration++;
-            console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
+            //counter_setAppConfiguration++;
+            //console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
             var error = {};
 
             ils.validateConfiguration(metadata, function(isValid){

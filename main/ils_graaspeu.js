@@ -88,72 +88,75 @@
         getCurrentUser: function (cb) {
             //counter_getCurrentUser++;
             //console.log("counter_getCurrentUser " + counter_getCurrentUser);
-            var username;
             var error = {"error": "The username couldn't be obtained."};
             var context_type = ils.identifyContext();
-            var reviewer;
 
-            if(gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
-                var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
-                reviewer = view_params.reviewer;
-            }
-
-            //reviewer accessing the ILS
-            if(reviewer){
-                username = reviewer.username;
-                context.actor.id = reviewer.id;
-                context.actor.displayName = username;
-                context.actor.objectType = user_editor;
-                if (username) {
-                    return cb(username.toLowerCase());
-                } else if (viewer.error) {
-                    return cb(error);
-                } else {
-                    error = {
-                        "error": "The username couldn't be obtained.",
-                        "log": viewer.error
-                    };
-                }
-                //Old ils implementation
-            }else if (context_type == context_standalone_ils && (document.referrer.indexOf("old-ils") > -1)) {
-                if (typeof(Storage) !== "undefined") {
-                    username = localStorage.getItem("graasp_user");
-                    context.actor.id = context.actor.id.replace("unknown", username);
-                    context.actor.displayName = username;
-                    context.actor.objectType = user_student;
-                    if (username) {
-                        return cb(username.toLowerCase());
-                    } else {
-                        return cb(error);
-                    }
-                } else {
-                    username = $.cookie('graasp_user');
-                    if (username) {
-                        return cb(username.toLowerCase());
-                    } else {
-                        return cb(error);
-                    }
-                }
-                //real or temporary users
-            } else if (context_type == context_graasp || context_type == context_standalone_ils) {
+            //get the user logged in the Graasp
+            function getLoggedUser (cb) {
+                var logged_user;
                 osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                    username = viewer.displayName;
-                    context.actor.id = viewer.id;
-                    context.actor.displayName = username;
-                    if (username) {
-                        return cb(username.toLowerCase());
-                    } else if (viewer.error) {
-                        return cb(error);
+                    if (viewer.id && viewer.displayName) {
+                        logged_user = {
+                            "id": viewer.id,
+                            "displayName": viewer.displayName
+                        }
+                        return cb(logged_user);
                     } else {
                         error = {
                             "error": "The username couldn't be obtained.",
                             "log": viewer.error
                         };
+                        return cb(error);
                     }
                 });
-            } else {
-                return cb(error);
             }
+
+            //get the reviewer in case of existing
+            function getReviewer (cb) {
+                var reviewer;
+                if (gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
+                    var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
+                    reviewer = (view_params) ? view_params.reviewer : null;
+                    return cb(reviewer);
+                }
+            }
+
+            getLoggedUser(function(logged_user){
+                if (!logged_user.error) {
+                    getReviewer(function (reviewer) {
+                        //reviewer accessing the ILS
+                        if (reviewer && reviewer.id && reviewer.username) {
+                            // the reviewer will be the actor of any action
+                            context.actor.id = reviewer.id;
+                            context.actor.displayName = reviewer.username;
+                            context.actor.objectType = user_editor;
+
+                            // the contextual user will represent the student
+                            context.contextual_actor = {
+                                "id": logged_user.id,
+                                "displayName": logged_user.displayName,
+                                "objectType": user_student
+                            };
+
+                            return cb(context.actor.displayName.toLowerCase());
+
+                            //real or temporary users
+                        } else if (context_type == context_graasp || context_type == context_standalone_ils) {
+                            context.actor.id = logged_user.id;
+                            context.actor.displayName = logged_user.displayName;
+                            context.actor.objectType = (context_type == context_standalone_ils) ? user_student : "person";
+
+                            return cb(context.actor.displayName.toLowerCase());
+
+                        } else {
+                            return cb(error);
+                        }
+
+                    });
+                } else {
+                    return cb(error);
+                }
+            });
         },
 
         // Returns the type of context where the app is running

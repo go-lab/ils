@@ -1202,7 +1202,7 @@
         },
 
         // log the action of adding a resource in the Vault
-        logAction: function (userName, spaceId, resourceId, appId, appUrl, actionType, cb) {
+        logAction: function (objectId, objectType, objectName, spaceId, spaceName, actionType, cb) {
             //counter_logAction++;
             //console.log("counter_logAction " + counter_logAction);
             var params = {
@@ -1212,48 +1212,41 @@
                 "verb": actionType,
                 "activity": {}
             };
+
+            params.activity.verb = actionType;
+
+            params.activity.published = params.published;
+
             params.activity.object = {
-                "id": resourceId,
-                "objectType": "Asset",
-                "graasp_object": "true"
+                "id": objectId,
+                "objectType": objectType,
+                "displayName": objectName
             };
+
             params.activity.target = {
                 "id": spaceId,
                 "objectType": "Space",
-                "graasp_object": "true"
-            };
-            params.activity.generator = {
-                "id": appId,
-                "objectType": "Widget",
-                "url": appUrl,
-                "graasp_object": "true"
+                "displayName": spaceName
             };
 
-            ils.getIls(function (parentSpace) {
-                params.activity.actor = {
-                    "id": context.actor.id,
-                    "objectType": "person",
-                    "name": context.actor.displayName
-                };
-                params.activity.provider = {
-                    "objectType": "ils",
-                    "url": parentSpace.profileUrl,
-                    "id": parentSpace.id,
-                    "displayName": parentSpace.displayName
-                };
+            params.activity.generator = context.generator;
 
-                osapi.activitystreams.create(params).execute(function (response) {
-                    if (response.id && !response.error) {
-                        return cb(response);
-                    } else {
-                        var error = {
-                            "error": "The activity couldn't be logged.",
-                            "log": response.error
-                        };
-                        return cb(error);
-                    }
-                });
+            params.activity.actor = context.actor;
+
+            params.activity.provider = context.provider;
+
+            osapi.activitystreams.create(params).execute(function (response) {
+                if (response.id && !response.error) {
+                    return cb(response);
+                } else {
+                    var error = {
+                        "error": "The activity couldn't be logged.",
+                        "log": response.error
+                    };
+                    return cb(error);
+                }
             });
+
         },
 
         // get the action of adding the resource in the Vault based on resourceId and vaultId

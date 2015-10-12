@@ -19,21 +19,21 @@
     var context = {
         actor: {
             "objectType": "person",
-            "id": "unknown@undefined",
-            "displayName": "unknown"
+            "id": null,
+            "displayName": null
         },
         generator: {
             "objectType": "application",
             "url": (typeof gadgets != "undefined") ? gadgets.util.getUrlParameters().url : window.location.href,
-            "id": "undefined",
-            "displayName": "undefined"
+            "id": null,
+            "displayName": null
         },
 
         provider: {
             "objectType": context_preview,
             "url": window.location.href,
-            "id": "undefined",
-            "displayName": "undefined",
+            "id": null,
+            "displayName": null,
             "inquiryPhaseId": "undefined",
             "inquiryPhaseName": "undefined",
             "inquiryPhase": "undefined"
@@ -41,8 +41,8 @@
 
         target: {},
 
-        "storageId": "undefined",
-        "storageType": "undefined"
+        "storageId": null,
+        "storageType": null
 
     };
 
@@ -191,7 +191,7 @@
             //console.log("counter_getParent " + counter_getParent);
             var error = {"error": "The parent space couldn't be obtained."};
             osapi.context.get().execute(function (context_space) {
-                if (context_space != undefined && context_space != null) {
+                if (context_space && context_space != undefined) {
                     if (!context_space.error) {
                         osapi.spaces.get({contextId: context_space.contextId}).execute(function (parent) {
                             if (!parent.error) {
@@ -251,7 +251,6 @@
                         if (!parentSpace.error && parentSpace.id) {
                             //app at the ils level
                             if (parentSpace.spaceType === 'ils') {
-                                context.actor.id = context.actor.id.replace("undefined", parentSpace.id);
                                 context.provider.objectType = parentSpace.spaceType;
                                 context.provider.url = parentSpace.profileUrl;
                                 context.provider.id = parentSpace.id;
@@ -265,7 +264,6 @@
                                     if (!parentIls.error) {
                                         //app at the phase level
                                         if (parentIls.spaceType === 'ils') {
-                                            context.actor.id = context.actor.id.replace("undefined", parentIls.id);
                                             context.provider.objectType = parentIls.spaceType;
                                             context.provider.url = parentIls.profileUrl;
                                             context.provider.id = parentIls.id;
@@ -318,7 +316,7 @@
             //console.log("counter_getIlsId " + counter_getIlsId);
             var ilsId = context.provider.id;
 
-            if (ilsId=="undefined"){
+            if (!ilsId){
                 ils.getIls(function(space){
                     return cb(space.id);
                 });
@@ -514,14 +512,14 @@
             //counter_getContextFromMetadata++;
             //console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
             if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName
-                || metadata.actor.id.indexOf("unknown") > -1) {
+                || !metadata.actor.id) {
                 ils.getCurrentUser(function (viewer) {});
             } else {
                 context.actor = metadata.actor;
             }
 
             if (!metadata.generator || !metadata.generator.objectType || !metadata.generator.url || !metadata.generator.id
-                || !metadata.generator.displayName || metadata.generator.id.indexOf("undefined") > -1) {
+                || !metadata.generator.displayName) {
                 ils.getApp(function (app) {
                     if (app && app.id) {
                         context.generator.url = app.appUrl;
@@ -535,10 +533,9 @@
 
             if (!metadata.provider || !metadata.provider.objectType || !metadata.provider.url || !metadata.provider.id
                 || !metadata.provider.displayName || !metadata.provider.inquiryPhaseId || !metadata.provider.inquiryPhaseName
-                || !metadata.provider.inquiryPhase || metadata.provider.id.indexOf("undefined") > -1) {
+                || !metadata.provider.inquiryPhase) {
                 ils.getIls(function (space, subspace) {
                     if (space && space.id) {
-                        context.actor.id = context.actor.id.replace("undefined", space.id);
                         context.provider.objectType = space.spaceType;
                         context.provider.url = space.profileUrl;
                         context.provider.id = space.id;
@@ -557,7 +554,7 @@
                 context.provider = metadata.provider;
             }
 
-            if (!metadata.storageId || !metadata.storageType || metadata.storageId.indexOf("undefined") > -1) {
+            if (!metadata.storageId || !metadata.storageType) {
                 ils.getVault(function (vault) {
                     if (vault && vault.id) {
                         context.storageId = vault.id;
@@ -577,8 +574,7 @@
         getAppContextParameters: function (cb) {
             //counter_getAppContextParameters++;
             //console.log("counter_getAppContextParameters " + counter_getAppContextParameters);
-            if (context.actor.id != "unknown@undefined" && context.generator.id != "undefined"
-                && context.provider.id != "undefined" && context.storageId != "undefined") {
+            if (context.actor.id && context.generator.id && context.provider.id && context.storageId) {
                 return cb(context);
             } else {
                 ils.getCurrentUser(function (viewer) {
@@ -770,7 +766,7 @@
             //counter_createResource++;
             //console.log("counter_createResource " + counter_createResource);
             var error = {};
-            if (resourceName != null && resourceName != undefined) {
+            if (resourceName && resourceName != undefined) {
                 ils.getContextFromMetadata(metadata, function () {
                     ils.getUniqueName(resourceName, function (uniqueName) {
                         var params = {

@@ -602,20 +602,7 @@
                             osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
                                 if (deleteResponse) {
                                     if (!deleteResponse.error) {
-                                        ils.getApp(function (app) {
-                                            //log the action of adding this resource
-                                            ils.logAction(username, vault.id, resourceId, app.id, app.appUrl, "delete", function (logResponse) {
-                                                if (!logResponse.error) {
-                                                    return cb(true);
-                                                } else {
-                                                    error = {
-                                                        "error": "The resource removal couldn't be logged.",
-                                                        "log": logResponse.error
-                                                    };
-                                                    return cb(error);
-                                                }
-                                            });
-                                        });
+                                        return cb(true);
                                     } else {
                                         error = {
                                             "error": "The resource couldn't be removed.",
@@ -782,19 +769,7 @@
 
                         osapi.documents.create(params).execute(function (resource) {
                             if (resource && !resource.error && resource.id) {
-                                //log the action of adding this resource
-                                ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "create", function (response) {
-                                    if (!response.error) {
-                                        return cb(resource);
-                                    } else {
-                                        error = {
-                                            "error": "The resource creation couldn't be logged.",
-                                            "log": response.error
-                                        };
-                                        return cb(error);
-                                    }
-                                });
-
+                                return cb(resource);
                             } else {
                                 //TODO verify error types and return "The resourceName already exists in the space." when it happens
                                 error = {
@@ -1063,17 +1038,7 @@
 
                             osapi.documents.update(params).execute(function (resource) {
                                 if (resource && !resource.error && resource.id) {
-                                    ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
-                                        if (!response.error) {
-                                            return cb(resource);
-                                        } else {
-                                            error = {
-                                                "error": "The resource update couldn't be logged.",
-                                                "log": response.error
-                                            };
-                                            return cb(error);
-                                        }
-                                    });
+                                    return cb(resource);
                                 } else {
                                     error = {
                                         "error": "The resource couldn't be updated.",

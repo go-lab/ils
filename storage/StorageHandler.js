@@ -58,19 +58,7 @@
     };
 
     StorageHandler.prototype.generateUUID = function() {
-      var d, uuid;
-      d = new Date().getTime();
-      uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(char) {
-        var r;
-        r = (d + Math.random() * 16) % 16 | 0;
-        d = Math.floor(d / 16);
-        if (char === 'x') {
-          return r.toString(16);
-        } else {
-          return (r & 0x7 | 0x8).toString(16);
-        }
-      });
-      return uuid;
+      return this.metadataHandler.generateUUID();
     };
 
     StorageHandler.prototype.configureFilters = function(filterForResourceType, filterForUser, filterForProvider, filterForAppId) {
@@ -111,7 +99,7 @@
       return this._filterForAppId = filterForAppId;
     };
 
-    StorageHandler.prototype.getAppIdFilter = function() {
+    StorageHandler.prototype.getForAppIdFilter = function() {
       return this._filterForAppId;
     };
 
@@ -128,7 +116,7 @@
     };
 
     StorageHandler.prototype.getResourceDescription = function(resource) {
-      var errorAnswer;
+      var author, errorAnswer, id, metadata, modified, title, tool, type;
       errorAnswer = function(noLabel) {
         var errorMessage;
         errorMessage = "unknown, no " + noLabel;
@@ -146,13 +134,20 @@
       } else if (!resource.metadata) {
         return errorAnswer("metadata");
       } else {
+        metadata = resource.metadata;
+        id = metadata.id ? metadata.id : "";
+        title = metadata.target && metadata.target.displayName ? metadata.target.displayName : "";
+        type = metadata.target && metadata.target.objectType ? metadata.target.objectType : "";
+        tool = metadata.generator && metadata.generator.displayName ? metadata.generator.displayName : "";
+        author = metadata.actor && metadata.actor.displayName ? metadata.actor.displayName : "";
+        modified = metadata.published ? new Date(resource.metadata.published) : new Date();
         return {
-          id: resource.metadata.id,
-          title: resource.metadata.target.displayName,
-          type: resource.metadata.target.objectType,
-          tool: resource.metadata.generator.displayName,
-          author: resource.metadata.actor.displayName,
-          modified: new Date(resource.metadata.published)
+          id: id,
+          title: title,
+          type: type,
+          tool: tool,
+          author: author,
+          modified: modified
         };
       }
     };
@@ -160,7 +155,7 @@
     StorageHandler.prototype.applyFilters = function(metadatas) {
       if (this._debug) {
         console.log("StorageHandler.applyFilters:");
-        console.log("filter for type: " + this._filterForResourceType + ", user: " + this._filterForUser + ", appId: " + this._filterForAppId + ", provider: " + this._filterForProvider);
+        console.log("filter for type (" + (this.metadataHandler.getTarget().objectType) + "): " + this._filterForResourceType + ", user: " + this._filterForUser + ", appId: " + this._filterForAppId + ", provider: " + this._filterForProvider);
         console.log(metadatas);
       }
       if (this._filterForResourceType) {
@@ -178,11 +173,19 @@
         })(this));
       }
       if (this._filterForUser) {
-        metadatas = metadatas.filter((function(_this) {
-          return function(entry) {
-            return entry.metadata.actor.displayName === _this.metadataHandler.getActor().displayName;
-          };
-        })(this));
+        if (this.metadataHandler.getMetadata().contextual_actor != null) {
+          metadatas = metadatas.filter((function(_this) {
+            return function(entry) {
+              return entry.metadata.actor.displayName === _this.metadataHandler.getMetadata().contextual_actor.displayName;
+            };
+          })(this));
+        } else {
+          metadatas = metadatas.filter((function(_this) {
+            return function(entry) {
+              return entry.metadata.actor.displayName === _this.metadataHandler.getActor().displayName;
+            };
+          })(this));
+        }
       }
       if (this._filterForAppId) {
         metadatas = metadatas.filter((function(_this) {
@@ -212,6 +215,10 @@
       }
       thisContent = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
+      if (metadata.contextual_actor != null) {
+        metadata.actor = metadata.contextual_actor;
+        metadata.contextual_actor = void 0;
+      }
       metadata.published = (new Date()).toISOString();
       metadata.id = id;
       return {
@@ -222,6 +229,9 @@
 
     StorageHandler.prototype._findLatestResourceId = function(objectType, metadatas) {
       var date, entry, latestDate, latestId, _i, _len;
+      if (this._debug) {
+        console.log("_findLatestResourceId(" + objectType + ",)");
+      }
       latestDate = new Date(1970, 0, 1);
       latestId = void 0;
       for (_i = 0, _len = metadatas.length; _i < _len; _i++) {
@@ -360,20 +370,20 @@
       throw "Abstract function listResourceMetaDatas - implement in subclass.";
     };
 
-
-    /*
-      This is an optional call, which is needed if you want to use the CachingStorageHandler.
-      Calls back with all (relevant) resources to cache at the client side.
-      This means all resources for the current user for all tools.
-      If desired, the content part of the resources can be skipped.
-      Takes a callback with (err, metadatas), where metadatas is an Array of
-      { id, metadata: {} } objects. err is null or contains the error if any error
-      occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
-     */
-
     return StorageHandler;
 
   })();
+
+
+  /*
+    This is an optional call, which is needed if you want to use the CachingStorageHandler.
+    Calls back with all (relevant) resources to cache at the client side.
+    This means all resources for the current user for all tools.
+    If desired, the content part of the resources can be skipped.
+    Takes a callback with (err, metadatas), where metadatas is an Array of
+    { id, metadata: {} } objects. err is null or contains the error if any error
+    occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
+   */
 
 
   /*
@@ -567,9 +577,14 @@
         if (this._debug) {
           console.log("LocalStorageHandler: readResource " + resourceId);
         }
-        return setTimeout(function() {
-          return cb(null, JSON.parse(this.localStorage[goLabLocalStorageKey + resourceId]));
-        }, 0);
+        return setTimeout((function(_this) {
+          return function() {
+            if (_this._debug) {
+              console.log(_this.localStorage[goLabLocalStorageKey + resourceId]);
+            }
+            return cb(null, JSON.parse(_this.localStorage[goLabLocalStorageKey + resourceId]));
+          };
+        })(this), 0);
       } else {
         error = new Error("LocalStorageHandler: readResource " + resourceId + " not found.");
         if (this._debug) {
@@ -618,7 +633,7 @@
         } else {
           this.localStorage[goLabLocalStorageKey + resourceId] = JSON.stringify(resource);
           if (this._debug) {
-            console.log("LocalStorageHandler: resource created: " + resource);
+            console.log("LocalStorageHandler: resource created:");
           }
           if (this._debug) {
             console.log(resource);
@@ -740,6 +755,7 @@
 
     function VaultStorageHandler(metadataHandler) {
       this.createResource = __bind(this.createResource, this);
+      this.setConfiguration = __bind(this.setConfiguration, this);
       VaultStorageHandler.__super__.constructor.apply(this, arguments);
       this.className = "golab.ils.storage.VaultStorageHandler";
       if (this._debug) {
@@ -813,101 +829,149 @@
       }
     };
 
-    VaultStorageHandler.prototype.createResource = function(content, cb) {
-      var error, resource, resourceName;
+    VaultStorageHandler.prototype.setConfiguration = function(content, cb) {
+      var resource;
       try {
         resource = this.getResourceBundle(content);
-        resourceName = resource.metadata.target.displayName;
-        resource.metadata.id = void 0;
-        return ils.createResource(resourceName, resource.content, resource.metadata, (function(_this) {
+        this.metadataHandler.setId(resource.metadata.id);
+        console.log("Setting configuration resource in Vault.");
+        console.log("resource");
+        console.log(resource);
+        return ils.setAppConfiguration(resource.content, resource.metadata, (function(_this) {
           return function(result) {
-            var returnedResource;
-            if (_this._debug != null) {
-              console.log("ils.createResource returns:");
-            }
-            if (_this._debug != null) {
-              console.log(result);
-            }
+            console.log("ils.createConfigurationFile returns:");
             if (result.error != null) {
+              console.log(result.error);
               return cb(result.error);
             } else {
-              returnedResource = {};
-              returnedResource.content = resource.content;
-              returnedResource.metadata = JSON.parse(result.metadata);
-              returnedResource.metadata.id = result.id;
-              _this.metadataHandler.setId(resource.metadata.id);
-              return cb(null, returnedResource);
+              console.log(result);
+              return cb(null, resource);
             }
           };
         })(this));
       } catch (_error) {
-        error = _error;
-        console.warn("Something went wrong when trying to create a resource in the vault:");
+        console.warn("Something went wrong when trying to create a configuration in the vault:");
         console.warn(error);
         return cb(error);
+      }
+    };
+
+    VaultStorageHandler.prototype.createResource = function(content, cb) {
+      var error, resource, resourceName;
+      console.log("VaultStorageHandler.createResource called.");
+      console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
+        return this.setConfiguration(content, cb);
+      } else {
+        try {
+          console.log("Creating a new standard resource in Vault.");
+          resource = this.getResourceBundle(content);
+          resourceName = resource.metadata.target.displayName;
+          resource.metadata.id = void 0;
+          return ils.createResource(resourceName, resource.content, resource.metadata, (function(_this) {
+            return function(result) {
+              var returnedResource;
+              if (_this._debug != null) {
+                console.log("ils.createResource returns:");
+              }
+              if (_this._debug != null) {
+                console.log(result);
+              }
+              if (result.error != null) {
+                return cb(result.error);
+              } else {
+                returnedResource = {};
+                returnedResource.content = resource.content;
+                returnedResource.metadata = JSON.parse(result.metadata);
+                returnedResource.metadata.id = result.id;
+                _this.metadataHandler.setId(resource.metadata.id);
+                return cb(null, returnedResource);
+              }
+            };
+          })(this));
+        } catch (_error) {
+          error = _error;
+          console.warn("Something went wrong when trying to create a resource in the vault:");
+          console.warn(error);
+          return cb(error);
+        }
       }
     };
 
     VaultStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, metadata, resource;
-      try {
-        resource = this.getResourceBundle(content);
-        content = resource.content;
-        metadata = resource.metadata;
-        metadata.id = resourceId;
-        return ils.updateResource(resourceId, content, metadata, (function(_this) {
-          return function(result) {
-            var updatedResource;
-            if (_this._debug != null) {
-              console.log("ils.updateResource returns:");
-            }
-            if (_this._debug != null) {
-              console.log(result);
-            }
-            if (result.error != null) {
-              return cb(result.error);
-            } else {
-              updatedResource = {};
-              updatedResource.content = content;
-              updatedResource.metadata = JSON.parse(result.metadata);
-              updatedResource.metadata.id = result.id;
-              _this.metadataHandler.setId(resource.metadata.id);
-              return cb(null, updatedResource);
-            }
-          };
-        })(this));
-      } catch (_error) {
-        error = _error;
-        console.warn("Something went wrong when trying to update resource " + resourceId + " in the vault:");
-        console.warn(error);
-        return cb(error);
+      console.log("VaultStorageHandler.updateResource called.");
+      console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
+        return this.setConfiguration(content, cb);
+      } else {
+        try {
+          resource = this.getResourceBundle(content);
+          content = resource.content;
+          metadata = resource.metadata;
+          metadata.id = resourceId;
+          return ils.updateResource(resourceId, content, metadata, (function(_this) {
+            return function(result) {
+              var updatedResource;
+              if (_this._debug != null) {
+                console.log("ils.updateResource returns:");
+              }
+              if (_this._debug != null) {
+                console.log(result);
+              }
+              if (result.error != null) {
+                return cb(result.error);
+              } else {
+                updatedResource = {};
+                updatedResource.content = content;
+                updatedResource.metadata = JSON.parse(result.metadata);
+                updatedResource.metadata.id = result.id;
+                _this.metadataHandler.setId(resource.metadata.id);
+                return cb(null, updatedResource);
+              }
+            };
+          })(this));
+        } catch (_error) {
+          error = _error;
+          console.warn("Something went wrong when trying to update resource " + resourceId + " in the vault:");
+          console.warn(error);
+          return cb(error);
+        }
       }
     };
 
     VaultStorageHandler.prototype.deleteResource = function(resourceId, cb) {
-      var error;
-      try {
-        return ils.deleteResource(resourceId, (function(_this) {
-          return function(result) {
-            if (_this._debug != null) {
-              console.log("ils.deleteResource returns:");
+      return this.readResource(resourceId, (function(_this) {
+        return function(error, resource) {
+          if ((error != null) || resource === "") {
+            return console.warn("Could not delete resource " + resourceId + ", because I couldn't load it to fetch its details.");
+          } else if (resource.metadata.target.objectType === "configuration") {
+            return console.warn("Cannot delete the configuration for appId " + resource.metadata.generator.id + ", feature not implemented.");
+          } else {
+            console.log("deleting a 'normal' resource.");
+            try {
+              return ils.deleteResource(resourceId, function(result) {
+                if (_this._debug != null) {
+                  console.log("ils.deleteResource returns:");
+                }
+                if (_this._debug != null) {
+                  console.log(result);
+                }
+                if (result.error != null) {
+                  return cb(result.error);
+                } else {
+                  return cb(null);
+                }
+              });
+            } catch (_error) {
+              error = _error;
+              console.warn("Something went wrong when trying to delete resource " + resourceId + " in the vault:");
+              console.warn(error);
+              return cb(error);
             }
-            if (_this._debug != null) {
-              console.log(result);
-            }
-            if (result.error != null) {
-              return cb(result.error);
-            } else {
-              return cb(null);
-            }
-          };
-        })(this));
-      } catch (_error) {
-        error = _error;
-        console.warn("Something went wrong when trying to delete resource " + resourceId + " in the vault:");
-        console.warn(error);
-        return cb(error);
-      }
+          }
+        };
+      })(this));
     };
 
     VaultStorageHandler.prototype.listResourceIds = function(cb) {
@@ -1573,7 +1637,7 @@
   };
 
   window.golab.ils.storage.utils.importResourceJsonArray = function(storageHandler, resourceJsonArray, overwrite, languageHandler, callback) {
-    var allTargetIds, currentForResourceTypeFilter, errors, exception, finishedLoading, getExistingResourceMetadata, getTargetId, importNextResource, jsonArray, loadedResourceIds, setAllTargetIds;
+    var allTargetIds, currentForProviderFilter, currentForResourceTypeFilter, errors, exception, finishedLoading, getExistingResourceMetadata, getTargetId, importNextResource, jsonArray, loadedResourceIds, setAllTargetIds;
     errors = [];
     loadedResourceIds = [];
     allTargetIds = {};
@@ -1655,10 +1719,13 @@
       }
     };
     currentForResourceTypeFilter = storageHandler.getForResourceTypeFilter();
+    currentForProviderFilter = storageHandler.getForProviderFilter();
     storageHandler.setForResourceTypeFilter(false);
+    storageHandler.setForProviderFilter(false);
     try {
       return storageHandler.listResourceMetaDatas(function(error, metadatas) {
         storageHandler.setForResourceTypeFilter(currentForResourceTypeFilter);
+        storageHandler.setForProviderFilter(currentForProviderFilter);
         if (error) {
           errors.push({
             display: languageHandler.getMessage("resourceImport.failure.listResourceMetaDatas", error),

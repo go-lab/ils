@@ -19,7 +19,7 @@ class window.golab.ils.storage.StorageHandler
   constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = true, @_customFilter = null, @_filterForAppId = true) ->
     @className = "golab.ils.storage.StorageHandler"
     @_debug = false
-#    @_debug = true
+    #    @_debug = true
     if @_debug then console.log "Initializing StorageHandler."
     @_lastResourceId = undefined
     try
@@ -32,15 +32,7 @@ class window.golab.ils.storage.StorageHandler
     "#{@className}(#{@metadataHandler.getTarget().objectType})"
 
   generateUUID: () ->
-    d = new Date().getTime()
-    uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace /[xy]/g, (char) ->
-      r = (d + Math.random()*16)%16 | 0
-      d = Math.floor(d/16)
-      if char is 'x'
-        return r.toString(16)
-      else
-        return (r&0x7|0x8).toString(16)
-    return uuid
+    @metadataHandler.generateUUID()
 
   # the three different filters can be activated or deactivated by setting them to true or false
   # the filter value is fetched from the metadataHandler
@@ -74,7 +66,7 @@ class window.golab.ils.storage.StorageHandler
   setForAppIdFilter: (filterForAppId)->
     @_filterForAppId = filterForAppId
 
-  getAppIdFilter: ()->
+  getForAppIdFilter: ()->
     @_filterForAppId
 
   setCustomFilter: (customFilter)->
@@ -92,32 +84,39 @@ class window.golab.ils.storage.StorageHandler
     errorAnswer = (noLabel) ->
       errorMessage = "unknown, no #{noLabel}"
       {
-        id: errorMessage
-        title: errorMessage
-        type: errorMessage
-        tool: errorMessage
-        author: errorMessage
-        modified: errorMessage
+      id: errorMessage
+      title: errorMessage
+      type: errorMessage
+      tool: errorMessage
+      author: errorMessage
+      modified: errorMessage
       }
     if (!resource)
       errorAnswer("resource")
     else if (!resource.metadata)
       errorAnswer("metadata")
     else
+      metadata = resource.metadata
+      id = if (metadata.id) then metadata.id else ""
+      title = if (metadata.target && metadata.target.displayName) then metadata.target.displayName else ""
+      type = if (metadata.target && metadata.target.objectType) then metadata.target.objectType else ""
+      tool = if (metadata.generator && metadata.generator.displayName) then metadata.generator.displayName else ""
+      author = if (metadata.actor && metadata.actor.displayName) then metadata.actor.displayName else ""
+      modified = if (metadata.published) then new Date(resource.metadata.published) else new Date()
       {
-      id: resource.metadata.id
-      title: resource.metadata.target.displayName
-      type: resource.metadata.target.objectType
-      tool: resource.metadata.generator.displayName
-      author: resource.metadata.actor.displayName
-      modified: new Date(resource.metadata.published)
+      id: id
+      title: title
+      type: type
+      tool: tool
+      author: author
+      modified: modified
       }
 
   # internal function, typically not used external
   applyFilters: (metadatas) =>
     if @_debug
       console.log "StorageHandler.applyFilters:"
-      console.log "filter for type: #{@_filterForResourceType}, user: #{@_filterForUser}, appId: #{@_filterForAppId}, provider: #{@_filterForProvider}"
+      console.log "filter for type (#{@metadataHandler.getTarget().objectType}): #{@_filterForResourceType}, user: #{@_filterForUser}, appId: #{@_filterForAppId}, provider: #{@_filterForProvider}"
       console.log metadatas
     # it's important to filter provider before user, since the userId contains the providerId, and therefore we then filter for user displayName
     if @_filterForResourceType
@@ -125,7 +124,11 @@ class window.golab.ils.storage.StorageHandler
     if @_filterForProvider
       metadatas = metadatas.filter (entry) => entry.metadata.provider.id is @metadataHandler.getProvider().id
     if @_filterForUser
-      metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
+      if @metadataHandler.getMetadata().contextual_actor?
+        # there is a contextual_actor available, so filter for this user (instead of actor)
+        metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getMetadata().contextual_actor.displayName
+      else
+        metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
     if @_filterForAppId
       metadatas = metadatas.filter (entry) => entry.metadata.generator.id is @metadataHandler.getGenerator().id
     if @_customFilter
@@ -140,14 +143,20 @@ class window.golab.ils.storage.StorageHandler
     # cloning the objects!
     thisContent = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
+    # if there is a contextual_actor available, inject these properties into metadata.actor
+    if metadata.contextual_actor?
+      metadata.actor = metadata.contextual_actor
+      metadata.contextual_actor = undefined
     metadata.published = (new Date()).toISOString()
     metadata.id = id
     {
-      metadata: metadata,
-      content: thisContent
+    metadata: metadata,
+    content: thisContent
     }
 
   _findLatestResourceId: (objectType, metadatas) ->
+    if (@_debug)
+      console.log("_findLatestResourceId(#{objectType},)")
     latestDate = new Date(1970,0,1)
     latestId = undefined
     for entry in metadatas
@@ -251,15 +260,15 @@ class window.golab.ils.storage.StorageHandler
   listResourceMetaDatas: (cb) ->
     throw "Abstract function listResourceMetaDatas - implement in subclass."
 
-  ###
-    This is an optional call, which is needed if you want to use the CachingStorageHandler.
-    Calls back with all (relevant) resources to cache at the client side.
-    This means all resources for the current user for all tools.
-    If desired, the content part of the resources can be skipped.
-    Takes a callback with (err, metadatas), where metadatas is an Array of
-    { id, metadata: {} } objects. err is null or contains the error if any error
-    occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
-  ###
+###
+  This is an optional call, which is needed if you want to use the CachingStorageHandler.
+  Calls back with all (relevant) resources to cache at the client side.
+  This means all resources for the current user for all tools.
+  If desired, the content part of the resources can be skipped.
+  Takes a callback with (err, metadatas), where metadatas is an Array of
+  { id, metadata: {} } objects. err is null or contains the error if any error
+  occured. The metadatas are (potentially) filtered for username, resource type, and provider id.
+###
 #  listAllResourcesForCaching: (cb)->
 
 ###
@@ -294,7 +303,7 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
 
   createResource: (content, cb) =>
     try
-      # create resource with id, metadata and content
+    # create resource with id, metadata and content
       resource = @getResourceBundle(content)
       if @storeObject[resource.metadata.id]
         error = new Error "MemoryStorage: resource already exists! #{resource.metadata.id}"
@@ -379,7 +388,9 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
   readResource: (resourceId, cb) ->
     if @localStorage[goLabLocalStorageKey + resourceId]
       if @_debug then console.log "LocalStorageHandler: readResource #{resourceId}"
-      setTimeout(->
+      setTimeout(=>
+        if (@_debug)
+          console.log(@localStorage[goLabLocalStorageKey + resourceId])
         cb(null, JSON.parse(@localStorage[goLabLocalStorageKey + resourceId]))
       , 0)
     else
@@ -419,7 +430,7 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
         , 0)
       else
         @localStorage[goLabLocalStorageKey + resourceId] = JSON.stringify(resource)
-        if @_debug then console.log "LocalStorageHandler: resource created: #{resource}"
+        if @_debug then console.log "LocalStorageHandler: resource created:"
         if @_debug then console.log resource
         setTimeout(->
           cb(null, resource)
@@ -540,74 +551,115 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       console.warn error
       cb error
 
+  setConfiguration: (content, cb) =>
+    try
+      resource = @getResourceBundle(content)
+      @metadataHandler.setId resource.metadata.id
+      console.log "Setting configuration resource in Vault."
+      console.log "resource"
+      console.log resource
+      ils.setAppConfiguration resource.content, resource.metadata, (result) =>
+        console.log "ils.createConfigurationFile returns:"
+        if result.error?
+          console.log result.error
+          cb result.error
+        else
+          console.log result
+          cb null, resource
+    catch
+      console.warn "Something went wrong when trying to create a configuration in the vault:"
+      console.warn error
+      cb error
+
   createResource: (content, cb) =>
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
-    try
-      resource = @getResourceBundle(content)
-      resourceName = resource.metadata.target.displayName
-      # the resource.metadata.id will be generated by the Vault,
-      # we can only set it later (see below)
-      resource.metadata.id = undefined
-      ils.createResource resourceName, resource.content, resource.metadata, (result) =>
-        if @_debug? then console.log "ils.createResource returns:"
-        if @_debug? then console.log result
-        if result.error?
-          cb result.error
-        else
-          returnedResource = {}
-          returnedResource.content = resource.content
-          returnedResource.metadata = JSON.parse(result.metadata)
-          returnedResource.metadata.id = result.id
-          # the id might have change here. update in metadata handler
-          @metadataHandler.setId resource.metadata.id
-          cb null, returnedResource
-    catch error
-      console.warn "Something went wrong when trying to create a resource in the vault:"
-      console.warn error
-      cb error
+    console.log "VaultStorageHandler.createResource called."
+    console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
+    if @metadataHandler.getMetadata().target.objectType is "configuration"
+      @setConfiguration content, cb
+    else
+      # handle creating a new standard resource (no configuration)
+      try
+        console.log "Creating a new standard resource in Vault."
+        resource = @getResourceBundle(content)
+        resourceName = resource.metadata.target.displayName
+        # the resource.metadata.id will be generated by the Vault,
+        # we can only set it later (see below)
+        resource.metadata.id = undefined
+        ils.createResource resourceName, resource.content, resource.metadata, (result) =>
+          if @_debug? then console.log "ils.createResource returns:"
+          if @_debug? then console.log result
+          if result.error?
+            cb result.error
+          else
+            returnedResource = {}
+            returnedResource.content = resource.content
+            returnedResource.metadata = JSON.parse(result.metadata)
+            returnedResource.metadata.id = result.id
+            # the id might have change here. update in metadata handler
+            @metadataHandler.setId resource.metadata.id
+            cb null, returnedResource
+      catch error
+        console.warn "Something went wrong when trying to create a resource in the vault:"
+        console.warn error
+        cb error
 
   updateResource: (resourceId, content, cb) ->
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
-    try
-      resource = @getResourceBundle(content)
-      content = resource.content
-      metadata = resource.metadata
-      metadata.id = resourceId
-      ils.updateResource resourceId, content, metadata, (result) =>
-        if @_debug? then console.log "ils.updateResource returns:"
-        if @_debug? then console.log result
-        if result.error?
-          cb result.error
-        else
-          updatedResource = {}
-          updatedResource.content = content
-          updatedResource.metadata = JSON.parse(result.metadata)
-          updatedResource.metadata.id = result.id
-          # the id might have change here. update in metadata handler
-          @metadataHandler.setId resource.metadata.id
-          cb null, updatedResource
-    catch error
-      console.warn "Something went wrong when trying to update resource #{resourceId} in the vault:"
-      console.warn error
-      cb error
+    console.log "VaultStorageHandler.updateResource called."
+    console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
+    if @metadataHandler.getMetadata().target.objectType is "configuration"
+      @setConfiguration content, cb
+    else
+      try
+        resource = @getResourceBundle(content)
+        content = resource.content
+        metadata = resource.metadata
+        metadata.id = resourceId
+        ils.updateResource resourceId, content, metadata, (result) =>
+          if @_debug? then console.log "ils.updateResource returns:"
+          if @_debug? then console.log result
+          if result.error?
+            cb result.error
+          else
+            updatedResource = {}
+            updatedResource.content = content
+            updatedResource.metadata = JSON.parse(result.metadata)
+            updatedResource.metadata.id = result.id
+            # the id might have change here. update in metadata handler
+            @metadataHandler.setId resource.metadata.id
+            cb null, updatedResource
+      catch error
+        console.warn "Something went wrong when trying to update resource #{resourceId} in the vault:"
+        console.warn error
+        cb error
 
   deleteResource: (resourceId, cb) ->
-    try
-      ils.deleteResource resourceId, (result) =>
-        if @_debug? then console.log "ils.deleteResource returns:"
-        if @_debug? then console.log result
-        if result.error?
-          cb result.error
-        else
-          cb null
-    catch error
-      console.warn "Something went wrong when trying to delete resource #{resourceId} in the vault:"
-      console.warn error
-      cb error
+    # with the new configuration storage, I need to fetch the resource (to know metadata) before I can delete it
+    @readResource resourceId, (error, resource) =>
+      if error? or resource is ""
+        console.warn "Could not delete resource #{resourceId}, because I couldn't load it to fetch its details."
+      else if resource.metadata.target.objectType is "configuration"
+        console.warn "Cannot delete the configuration for appId #{resource.metadata.generator.id}, feature not implemented."
+        # TODO delete the configuration
+      else
+        console.log "deleting a 'normal' resource."
+        try
+          ils.deleteResource resourceId, (result) =>
+            if @_debug? then console.log "ils.deleteResource returns:"
+            if @_debug? then console.log result
+            if result.error?
+              cb result.error
+            else
+              cb null
+        catch error
+          console.warn "Something went wrong when trying to delete resource #{resourceId} in the vault:"
+          console.warn error
+          cb error
 
   listResourceIds: (cb) ->
     throw "Not yet implemented."
@@ -770,7 +822,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
 
   updateResource: (resourceId, content, cb) ->
     try
-      # creating a resource with a given id
+    # creating a resource with a given id
       resource = @getResourceBundle(content, resourceId)
       # adding the mongo specific id
       resource._id = resource.metadata.id
@@ -803,9 +855,9 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
         type: "GET",
         crossDomain: true
         contentType: "text/plain"
-        # TODO active filters can already be applied here in the URL
+      # TODO active filters can already be applied here in the URL
         url: "#{@urlPrefix}/listResourceMetaDatas",
-        #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
+      #url: "#{@urlPrefix}/listResourceMetaDatas/#{encodeURIComponent(@metadataHandler.getProvider().id)}/#{encodeURIComponent(@metadataHandler.getActor().id)}",
         success: (responseData) =>
           if @_debug
             console.log("GET listResourceMetaDatas success, response (before filters):")
@@ -871,7 +923,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
 
   updateResource: (resourceId, content, cb, async = true) ->
     try
-      # creating a resource with a give id
+    # creating a resource with a give id
       resource = @getResourceBundle(content, resourceId)
       # adding the mongo specific id
       resource._id = resource.metadata.id
@@ -880,7 +932,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
         type: "POST",
         url: "#{@urlPrefix}/updateResource.js",
         data: JSON.stringify(resource),
-        #contentType: "application/json",
+      #contentType: "application/json",
         crossDomain: true,
         success: (responseData, textStatus, jqXHR) ->
           if @_debug
@@ -1143,10 +1195,13 @@ window.golab.ils.storage.utils.importResourceJsonArray = (storageHandler, resour
       finishedLoading()
 
   currentForResourceTypeFilter = storageHandler.getForResourceTypeFilter()
+  currentForProviderFilter = storageHandler.getForProviderFilter()
   storageHandler.setForResourceTypeFilter(false)
+  storageHandler.setForProviderFilter(false)
   try
     storageHandler.listResourceMetaDatas((error, metadatas)->
       storageHandler.setForResourceTypeFilter(currentForResourceTypeFilter)
+      storageHandler.setForProviderFilter(currentForProviderFilter)
       if (error)
         errors.push({
           display:languageHandler.getMessage("resourceImport.failure.listResourceMetaDatas", error),

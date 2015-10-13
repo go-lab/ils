@@ -132,7 +132,7 @@
                             context.actor.objectType = user_editor;
 
                             // the contextual user will represent the student
-                            context.contextual_actor = {
+                            context.contextualActor = {
                                 "id": logged_user.id,
                                 "displayName": logged_user.displayName,
                                 "objectType": user_student

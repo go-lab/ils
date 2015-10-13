@@ -13,42 +13,45 @@
     var context_standalone_ils = "standalone_ils";
     var context_standalone_html = "standalone_html";
     var context_unknown = "unknown";
+    var user_student = "graasp_student";
+    var user_viewer = "graasp_viewer";
+    var user_editor = "graasp_editor";
     var context = {
         actor: {
             "objectType": "person",
-            "id": "unknown@undefined",
-            "displayName": "unknown"
+            "id": null,
+            "displayName": null
         },
         generator: {
             "objectType": "application",
-            "url": gadgets.util.getUrlParameters().url,
-            "id": "undefined",
-            "displayName": "undefined"
+            "url": (typeof gadgets != "undefined") ? gadgets.util.getUrlParameters().url : window.location.href,
+            "id": null,
+            "displayName": null
         },
 
         provider: {
             "objectType": context_preview,
             "url": window.location.href,
-            "id": "undefined",
-            "displayName": "undefined",
+            "id": null,
+            "displayName": null,
             "inquiryPhaseId": "undefined",
             "inquiryPhaseName": "undefined",
             "inquiryPhase": "undefined"
         },
 
-        target: {
-        },
+        target: {},
 
-        "storageId": "undefined",
-        "storageType": "undefined"
+        "storageId": null,
+        "storageType": null
 
     };
-    
+
     //var counter_getCurrentUser = 0;
     //var counter_identifyContext = 0;
     //var counter_getParent = 0;
     //var counter_getParentInquiryPhase = 0;
     //var counter_getIls = 0;
+    //var counter_getIlsId = 0;
     //var counter_getSpaceBySpaceId = 0;
     //var counter_getItemsBySpaceId = 0;
     //var counter_getSubspacesBySpaceId = 0;
@@ -59,7 +62,6 @@
     //var counter_getAppId = 0;
     //var counter_getContextFromMetadata = 0;
     //var counter_getAppContextParameters = 0;
-    //var counter_setContextParameters = 0;
     //var counter_deleteResource = 0;
     //var counter_existResource = 0;
     //var counter_readResource = 0;
@@ -67,9 +69,9 @@
     //var counter_obtainMetadataFromAction = 0;
     //var counter_createResource = 0;
     //var counter_getUniqueName = 0;
-    //var counter_createConfigurationSpace = 0;
     //var counter_getConfiguration = 0;
-    //var counter_createConfigurationFile = 0;
+    //var counter_getAllConfigurations = 0;
+    //var counter_setAppConfiguration = 0;
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
@@ -86,54 +88,70 @@
         getCurrentUser: function (cb) {
             //counter_getCurrentUser++;
             //console.log("counter_getCurrentUser " + counter_getCurrentUser);
-            var username;
             var error = {"error": "The username couldn't be obtained."};
+            var context_type = ils.identifyContext();
 
-            ils.identifyContext(function (context_type) {
-                //TODO once we merge the ils2 branch, the user will be obtained via osapi in any case
-                if (context_type == context_standalone_ils) {
-                    if (document.referrer.indexOf("ils2") > -1) {
-                        osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                            username = viewer.displayName;
-                            if (username) {
-                                return cb(username.toLowerCase());
-                            } else if (viewer.error) {
-                                return cb(error);
-                            } else {
-                                error = {
-                                    "error": "The username couldn't be obtained.",
-                                    "log": viewer.error
-                                };
-                            }
-                        });
-                    }else if (typeof(Storage) !== "undefined") {
-                        username = localStorage.getItem("graasp_user");
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else {
-                            return cb(error);
+            //get the user logged in the Graasp
+            function getLoggedUser (cb) {
+                var logged_user;
+                osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
+                    if (viewer.id && viewer.displayName) {
+                        logged_user = {
+                            "id": viewer.id,
+                            "displayName": viewer.displayName
                         }
+                        return cb(logged_user);
                     } else {
-                        username = $.cookie('graasp_user');
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else {
-                            return cb(error);
-                        }
+                        error = {
+                            "error": "The username couldn't be obtained.",
+                            "log": viewer.error
+                        };
+                        return cb(error);
                     }
-                } else if (context_type == context_graasp) {
-                    osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                        username = viewer.displayName;
-                        if (username) {
-                            return cb(username.toLowerCase());
-                        } else if (viewer.error) {
-                            return cb(error);
-                        } else {
-                            error = {
-                                "error": "The username couldn't be obtained.",
-                                "log": viewer.error
+                });
+            }
+
+            //get the reviewer in case of existing
+            function getReviewer (cb) {
+                var reviewer;
+                if (gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
+                    var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
+                    reviewer = (view_params) ? view_params.reviewer : null;
+                    return cb(reviewer);
+                }
+            }
+
+            getLoggedUser(function(logged_user){
+                if (!logged_user.error) {
+                    getReviewer(function (reviewer) {
+                        //reviewer accessing the ILS
+                        if (reviewer && reviewer.id && reviewer.username) {
+                            // the reviewer will be the actor of any action
+                            context.actor.id = reviewer.id;
+                            context.actor.displayName = reviewer.username;
+                            context.actor.objectType = user_editor;
+
+                            // the contextual user will represent the student
+                            context.contextual_actor = {
+                                "id": logged_user.id,
+                                "displayName": logged_user.displayName,
+                                "objectType": user_student
                             };
+
+                            return cb(context.actor.displayName.toLowerCase());
+
+                            //real or temporary users
+                        } else if (context_type == context_graasp || context_type == context_standalone_ils) {
+                            context.actor.id = logged_user.id;
+                            context.actor.displayName = logged_user.displayName;
+                            context.actor.objectType = (context_type == context_standalone_ils) ? user_student : "person";
+
+                            return cb(context.actor.displayName.toLowerCase());
+
+                        } else {
+                            return cb(error);
                         }
+
                     });
                 } else {
                     return cb(error);
@@ -142,28 +160,28 @@
         },
 
         // Returns the type of context where the app is running
-        identifyContext: function (cb) {
+        identifyContext: function () {
             //counter_identifyContext++;
             //console.log("counter_identifyContext " + counter_identifyContext);
 
             if (typeof osapi === "undefined" || osapi === null) {
-                return cb(context_standalone_html);
+                return (context_standalone_html);
 
                 // http://www.golabz.eu/apps/ OR  http://composer.golabz.eu/
             } else if (document.referrer.indexOf("golabz.eu") > -1 || document.referrer == "") {
-                return cb(context_preview);
+                return (context_preview);
 
                 // http://localhost:9091/ils/ OR http://graasp.eu/ils/
             } else if (document.referrer.indexOf("ils") > -1) {
-                return cb(context_standalone_ils);
+                return (context_standalone_ils);
 
                 // http://localhost:9091/applications/    http://localhost:9091/spaces/
                 // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
             } else if (document.referrer.indexOf("graasp.eu") > -1 || document.referrer.indexOf("localhost") > -1) {
-                return cb(context_graasp);
+                return (context_graasp);
 
             } else {
-                return cb(context_unknown);
+                return (context_unknown);
             }
         },
 
@@ -173,7 +191,7 @@
             //console.log("counter_getParent " + counter_getParent);
             var error = {"error": "The parent space couldn't be obtained."};
             osapi.context.get().execute(function (context_space) {
-                if (context_space != undefined && context_space != null) {
+                if (context_space && context_space != undefined) {
                     if (!context_space.error) {
                         osapi.spaces.get({contextId: context_space.contextId}).execute(function (parent) {
                             if (!parent.error) {
@@ -230,15 +248,34 @@
             osapi.context.get().execute(function (space) {
                 if (!space.error) {
                     osapi.spaces.get({contextId: space.contextId}).execute(function (parentSpace) {
-                        if (!parentSpace.error) {
+                        if (!parentSpace.error && parentSpace.id) {
                             //app at the ils level
                             if (parentSpace.spaceType === 'ils') {
+                                context.provider.objectType = parentSpace.spaceType;
+                                context.provider.url = parentSpace.profileUrl;
+                                context.provider.id = parentSpace.id;
+                                context.provider.displayName = parentSpace.displayName;
+                                if (parentSpace.metadata && parentSpace.metadata.ilsRef) {
+                                    context.provider.ilsRef = parentSpace.metadata.ilsRef;
+                                }
                                 return cb(parentSpace, parentSpace);
                             } else {
                                 osapi.spaces.get({contextId: parentSpace.parentId}).execute(function (parentIls) {
                                     if (!parentIls.error) {
                                         //app at the phase level
                                         if (parentIls.spaceType === 'ils') {
+                                            context.provider.objectType = parentIls.spaceType;
+                                            context.provider.url = parentIls.profileUrl;
+                                            context.provider.id = parentIls.id;
+                                            context.provider.displayName = parentIls.displayName;
+                                            context.provider.inquiryPhaseId = parentSpace.id;
+                                            context.provider.inquiryPhaseName = parentSpace.displayName;
+                                            if (parentSpace.metadata && parentSpace.metadata.type) {
+                                                context.provider.inquiryPhase = parentSpace.metadata.type;
+                                            }
+                                            if (parentIls.metadata && parentIls.metadata.ilsRef) {
+                                                context.provider.ilsRef = parentIls.metadata.ilsRef;
+                                            }
                                             return cb(parentIls, parentSpace);
                                         } else {
                                             error = {"error": "The app is not located in an ILS or in one of its phases."};
@@ -272,13 +309,29 @@
             });
         },
 
+
+        // get the Id of the current ILS
+        getIlsId: function (cb) {
+            //counter_getIlsId++;
+            //console.log("counter_getIlsId " + counter_getIlsId);
+            var ilsId = context.provider.id;
+
+            if (!ilsId){
+                ils.getIls(function(space){
+                    return cb(space.id);
+                });
+            }else{
+                return cb(ilsId);
+            }
+        },
+
         // get the description of an space based on the spaceId
         getSpaceBySpaceId: function (spaceId, cb) {
             //counter_getSpaceBySpaceId++;
             //console.log("counter_getSpaceBySpaceId " + counter_getSpaceBySpaceId);
             osapi.spaces.get({contextId: spaceId}).execute(function (space) {
                 if (!space.error && space.id) {
-                        return cb(space);
+                    return cb(space);
                 } else {
                     error = {
                         "error": "The space is not available.",
@@ -294,10 +347,10 @@
             //counter_getItemsBySpaceId++;
             //console.log("counter_getItemsBySpaceId " + counter_getItemsBySpaceId);
             var error;
-            osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function(items){
-                if (!items.error && items.list){
+            osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function (items) {
+                if (!items.error && items.list) {
                     return cb(items.list);
-                }else{
+                } else {
                     error = {
                         "error": "The list of items could not be obtained.",
                         "log": items.error
@@ -312,13 +365,13 @@
             //counter_getSubspacesBySpaceId++;
             //console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function(items){
-                if (!items.error){
+            ils.getItemsBySpaceId(spaceId, function (items) {
+                if (!items.error) {
                     var subspaces = _.filter(items, function (item) {
                         return item.spaceType;
                     });
                     return cb(subspaces);
-                }else{
+                } else {
                     error = {
                         "error": "The list of spaces could not be obtained.",
                         "log": items.error
@@ -333,13 +386,13 @@
             //counter_getAppsBySpaceId++;
             //console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function(items){
-                if (!items.error){
+            ils.getItemsBySpaceId(spaceId, function (items) {
+                if (!items.error) {
                     var apps = _.filter(items, function (item) {
                         return item.itemType && item.itemType === "Application";
                     });
                     return cb(apps);
-                }else{
+                } else {
                     error = {
                         "error": "The list of apps could not be obtained.",
                         "log": items.error
@@ -357,7 +410,7 @@
             ils.getIls(function (parentIls) {
                 if (!parentIls.error) {
                     ils.getVaultByIlsId(parentIls.id, function (vault) {
-                        if (vault) {
+                        if (vault && vault.id) {
                             return cb(vault);
                         } else {
                             error = {"error": "There is no Vault available."};
@@ -385,7 +438,14 @@
                         var vault = _.find(items.list, function (item) {
                             return item.spaceType && item.metadata && item.metadata.type === "Vault";
                         });
-                        return cb(vault);
+                        if (vault && vault.id) {
+                            context.storageId = vault.id;
+                            context.storageType = vault.spaceType;
+                            return cb(vault);
+                        } else {
+                            error = {"error": "There is no Vault available."};
+                            return cb(error);
+                        }
                     }
                 );
             } else {
@@ -399,7 +459,23 @@
             //counter_getApp++;
             //console.log("counter_getApp " + counter_getApp);
             osapi.apps.get({contextId: "@self"}).execute(function (response) {
-                if (!response.error) {
+                if (!response.error && response.id) {
+                    context.generator.url = response.appUrl;
+                    context.generator.id = response.id;
+                    context.generator.displayName = response.displayName;
+
+                    //TODO updates when graasp deals with the app permissions
+                    if (context.actor.objectType=="person" && response.memberships) {
+                        var isMember = _.filter(response.memberships, function (member) {
+                            return (member.userId === context.actor.id ) && (member.memberType === "owner" || member.memberType === "contributor");
+                        });
+                        if (isMember.length>0) {
+                            context.actor.objectType = user_editor;
+                        } else {
+                            context.actor.objectType = user_viewer;
+                        }
+                    }
+
                     return cb(response);
                 } else {
                     var error = {
@@ -436,21 +512,14 @@
             //counter_getContextFromMetadata++;
             //console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
             if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName
-                || metadata.actor.id.indexOf("unknown") > -1) {
-                ils.getCurrentUser(function (viewer) {
-                    if (viewer && viewer != "" && !viewer.error) {
-                        //to be fixed once we have the temporary users (viewer.id/owner.id)
-                        //to be fixed once we have the temporary users (viewer.id/owner.id)
-                        context.actor.id = context.actor.id.replace("unknown", viewer);
-                        context.actor.displayName = viewer;
-                    }
-                });
+                || !metadata.actor.id) {
+                ils.getCurrentUser(function (viewer) {});
             } else {
                 context.actor = metadata.actor;
             }
 
             if (!metadata.generator || !metadata.generator.objectType || !metadata.generator.url || !metadata.generator.id
-                || !metadata.generator.displayName || metadata.generator.id.indexOf("undefined") > -1) {
+                || !metadata.generator.displayName) {
                 ils.getApp(function (app) {
                     if (app && app.id) {
                         context.generator.url = app.appUrl;
@@ -464,10 +533,9 @@
 
             if (!metadata.provider || !metadata.provider.objectType || !metadata.provider.url || !metadata.provider.id
                 || !metadata.provider.displayName || !metadata.provider.inquiryPhaseId || !metadata.provider.inquiryPhaseName
-                || !metadata.provider.inquiryPhase || metadata.provider.id.indexOf("undefined") > -1) {
+                || !metadata.provider.inquiryPhase) {
                 ils.getIls(function (space, subspace) {
                     if (space && space.id) {
-                        context.actor.id = context.actor.id.replace("undefined", space.id);
                         context.provider.objectType = space.spaceType;
                         context.provider.url = space.profileUrl;
                         context.provider.id = space.id;
@@ -486,7 +554,7 @@
                 context.provider = metadata.provider;
             }
 
-            if (!metadata.storageId || !metadata.storageType || metadata.storageId.indexOf("undefined") > -1) {
+            if (!metadata.storageId || !metadata.storageType) {
                 ils.getVault(function (vault) {
                     if (vault && vault.id) {
                         context.storageId = vault.id;
@@ -506,19 +574,14 @@
         getAppContextParameters: function (cb) {
             //counter_getAppContextParameters++;
             //console.log("counter_getAppContextParameters " + counter_getAppContextParameters);
-            if (context.actor.id != "unknown@undefined" && context.generator.id != "undefined"
-                && context.provider.id != "undefined" && context.storageId != "undefined") {
+            if (context.actor.id && context.generator.id && context.provider.id && context.storageId) {
                 return cb(context);
             } else {
                 ils.getCurrentUser(function (viewer) {
-                    osapi.people.get({userId: '@owner'}).execute(function (owner) {
-                        ils.getApp(function (app) {
-                            ils.getIls(function (space, subspace) {
-                                ils.getVaultByIlsId(space.id, function (vault) {
-                                    ils.setContextParameters(viewer, owner, app, space, subspace, vault, function () {
-                                        return cb(context);
-                                    });
-                                });
+                   ils.getApp(function (app) {
+                        ils.getIls(function (space, subspace) {
+                            ils.getVaultByIlsId(space.id, function (vault) {
+                                return cb(context);
                             });
                         });
                     });
@@ -526,44 +589,6 @@
             }
         },
 
-        setContextParameters: function (viewer, owner, app, space, subspace, vault, cb) {
-            //counter_setContextParameters++;
-            //console.log("counter_setContextParameters " + counter_setContextParameters);
-            if (viewer && viewer != "" && !viewer.error) {
-                //TODO to be fixed once we have the temporary users (viewer.id/owner.id)
-                context.actor.id = context.actor.id.replace("unknown", viewer);
-                context.actor.displayName = viewer;
-            }
-
-            if (app && app.id) {
-                context.generator.url = app.appUrl;
-                context.generator.id = app.id;
-                context.generator.displayName = app.displayName;
-            }
-
-            if (space && space.id) {
-                context.actor.id = context.actor.id.replace("undefined", space.id);
-                context.provider.objectType = space.spaceType;
-                context.provider.url = space.profileUrl;
-                context.provider.id = space.id;
-                context.provider.displayName = space.displayName;
-
-                if (subspace && subspace.id && space.id != subspace.id) {
-                    context.provider.inquiryPhaseId = subspace.id;
-                    context.provider.inquiryPhaseName = subspace.displayName;
-                    if (subspace.metadata && subspace.metadata.type) {
-                        context.provider.inquiryPhase = subspace.metadata.type;
-                    }
-                }
-            }
-
-            if (vault && vault.id) {
-                context.storageId = vault.id;
-                context.storageType = vault.spaceType;
-            }
-
-            return cb();
-        },
 
         // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
         deleteResource: function (resourceId, cb) {
@@ -577,20 +602,7 @@
                             osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
                                 if (deleteResponse) {
                                     if (!deleteResponse.error) {
-                                        ils.getApp(function (app) {
-                                            //log the action of adding this resource
-                                            ils.logAction(username, vault.id, resourceId, app.id, app.appUrl, "delete", function (logResponse) {
-                                                if (!logResponse.error) {
-                                                    return cb(true);
-                                                } else {
-                                                    error = {
-                                                        "error": "The resource removal couldn't be logged.",
-                                                        "log": logResponse.error
-                                                    };
-                                                    return cb(error);
-                                                }
-                                            });
-                                        });
+                                        return cb(true);
                                     } else {
                                         error = {
                                             "error": "The resource couldn't be removed.",
@@ -741,7 +753,7 @@
             //counter_createResource++;
             //console.log("counter_createResource " + counter_createResource);
             var error = {};
-            if (resourceName != null && resourceName != undefined) {
+            if (resourceName && resourceName != undefined) {
                 ils.getContextFromMetadata(metadata, function () {
                     ils.getUniqueName(resourceName, function (uniqueName) {
                         var params = {
@@ -757,19 +769,7 @@
 
                         osapi.documents.create(params).execute(function (resource) {
                             if (resource && !resource.error && resource.id) {
-                                //log the action of adding this resource
-                                ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "create", function (response) {
-                                    if (!response.error) {
-                                        return cb(resource);
-                                    } else {
-                                        error = {
-                                            "error": "The resource creation couldn't be logged.",
-                                            "log": response.error
-                                        };
-                                        return cb(error);
-                                    }
-                                });
-
+                                return cb(resource);
                             } else {
                                 //TODO verify error types and return "The resourceName already exists in the space." when it happens
                                 error = {
@@ -791,58 +791,29 @@
         getUniqueName: function (resourceName, cb) {
             //counter_getUniqueName++;
             //console.log("counter_getUniqueName " + counter_getUniqueName);
-            ils.listVaultNames(function (nameList) {
-                if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
-                    return cb(resourceName);
-                } else {
-                    //The resourceName already exists in the space
-                    ils.getCurrentUser(function (username) {
-                        var timeStamp = new Date().getTime();
-                        var uniqueName = username + "_" + timeStamp + "_" + resourceName;
-                        return cb(uniqueName);
-                    });
-                }
+            ils.getCurrentUser(function (username) {
+                var timeStamp = new Date().getTime();
+                var uniqueName = username + "_" + timeStamp + "_" + resourceName;
+                return cb(uniqueName);
             });
         },
 
-        //Creates a configuration spaces in the vault folder
-        createConfigurationSpace: function (vaultId, cb) {
-            //counter_createConfigurationSpace++;
-            //console.log("counter_createConfigurationSpace " + counter_createConfigurationSpace);
-            osapi.spaces.create({
-                contextId: vaultId,
-                params: {"displayName": "Configuration"}
-            }).execute(function (space) {
-                return cb(space);
-            });
-        },
 
         //Returns the Configuration Space based on the VaultId
         getConfiguration: function (cb) {
             //counter_getConfiguration++;
             //console.log("counter_getConfiguration " + counter_getConfiguration);
             var error = {};
-            ils.getVault(function (vault) {
-                if (!vault.error) {
-                    osapi.spaces.get({contextId: vault.id, contextType: "@space"}).execute(
-                        function (items) {
-                            var configurationSpace = _.find(items.list, function (item) {
-                                return item.spaceType && item.displayName === "Configuration";
-                            });
 
-                            if (configurationSpace) {
-                                return cb(configurationSpace);
-                            } else {
-                                ils.createConfigurationSpace(vault.id, function (newConfigurationSpace) {
-                                    return cb(newConfigurationSpace);
-                                });
-                            }
-                        }
-                    );
+            ils.getApp(function (app) {
+                if (app.metadata && app.metadata.settings) {
+                    ils.getIlsId( function(ilsId) { //phaseId, phaseType, phaseName
+                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
+                    });
                 } else {
                     error = {
-                        "error": "The Vault is not available.",
-                        "log": vault.error
+                        "error": "The configuration could not be saved.",
+                        "log": app.error || ""
                     };
                     return cb(error);
                 }
@@ -850,69 +821,186 @@
 
         },
 
-        // create a configuration file in the Vault, resourceName and content need to be passed
-        // resourceName should be in string format, content should be in JSON format
-        createConfigurationFile: function (resourceName, content, metadata, cb) {
-            //counter_createConfigurationFile++;
-            //console.log("counter_createConfigurationFile " + counter_createConfigurationFile);
-            var error = {};
-            if (resourceName != null && resourceName != undefined) {
-                ils.getConfiguration(function (space) {
-                    ils.listConfigurationNames(function (nameList) {
-                        if (nameList.indexOf(resourceName) == -1 && nameList.indexOf(resourceName + ".txt") == -1) {
-                            ils.getCurrentUser(function (username) {
-                                var creator = username;
-                                if (username.error) {
-                                    creator = "unknown";
-                                }
-                                var params = {
-                                    "document": {
-                                        "parentType": "@space",
-                                        "parentSpaceId": space.id,
-                                        "mimeType": "txt",
-                                        "fileName": resourceName,
-                                        "content": JSON.stringify(content),
-                                        "metadata": metadata
-                                    }
-                                };
 
-                                osapi.documents.create(params).execute(function (resource) {
-                                    if (resource && !resource.error && resource.id) {
-                                        ils.getApp(function (app) {
-                                            //log the action of adding this resource
-                                            ils.logAction(creator, space.id, resource.id, app.id, app.appUrl, "add", function (response) {
-                                                if (!response.error) {
-                                                    return cb(resource);
-                                                } else {
-                                                    error = {
-                                                        "error": "The resource creation couldn't be logged.",
-                                                        "log": response.error
-                                                    };
-                                                    return cb(error);
+        //Returns all the configurations of the apps added to the ILS
+        getAllConfigurations: function (cb) {
+            //counter_getAllConfigurations++;
+            //console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
+            var error = {};
+            var ilsConfigurations = [];
+            ils.getIlsId(function(ilsId){
+                ils.getAppsBySpaceId(ilsId, function(spaceApps) {
+                    if (!spaceApps.error) {
+                        _.each(spaceApps, function(app, i) {
+                            if(app.metadata && app.metadata.settings) {
+                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
+                                if (configuration) {
+                                    ilsConfigurations.push(configuration);
+                                }
+                            }
+                        });
+                    } else {
+                        console.warn("retrieving the space's apps returned an error:");
+                        console.warn(spaceApps.error);
+                    }
+                    ils.getSubspacesBySpaceId(ilsId, function(subspaceList) {
+                        if (!subspaceList.error) {
+
+                            // define the promise function to retrieve the configurations from a subspace
+                            function retrieveSubspaceConfigurations(subspace) {
+                                var deferred = new $.Deferred();
+                                ils.getAppsBySpaceId(subspace.id, function(subspaceApps) {
+                                    if(!subspaceApps.error){
+                                        _.each(subspaceApps, function (app, k) {
+                                            if (app.metadata && app.metadata.settings) {
+                                                var phaseId = subspace.id;
+                                                var phaseName = subspace.displayName;
+                                                var phaseType = "undefined";
+                                                if (subspace.metadata && subspace.metadata.type) {phaseType=subspace.metadata.type;}
+                                                var configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, phaseId, phaseType, phaseName);
+                                                if (configuration) {
+                                                    ilsConfigurations.push(configuration);
                                                 }
-                                            });
+                                            }
                                         });
                                     } else {
-                                        error = {
-                                            "error": "The resource couldn't be created.",
-                                            "log": resource.error
-                                        };
-                                        return cb(error);
+                                        console.warn("retrieving subspace apps for space "+subspace.id+" returned an error:");
+                                        console.warn(subspaceApps.error);
                                     }
+                                    deferred.resolve();
                                 });
+                                return deferred.promise();
+                            }
+
+                            // create array of promises
+                            var retrieveAppConfigurationPromises = []
+                            _.each(subspaceList, function (subspace, j) {
+                                retrieveAppConfigurationPromises.push(retrieveSubspaceConfigurations(subspace));
                             });
+                            // execute the promises
+                            $.when.apply($, retrieveAppConfigurationPromises).done(function() {
+                                // all app configurations have been collected
+                                return cb(ilsConfigurations);
+                            });
+
                         } else {
-                            error = {"error": "The resourceName already exists in the space."};
-                            return cb(error);
+                            console.warn("retrieving the subspaces returned an error:");
+                            console.warn(subspaceList.error);
+                            // cannot continue from here -> callback
+                            return cb(ilsConfigurations);
                         }
                     });
                 });
+            });
+        },
 
-            } else {
-                error = {"error": "The resourceName cannot be empty. The resource couldn't be created."};
+        getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
+            try {
+                var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
+                var configuration = {
+                    "metadata": {
+                        "actor": intrinsicMetadada.actor || {},
+                        "id": intrinsicMetadada.id || "",
+                        "published": intrinsicMetadada.published || "",
+                        "target": intrinsicMetadada.target || {}
+                    },
+                    "content": JSON.parse(intrinsicMetadada.content)
+                };
+
+                configuration.metadata.generator = {
+                    "displayName": appName,
+                    "id": appId,
+                    "objectType": "application",
+                    "url": appUrl
+                };
+
+                configuration.metadata.provider = {
+                    "displayName": context.provider.displayName,
+                    "id": context.provider.id,
+                    "inquiryPhase": phaseType,
+                    "inquiryPhaseId": phaseId,
+                    "inquiryPhaseName": phaseName,
+                    "objectType": context.provider.objectType,
+                    "url": context.provider.url
+                }
+
+                configuration.metadata.storageId = context.storageId;
+                configuration.metadata.storageType = context.storageType;
+
+                return configuration;
+            } catch(error) {
+                console.warn("error during JSON-parsing of the following configuration:");
+                console.warn(appSettings);
+                console.warn(error);
+                return undefined;
+            }
+        },
+
+        // sets the configuration of the app, content and metadata need to be passed
+        // content should be in JSON format
+        setAppConfiguration: function (content, metadata, cb) {
+            //counter_setAppConfiguration++;
+            //console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
+            var error = {};
+
+            ils.validateConfiguration(metadata, function(isValid){
+                if (isValid && !isValid.error){
+                    ils.getApp(function (app) {
+                        if (app && !app.error) {
+                            var appParams = {
+                                "contextId": app.id,
+                                "application": {
+                                    "metadata": app.metadata || {}
+                                }
+                            };
+
+                            var configuration = {
+                                "actor": metadata.actor,
+                                "id": metadata.id,
+                                "published": metadata.published ,
+                                "target": metadata.target,
+                                "content": (typeof content === 'string') ? content : JSON.stringify(content)
+                            };
+
+                            appParams.application.metadata.settings = configuration;
+
+                            osapi.apps.update(appParams).execute(function (response) {
+                                if (!response.error) {
+                                    console.log("The app configuration has been saved: ");
+                                    console.log(response);
+                                    return cb(response);
+                                } else {
+                                    console.log("The app configuration couldn't saved: ");
+                                    console.log(response);
+                                    error = {
+                                        "error": "The configuration couldn't be saved.",
+                                        "log": response.error
+                                    };
+                                    return cb(error);
+                                }
+                            });
+                        } else {
+                            return cb(app);
+                        }
+                    });
+                }else{
+                    return cb(isValid.error);
+                }
+            });
+        },
+
+        // verifies the confituration metadata
+        validateConfiguration: function (metadata, cb){
+            if (metadata && metadata.actor && metadata.id && metadata.published && metadata.target &&
+                (typeof metadata.actor === 'object') && (typeof metadata.id === 'string') &&
+                (typeof metadata.published === 'string') && (typeof metadata.target === 'object')) {
+                return cb(true);
+            }else {
+                var error = {
+                    "error": "The metadata is not compliant."
+                };
                 return cb(error);
             }
-
         },
 
         // updates a resource in the Vault, resourceId, content and metadata need to be passed
@@ -922,51 +1010,51 @@
             //console.log("counter_updateResource " + counter_updateResource);
             var error = {};
             if (resourceId && resourceId != "") {
-                ils.getContextFromMetadata(metadata, function () {
-                    var newContent = "";
-                    var newMetadata = [];
+                ils.readResource(resourceId, function (originalResource) {
+                    if (originalResource && !originalResource.error && originalResource.displayName) {
+                        ils.getContextFromMetadata(metadata, function () {
+                            var newContent = "";
+                            var newMetadata = [];
 
-                    if (content && content != "") {
-                        newContent = JSON.stringify(content);
-                    }
+                            if (content && content != "") {
+                                newContent = JSON.stringify(content);
+                            }
 
-                    if (metadata && metadata != "") {
-                        newMetadata = metadata;
-                    }
+                            if (metadata && metadata != "") {
+                                newMetadata = metadata;
+                            }
 
-                    var params = {
-                        "contextId": resourceId,
-                        "document": {
-                            "parentType": context.storageType,
-                            "parentSpaceId": context.storageId,
-                            "mimeType": "txt",
-                            "fileName": metadata.target.displayName,
-                            "content": newContent,
-                            "metadata": newMetadata
-                        }
-                    };
+                            var params = {
+                                "contextId": resourceId,
+                                "document": {
+                                    "parentType": context.storageType,
+                                    "parentSpaceId": context.storageId,
+                                    "mimeType": "txt",
+                                    "fileName": originalResource.displayName,
+                                    "content": newContent,
+                                    "metadata": newMetadata
+                                }
+                            };
 
-                    osapi.documents.update(params).execute(function (resource) {
-                        if (resource && !resource.error && resource.id) {
-                            ils.logAction(context.actor.displayName, context.storageId, resource.id, context.generator.id, context.generator.url, "update", function (response) {
-                                if (!response.error) {
+                            osapi.documents.update(params).execute(function (resource) {
+                                if (resource && !resource.error && resource.id) {
                                     return cb(resource);
                                 } else {
                                     error = {
-                                        "error": "The resource update couldn't be logged.",
-                                        "log": response.error
+                                        "error": "The resource couldn't be updated.",
+                                        "log": resource.error
                                     };
                                     return cb(error);
                                 }
                             });
-                        } else {
-                            error = {
-                                "error": "The resource couldn't be updated.",
-                                "log": resource.error
-                            };
-                            return cb(error);
-                        }
-                    });
+                        });
+                    } else {
+                        error = {
+                            "error": "The resource couldn't be updated.",
+                            "log": originalResource.error
+                        };
+                        return cb(error);
+                    }
                 });
             } else {
                 error = {"error": "The resourceName cannot be null. The resource couldn't be updated."};
@@ -1114,7 +1202,7 @@
         },
 
         // log the action of adding a resource in the Vault
-        logAction: function (userName, spaceId, resourceId, appId, appUrl, actionType, cb) {
+        logAction: function (objectId, objectType, objectName, spaceId, spaceName, actionType, cb) {
             //counter_logAction++;
             //console.log("counter_logAction " + counter_logAction);
             var params = {
@@ -1124,48 +1212,41 @@
                 "verb": actionType,
                 "activity": {}
             };
+
+            params.activity.verb = actionType;
+
+            params.activity.published = params.published;
+
             params.activity.object = {
-                "id": resourceId,
-                "objectType": "Asset",
-                "graasp_object": "true"
+                "id": objectId,
+                "objectType": objectType,
+                "displayName": objectName
             };
+
             params.activity.target = {
                 "id": spaceId,
                 "objectType": "Space",
-                "graasp_object": "true"
-            };
-            params.activity.generator = {
-                "id": appId,
-                "objectType": "Widget",
-                "url": appUrl,
-                "graasp_object": "true"
+                "displayName": spaceName
             };
 
-            ils.getIls(function (parentSpace) {
-                params.activity.actor = {
-                    "id": userName + "@" + parentSpace.id,
-                    "objectType": "person",
-                    "name": userName
-                };
-                params.activity.provider = {
-                    "objectType": "ils",
-                    "url": parentSpace.profileUrl,
-                    "id": parentSpace.id,
-                    "displayName": parentSpace.displayName
-                };
+            params.activity.generator = context.generator;
 
-                osapi.activitystreams.create(params).execute(function (response) {
-                    if (response.id && !response.error) {
-                        return cb(response);
-                    } else {
-                        var error = {
-                            "error": "The activity couldn't be logged.",
-                            "log": response.error
-                        };
-                        return cb(error);
-                    }
-                });
+            params.activity.actor = context.actor;
+
+            params.activity.provider = context.provider;
+
+            osapi.activitystreams.create(params).execute(function (response) {
+                if (response.id && !response.error) {
+                    return cb(response);
+                } else {
+                    var error = {
+                        "error": "The activity couldn't be logged.",
+                        "log": response.error
+                    };
+                    return cb(error);
+                }
             });
+
         },
 
         // get the action of adding the resource in the Vault based on resourceId and vaultId

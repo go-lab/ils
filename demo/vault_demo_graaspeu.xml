@@ -348,7 +348,7 @@
                                 });
 
                                 // try to create a file in the configuration folder
-                                ils.createConfigurationFile("configuration1.txt", configuration_content, configuration_metadata, function(configuration1){
+                                ils.setAppConfiguration(configuration_content, configuration_metadata, function(configuration1){
                                     newConfigurationFileId = configuration1.id;
                                     console.log("Creating a file in the Configuration space: " + "configuration1.txt");
                                     console.log(configuration1);
@@ -594,7 +594,7 @@
           <br/>
           <br/>
           <a>5. - CREATION OF A CONFIGURATION FILE (configuration1.txt)</a>
-          <div id="create_configuration_1"><b>ils.createConfigurationFile(*):</b> </div>
+          <div id="create_configuration_1"><b>ils.setAppConfiguration(*):</b> </div>
           <div id="exist_configuration_1"><b>ils.existResource:</b> </div>
           <div id="read_configuration_1"><b>ils.readResource(*):</b> </div>
           <div id="get_configuration_metadata_1"><b>ils.getMetadata(*):</b> </div>

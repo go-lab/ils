@@ -124,9 +124,9 @@ class window.golab.ils.storage.StorageHandler
     if @_filterForProvider
       metadatas = metadatas.filter (entry) => entry.metadata.provider.id is @metadataHandler.getProvider().id
     if @_filterForUser
-      if @metadataHandler.getMetadata().contextual_actor?
-        # there is a contextual_actor available, so filter for this user (instead of actor)
-        metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getMetadata().contextual_actor.displayName
+      if @metadataHandler.getMetadata().contextualActor?
+        # there is a contextualActor available, so filter for this user (instead of actor)
+        metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getMetadata().contextualActor.displayName
       else
         metadatas = metadatas.filter (entry) => entry.metadata.actor.displayName is @metadataHandler.getActor().displayName
     if @_filterForAppId
@@ -143,10 +143,10 @@ class window.golab.ils.storage.StorageHandler
     # cloning the objects!
     thisContent = JSON.parse(JSON.stringify(content))
     metadata = JSON.parse(JSON.stringify(@metadataHandler.getMetadata()))
-    # if there is a contextual_actor available, inject these properties into metadata.actor
-    if metadata.contextual_actor?
-      metadata.actor = metadata.contextual_actor
-      metadata.contextual_actor = undefined
+    # if there is a contextualActor available, inject these properties into metadata.actor
+    if metadata.contextualActor?
+      metadata.actor = metadata.contextualActor
+      metadata.contextualActor = undefined
     metadata.published = (new Date()).toISOString()
     metadata.id = id
     {

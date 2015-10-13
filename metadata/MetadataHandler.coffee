@@ -364,8 +364,8 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
           metadata.actor.id = context.actor.id
           metadata.actor.objectType = context.actor.objectType
           # ----- potentially information about the contextual actor
-          if context.contextual_actor?
-            metadata.contextual_actor = context.contextual_actor
+          if context.contextualActor?
+            metadata.contextualActor = context.contextualActor
           # ------ information about the ILS and phase
           metadata.provider.displayName = context.provider.displayName
           metadata.provider.id = context.provider.id

@@ -173,10 +173,10 @@
         })(this));
       }
       if (this._filterForUser) {
-        if (this.metadataHandler.getMetadata().contextual_actor != null) {
+        if (this.metadataHandler.getMetadata().contextualActor != null) {
           metadatas = metadatas.filter((function(_this) {
             return function(entry) {
-              return entry.metadata.actor.displayName === _this.metadataHandler.getMetadata().contextual_actor.displayName;
+              return entry.metadata.actor.displayName === _this.metadataHandler.getMetadata().contextualActor.displayName;
             };
           })(this));
         } else {
@@ -215,9 +215,9 @@
       }
       thisContent = JSON.parse(JSON.stringify(content));
       metadata = JSON.parse(JSON.stringify(this.metadataHandler.getMetadata()));
-      if (metadata.contextual_actor != null) {
-        metadata.actor = metadata.contextual_actor;
-        metadata.contextual_actor = void 0;
+      if (metadata.contextualActor != null) {
+        metadata.actor = metadata.contextualActor;
+        metadata.contextualActor = void 0;
       }
       metadata.published = (new Date()).toISOString();
       metadata.id = id;

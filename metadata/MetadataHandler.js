@@ -462,8 +462,8 @@ phase:
               metadata.actor.displayName = context.actor.displayName;
               metadata.actor.id = context.actor.id;
               metadata.actor.objectType = context.actor.objectType;
-              if (context.contextual_actor != null) {
-                metadata.contextual_actor = context.contextual_actor;
+              if (context.contextualActor != null) {
+                metadata.contextualActor = context.contextualActor;
               }
               metadata.provider.displayName = context.provider.displayName;
               metadata.provider.id = context.provider.id;

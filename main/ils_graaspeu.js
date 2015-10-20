@@ -75,6 +75,7 @@
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
+    //var counter_filterVault = 0;
     //var counter_listConfiguration = 0;
     //var counter_listVaultNames = 0;
     //var counter_listConfigurationNames = 0;
@@ -1173,6 +1174,45 @@
                         return cb(error);
                     }
                 });
+            } else {
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
+                return cb(error);
+            }
+        },
+
+        // get all those resources compliant with the filter
+        filterVault: function (vaultId, userId, objectType, appId,
+                               // creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
+                               cb) {
+            //counter_filterVault++;
+            //console.log("counter_filterVault " + counter_filterVault);
+            var error = {"error": "No resource available in the Vault."};
+            var filters = {};
+
+            if (vaultId) {
+                if (userId) { filters["creator"] = userId ;}
+                //TODO as soon as Vault API is available
+//                if (creationDateFrom) { filters.push("\"created\": \"" + creationDateFrom + "\"");}
+//                if (creationDateTo) { filters.push("\"created\": \"" + creationDateTo + "\"");}
+//                if (lastModificationDateFrom) { filters.push("\"modified\": \"" + lastModificationDateFrom + "\"");}
+//                if (lastModificationDateTo) { filters.push("\"modified\": \"" + lastModificationDateTo + "\"");}
+//                if (objectType) { filters["metadata.objectType"] = objectType;}
+//                if (appId) { filters["metadata.generator.id"] = appId;}
+
+                if (Object.keys(filters).length > 0) {
+                    var params = {
+                        contextId: vaultId,
+                        contextType: "@space",
+                        filters: filters
+                    };
+                    osapi.documents.get(params).execute(function (resources) {
+                        if (resources.list) {
+                            return cb(resources.list);
+                        } else {
+                            return cb(error);
+                        }
+                    });
+                }
             } else {
                 error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
                 return cb(error);

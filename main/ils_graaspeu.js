@@ -1151,17 +1151,6 @@
             ils.getVault(function (vault) {
                 osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-//                ils.getAction(vault.id, value.id, function (action) {
-//                  var metadata = "";
-//                  if (value.metadata) {
-//                    metadata = value.metadata;
-//                  }
-                            // append the metadata to the resource object
-//                  value["metadata"] = metadata;
-//                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
@@ -1179,24 +1168,13 @@
             if (vaultId && vaultId != "") {
                 osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-                            //                ils.getAction(vault.id, value.id, function (action) {
-                            //                  var metadata = "";
-                            //                  if (value.metadata) {
-                            //                    metadata = value.metadata;
-                            //                  }
-                            // append the metadata to the resource object
-                            //                  value["metadata"] = metadata;
-                            //                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
                     }
                 });
             } else {
-                error = {"error": "There Vault identifier cannot be empty. The files could not be obtained"};
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
                 return cb(error);
             }
         },

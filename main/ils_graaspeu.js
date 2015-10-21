@@ -1182,22 +1182,19 @@
 
         // get all those resources compliant with the filter
         filterVault: function (vaultId, userId, objectType, appId,
-                               // creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
+                               creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
                                cb) {
             //counter_filterVault++;
             //console.log("counter_filterVault " + counter_filterVault);
             var error = {"error": "No resource available in the Vault."};
             var filters = {};
+            var dates=[];
 
             if (vaultId) {
                 if (userId) { filters["creator"] = userId ;}
-                //TODO as soon as Vault API is available
-//                if (creationDateFrom) { filters.push("\"created\": \"" + creationDateFrom + "\"");}
-//                if (creationDateTo) { filters.push("\"created\": \"" + creationDateTo + "\"");}
-//                if (lastModificationDateFrom) { filters.push("\"modified\": \"" + lastModificationDateFrom + "\"");}
-//                if (lastModificationDateTo) { filters.push("\"modified\": \"" + lastModificationDateTo + "\"");}
-//                if (objectType) { filters["metadata.objectType"] = objectType;}
-//                if (appId) { filters["metadata.generator.id"] = appId;}
+                //TODO as soon as the DB is fixed
+                //if (objectType) { filters["metadata.objectType"] = objectType;}
+                //if (appId) { filters["metadata.generator.id"] = appId;}
 
                 if (Object.keys(filters).length > 0) {
                     var params = {
@@ -1205,6 +1202,10 @@
                         contextType: "@space",
                         filters: filters
                     };
+                    if (creationDateFrom) { params.createdSince = creationDateFrom;}
+                    if (creationDateTo) { params.createdUntil = creationDateTo;}
+                    if (lastModificationDateFrom) { params.modifiedSince = lastModificationDateFrom;}
+                    if (lastModificationDateTo) { params.modifiedUntil = lastModificationDateTo;}
                     osapi.documents.get(params).execute(function (resources) {
                         if (resources.list) {
                             return cb(resources.list);

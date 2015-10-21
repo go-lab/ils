@@ -1187,25 +1187,26 @@
             //counter_filterVault++;
             //console.log("counter_filterVault " + counter_filterVault);
             var error = {"error": "No resource available in the Vault."};
-            var filters = {};
-            var dates=[];
 
             if (vaultId) {
+                var filters = {};
                 if (userId) { filters["creator"] = userId ;}
-                //TODO as soon as the DB is fixed
-                //if (objectType) { filters["metadata.objectType"] = objectType;}
-                //if (appId) { filters["metadata.generator.id"] = appId;}
+                if (objectType) { filters["metadata.objectType"] = objectType;}
+                if (appId) { filters["metadata.generator.id"] = appId;}
 
-                if (Object.keys(filters).length > 0) {
-                    var params = {
-                        contextId: vaultId,
-                        contextType: "@space",
-                        filters: filters
-                    };
-                    if (creationDateFrom) { params.createdSince = creationDateFrom;}
-                    if (creationDateTo) { params.createdUntil = creationDateTo;}
-                    if (lastModificationDateFrom) { params.modifiedSince = lastModificationDateFrom;}
-                    if (lastModificationDateTo) { params.modifiedUntil = lastModificationDateTo;}
+                var params = {
+                    contextId: vaultId,
+                    contextType: "@space",
+                    filters: filters
+                };
+
+                if (creationDateFrom) { params.createdSince = creationDateFrom;}
+                if (creationDateTo) { params.createdUntil = creationDateTo;}
+                if (lastModificationDateFrom) { params.modifiedSince = lastModificationDateFrom;}
+                if (lastModificationDateTo) { params.modifiedUntil = lastModificationDateTo;}
+
+                if ((Object.keys(filters).length > 0) | creationDateFrom | creationDateTo | lastModificationDateFrom |
+                    lastModificationDateTo) {
                     osapi.documents.get(params).execute(function (resources) {
                         if (resources.list) {
                             return cb(resources.list);
@@ -1213,6 +1214,9 @@
                             return cb(error);
                         }
                     });
+                } else{
+                    error = {"error": "No filter has been provided"};
+                    return cb(error);
                 }
             } else {
                 error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};

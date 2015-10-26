@@ -751,16 +751,19 @@
         validateMetadata: function (metadata, cb){
             if (!metadata) return cb();
 
+            var error = {
+                "error": "The metadata is not valid. It cannot be parsed as a JSON object."
+            };
+
             if (typeof metadata === 'string') {
                 try {
                     metadata = JSON.parse(metadata);
+                }catch (err) {
+                    return cb(error);
                 }
             }
 
             if (typeof metadata !== 'object') {
-                error = {
-                    "error": "The metadata is not valid. It cannot be parsed as a JSON object."
-                };
                 return cb(error);
             }
 

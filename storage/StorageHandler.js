@@ -51,7 +51,46 @@
         error = _error;
         throw "StorageHandler needs a MetadataHandler at construction!";
       }
+      this._isReadOnly = false;
+      this.checkWritePermission();
+      if (this._debug) {
+        console.log("...StorageHandler is readOnly? -> " + this.isReadOnly());
+      }
     }
+
+    StorageHandler.prototype.checkWritePermission = function() {
+      this._isReadOnly = false;
+      return;
+      if (this.metadataHandler.getMetadata().contextualActor != null) {
+        return this._isReadOnly = true;
+      } else if (this.metadataHandler.getActor().objectType === "graasp_viewer") {
+        return this._isReadOnly = true;
+      } else {
+        return this._isReadOnly = false;
+      }
+    };
+
+
+    /*
+      Returns a boolean value to indicate if the StorageHandler is running in readOnly mode.
+      In readOnly mode, calls to createResource, updateResource and deleteResource
+      are doing nothing and return an error instead.
+     */
+
+    StorageHandler.prototype.isReadOnly = function() {
+      return this._isReadOnly;
+    };
+
+
+    /*
+      (newValue: boolean)
+      Sets the internal _isReadOnly variable to a new value to override the initial setting at construction time.
+      Be careful with this function, as it may cause problems when you don't have write permissions to an "external" storage.
+     */
+
+    StorageHandler.prototype.setReadOnly = function(newValue) {
+      return this._isReadOnly = newValue;
+    };
 
     StorageHandler.prototype.getDebugLabel = function() {
       return this.className + "(" + (this.metadataHandler.getTarget().objectType) + ")";
@@ -435,6 +474,12 @@
 
     ObjectStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content);
         if (this.storeObject[resource.metadata.id]) {
@@ -471,6 +516,12 @@
 
     ObjectStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       if (this.storeObject[resourceId]) {
         resource = this.getResourceBundle(content, resourceId);
         this.storeObject[resourceId] = resource;
@@ -605,6 +656,12 @@
     };
 
     LocalStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       if (this.localStorage[goLabLocalStorageKey + resourceId] != null) {
         delete this.localStorage[goLabLocalStorageKey + resourceId];
         return setTimeout(function() {
@@ -619,6 +676,12 @@
 
     LocalStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource, resourceId;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content);
         resourceId = resource.metadata.id;
@@ -656,6 +719,12 @@
 
     LocalStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       if (this.localStorage[goLabLocalStorageKey + resourceId]) {
         resource = this.getResourceBundle(content, resourceId);
         this.localStorage[goLabLocalStorageKey + resourceId] = JSON.stringify(resource);
@@ -785,15 +854,32 @@
                 console.log(result);
               }
               resource = {};
-              resource.metadata = JSON.parse(result.metadata);
+              if (typeof result.metadata === 'object') {
+                resource.metadata = result.metadata;
+              } else {
+                try {
+                  resource.metadata = JSON.parse(result.metadata);
+                } catch (_error) {
+                  error = _error;
+                  console.warn("Could not parse metadata when reading a resource:");
+                  console.warn(result.metadata);
+                  cb(error);
+                  return;
+                }
+              }
               resource.metadata.id = resourceId;
-              try {
-                resource.content = JSON.parse(result.content);
-              } catch (_error) {
-                error = _error;
-                console.warn("Could not parse the content, returning an empty object:");
-                console.warn(error);
-                resource.content = {};
+              if (typeof result.content === 'object') {
+                resource.content = result.content;
+              } else {
+                try {
+                  resource.content = JSON.parse(result.content);
+                } catch (_error) {
+                  error = _error;
+                  console.warn("Could not parse content when reading a resource:");
+                  console.warn(result.content);
+                  cb(error);
+                  return;
+                }
               }
               _this.metadataHandler.setId(resource.metadata.id);
               _this.metadataHandler.setTarget(resource.metadata.target);
@@ -831,6 +917,12 @@
 
     VaultStorageHandler.prototype.setConfiguration = function(content, cb) {
       var resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot set configuration.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content);
         this.metadataHandler.setId(resource.metadata.id);
@@ -858,6 +950,12 @@
 
     VaultStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource, resourceName;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       console.log("VaultStorageHandler.createResource called.");
       console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
       if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
@@ -870,7 +968,7 @@
           resource.metadata.id = void 0;
           return ils.createResource(resourceName, resource.content, resource.metadata, (function(_this) {
             return function(result) {
-              var returnedResource;
+              var error, returnedResource;
               if (_this._debug != null) {
                 console.log("ils.createResource returns:");
               }
@@ -882,9 +980,22 @@
               } else {
                 returnedResource = {};
                 returnedResource.content = resource.content;
-                returnedResource.metadata = JSON.parse(result.metadata);
+                if (typeof result.metadata === 'object') {
+                  returnedResource.metadata = result.metadata;
+                } else {
+                  try {
+                    returnedResource.metadata = JSON.parse(result.metadata);
+                  } catch (_error) {
+                    error = _error;
+                    console.warn("Something went wrong when trying to parse the returned resource's metadata:");
+                    console.warn(resource.metadata);
+                    cb(error);
+                    return;
+                  }
+                }
+                returnedResource.id = result.id;
                 returnedResource.metadata.id = result.id;
-                _this.metadataHandler.setId(resource.metadata.id);
+                _this.metadataHandler.setId(returnedResource.id);
                 return cb(null, returnedResource);
               }
             };
@@ -900,6 +1011,12 @@
 
     VaultStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, metadata, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       console.log("VaultStorageHandler.updateResource called.");
       console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
       if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
@@ -912,7 +1029,7 @@
           metadata.id = resourceId;
           return ils.updateResource(resourceId, content, metadata, (function(_this) {
             return function(result) {
-              var updatedResource;
+              var error, updatedResource;
               if (_this._debug != null) {
                 console.log("ils.updateResource returns:");
               }
@@ -924,9 +1041,20 @@
               } else {
                 updatedResource = {};
                 updatedResource.content = content;
-                updatedResource.metadata = JSON.parse(result.metadata);
-                updatedResource.metadata.id = result.id;
-                _this.metadataHandler.setId(resource.metadata.id);
+                console.log("******** : " + typeof result.metadata);
+                if ((typeof result.metadata) === 'object') {
+                  updatedResource.metadata = result.metadata;
+                } else {
+                  try {
+                    updatedResource.metadata = JSON.parse(result.metadata);
+                  } catch (_error) {
+                    error = _error;
+                    console.error("Something went wrong when trying to parse the returned resource's metadata:");
+                    console.error(result.metadata);
+                    cb(error);
+                  }
+                }
+                _this.metadataHandler.setId(updatedResource.metadata.id);
                 return cb(null, updatedResource);
               }
             };
@@ -941,10 +1069,17 @@
     };
 
     VaultStorageHandler.prototype.deleteResource = function(resourceId, cb) {
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       return this.readResource(resourceId, (function(_this) {
         return function(error, resource) {
           if ((error != null) || resource === "") {
-            return console.warn("Could not delete resource " + resourceId + ", because I couldn't load it to fetch its details.");
+            console.warn("Could not delete resource " + resourceId + ", because I couldn't load it to fetch its details.");
+            return cb("Could not delete resource " + resourceId + ", because I couldn't load it to fetch its details.");
           } else if (resource.metadata.target.objectType === "configuration") {
             return console.warn("Cannot delete the configuration for appId " + resource.metadata.generator.id + ", feature not implemented.");
           } else {
@@ -1004,7 +1139,11 @@
                   item = {};
                   if (resource.metadata) {
                     item.id = resource.id;
-                    item.metadata = JSON.parse(resource.metadata);
+                    if (typeof resource.metadata === 'object') {
+                      item.metadata = resource.metadata;
+                    } else {
+                      item.metadata = JSON.parse(resource.metadata);
+                    }
                     if ((item.metadata != null) && (item.metadata.target != null)) {
                       item.metadata.id = resource.id;
                       if (forCaching && resource.content) {
@@ -1101,6 +1240,12 @@
 
     MongoStorageHandler.prototype.deleteResource = function(resourceId, cb) {
       var error;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         return $.ajax({
           type: "POST",
@@ -1162,6 +1307,12 @@
 
     MongoStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content);
         resource._id = resource.metadata.id;
@@ -1195,6 +1346,12 @@
 
     MongoStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content, resourceId);
         resource._id = resource.metadata.id;
@@ -1295,6 +1452,12 @@
 
     MongoIISStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         resource = this.getResourceBundle(content);
         resource._id = resource.metadata.id;
@@ -1330,6 +1493,12 @@
       var error, resource;
       if (async == null) {
         async = true;
+      }
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
       }
       try {
         resource = this.getResourceBundle(content, resourceId);
@@ -1455,6 +1624,12 @@
 
     MongoIISStorageHandler.prototype.deleteResource = function(resourceId, cb) {
       var error;
+      if (this.isReadOnly()) {
+        setTimeout(function() {
+          return cb("StorageHandler is readOnly, cannot create resource.");
+        }, 0);
+        return;
+      }
       try {
         return $.ajax({
           type: "POST",

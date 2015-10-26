@@ -27,6 +27,40 @@ class window.golab.ils.storage.StorageHandler
       @metadataHandler = metadataHandler
     catch error
       throw "StorageHandler needs a MetadataHandler at construction!"
+    @_isReadOnly = false
+    @checkWritePermission()
+    if @_debug
+      console.log "...StorageHandler is readOnly? -> "+@isReadOnly()
+
+  checkWritePermission: ->
+    # TODO override for the time being
+    @_isReadOnly = false
+    return
+
+    if @metadataHandler.getMetadata().contextualActor?
+      # we are in review mode / contextual actor
+      @_isReadOnly = true
+    else if @metadataHandler.getActor().objectType is "graasp_viewer"
+      # the user doesn't have permission to access the vault (typically when somebody has not been made "owner" in a space)
+      @_isReadOnly = true
+    else
+      @_isReadOnly = false
+
+  ###
+    Returns a boolean value to indicate if the StorageHandler is running in readOnly mode.
+    In readOnly mode, calls to createResource, updateResource and deleteResource
+    are doing nothing and return an error instead.
+  ###
+  isReadOnly: () ->
+    return @_isReadOnly
+
+  ###
+    (newValue: boolean)
+    Sets the internal _isReadOnly variable to a new value to override the initial setting at construction time.
+    Be careful with this function, as it may cause problems when you don't have write permissions to an "external" storage.
+  ###
+  setReadOnly: (newValue) ->
+    @_isReadOnly = newValue
 
   getDebugLabel: ->
     "#{@className}(#{@metadataHandler.getTarget().objectType})"
@@ -302,6 +336,12 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
     cb(null, exists)
 
   createResource: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
@@ -326,6 +366,12 @@ class window.golab.ils.storage.ObjectStorageHandler extends window.golab.ils.sto
       , 0)
 
   updateResource: (resourceId, content, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     if @storeObject[resourceId]
       # create resource with id, metadata and content
       resource = @getResourceBundle(content, resourceId)
@@ -407,6 +453,12 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
     , 0)
 
   deleteResource: (resourceId, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     if @localStorage[goLabLocalStorageKey + resourceId]?
       delete @localStorage[goLabLocalStorageKey + resourceId]
       setTimeout(->
@@ -418,6 +470,12 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       , 0)
 
   createResource: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
@@ -443,6 +501,12 @@ class window.golab.ils.storage.LocalStorageHandler extends window.golab.ils.stor
       , 0)
 
   updateResource: (resourceId, content, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     if @localStorage[goLabLocalStorageKey + resourceId]
       # create resource with id, metadata and content
       resource = @getResourceBundle(content, resourceId)
@@ -519,15 +583,28 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
           if @_debug? then console.log "ils.readResource returns:"
           if @_debug? then console.log result
           resource = {}
-          resource.metadata = JSON.parse(result.metadata)
+          if typeof result.metadata is 'object'
+            resource.metadata = result.metadata
+          else
+            try
+              resource.metadata = JSON.parse(result.metadata)
+            catch error
+              console.warn "Could not parse metadata when reading a resource:"
+              console.warn result.metadata
+              cb error
+              return
           resource.metadata.id = resourceId
-          try
-            resource.content = JSON.parse(result.content)
-          catch error
-            console.warn "Could not parse the content, returning an empty object:"
-            console.warn error
-            resource.content = {}
-          # update the metadata with new properties
+          if typeof result.content is 'object'
+            resource.content = result.content
+          else
+            try
+              resource.content = JSON.parse(result.content)
+            catch error
+              console.warn "Could not parse content when reading a resource:"
+              console.warn result.content
+              cb error
+              return
+            # update the metadata with new properties
           @metadataHandler.setId resource.metadata.id
           @metadataHandler.setTarget(resource.metadata.target)
           cb null, resource
@@ -552,6 +629,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       cb error
 
   setConfiguration: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot set configuration.")
+      , 0)
+      return
+
     try
       resource = @getResourceBundle(content)
       @metadataHandler.setId resource.metadata.id
@@ -572,6 +655,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       cb error
 
   createResource: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
@@ -596,10 +685,20 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
           else
             returnedResource = {}
             returnedResource.content = resource.content
-            returnedResource.metadata = JSON.parse(result.metadata)
-            returnedResource.metadata.id = result.id
+            if typeof result.metadata is 'object'
+              returnedResource.metadata = result.metadata
+            else
+              try
+                returnedResource.metadata = JSON.parse(result.metadata)
+              catch error
+                console.warn "Something went wrong when trying to parse the returned resource's metadata:"
+                console.warn resource.metadata
+                cb error
+                return
             # the id might have change here. update in metadata handler
-            @metadataHandler.setId resource.metadata.id
+            returnedResource.id = result.id
+            returnedResource.metadata.id = result.id
+            @metadataHandler.setId returnedResource.id
             cb null, returnedResource
       catch error
         console.warn "Something went wrong when trying to create a resource in the vault:"
@@ -607,6 +706,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
         cb error
 
   updateResource: (resourceId, content, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
@@ -628,10 +733,18 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
           else
             updatedResource = {}
             updatedResource.content = content
-            updatedResource.metadata = JSON.parse(result.metadata)
-            updatedResource.metadata.id = result.id
+            console.log "******** : "+typeof(result.metadata)
+            if (typeof result.metadata) is 'object'
+              updatedResource.metadata = result.metadata
+            else
+              try
+                updatedResource.metadata = JSON.parse(result.metadata)
+              catch error
+                console.error "Something went wrong when trying to parse the returned resource's metadata:"
+                console.error result.metadata
+                cb error
             # the id might have change here. update in metadata handler
-            @metadataHandler.setId resource.metadata.id
+            @metadataHandler.setId updatedResource.metadata.id
             cb null, updatedResource
       catch error
         console.warn "Something went wrong when trying to update resource #{resourceId} in the vault:"
@@ -639,10 +752,17 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
         cb error
 
   deleteResource: (resourceId, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     # with the new configuration storage, I need to fetch the resource (to know metadata) before I can delete it
     @readResource resourceId, (error, resource) =>
       if error? or resource is ""
         console.warn "Could not delete resource #{resourceId}, because I couldn't load it to fetch its details."
+        cb "Could not delete resource #{resourceId}, because I couldn't load it to fetch its details."
       else if resource.metadata.target.objectType is "configuration"
         console.warn "Cannot delete the configuration for appId #{resource.metadata.generator.id}, feature not implemented."
         # TODO delete the configuration
@@ -685,7 +805,12 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
               item = {}
               if (resource.metadata)
                 item.id = resource.id
-                item.metadata = JSON.parse(resource.metadata)
+                # check if resource.metadata is already an object
+                # if yes, use it, if not, parse it
+                if typeof resource.metadata is 'object'
+                  item.metadata = resource.metadata
+                else
+                  item.metadata = JSON.parse(resource.metadata)
                 if item.metadata? and item.metadata.target?
                   # to prevent potential inconsistencies:
                   item.metadata.id = resource.id
@@ -745,6 +870,12 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   deleteResource: (resourceId, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
       $.ajax({
         type: "POST",
@@ -791,6 +922,12 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   createResource: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
@@ -821,6 +958,12 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   updateResource: (resourceId, content, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # creating a resource with a given id
       resource = @getResourceBundle(content, resourceId)
@@ -892,6 +1035,12 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.error "I need an urlPrefix as second parameter."
 
   createResource: (content, cb) =>
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # create resource with id, metadata and content
       resource = @getResourceBundle(content)
@@ -922,6 +1071,12 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       cb error
 
   updateResource: (resourceId, content, cb, async = true) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+
     try
     # creating a resource with a give id
       resource = @getResourceBundle(content, resourceId)
@@ -1017,6 +1172,12 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       cb error
 
   deleteResource: (resourceId, cb) ->
+    if @isReadOnly()
+      setTimeout(->
+        cb("StorageHandler is readOnly, cannot create resource.")
+      , 0)
+      return
+      
     try
       $.ajax({
         type: "POST",

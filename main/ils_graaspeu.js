@@ -748,37 +748,63 @@
             return (extendedMetadata);
         },
 
+        validateMetadata: function (metadata, cb){
+            if (!metadata) return cb();
+
+            var error = {
+                "error": "The metadata is not valid. It cannot be parsed as a JSON object."
+            };
+
+            if (typeof metadata === 'string') {
+                try {
+                    metadata = JSON.parse(metadata);
+                }catch (err) {
+                    return cb(error);
+                }
+            }
+
+            if (typeof metadata !== 'object') {
+                return cb(error);
+            }
+
+            return cb(null, metadata);
+        },
+
         // create a resource in the Vault, resourceName and content need to be passed
         // resourceName should be in string format, metadata and content should be in JSON format
         createResource: function (resourceName, content, metadata, cb) {
             //counter_createResource++;
             //console.log("counter_createResource " + counter_createResource);
             var error = {};
-            if (resourceName && resourceName != undefined) {
+            if (resourceName) {
                 ils.getContextFromMetadata(metadata, function () {
                     ils.getUniqueName(resourceName, function (uniqueName) {
-                        var params = {
-                            "document": {
-                                "parentType": context.storageType,
-                                "parentSpaceId": context.storageId,
-                                "mimeType": "txt",
-                                "fileName": uniqueName,
-                                "content": JSON.stringify(content),
-                                "metadata": metadata
-                            }
-                        };
+                        ils.validateMetadata(metadata, function (err, validMetadata) {
+                            if (err) return cb(err);
 
-                        osapi.documents.create(params).execute(function (resource) {
-                            if (resource && !resource.error && resource.id) {
-                                return cb(resource);
-                            } else {
-                                //TODO verify error types and return "The resourceName already exists in the space." when it happens
-                                error = {
-                                    "error": "The resource couldn't be created.",
-                                    "log": resource.error
-                                };
-                                return cb(error);
-                            }
+                            var params = {
+                                "document": {
+                                    "parentType": context.storageType,
+                                    "parentSpaceId": context.storageId,
+                                    "mimeType": "txt",
+                                    "fileName": uniqueName,
+                                    "content": JSON.stringify(content),
+                                    "metadata": validMetadata
+                                }
+                            };
+
+                            osapi.documents.create(params).execute(function (resource) {
+                                if (resource && !resource.error && resource.id) {
+                                    return cb(resource);
+                                } else {
+                                    //TODO verify error types and return "The resourceName already exists in the space." when it happens
+                                    error = {
+                                        "error": "The resource couldn't be created.",
+                                        "log": resource.error
+                                    };
+                                    return cb(error);
+                                }
+                            });
                         });
                     });
                 });
@@ -898,6 +924,14 @@
         getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
                 var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
+
+                var content;
+                try {
+                    content = JSON.parse(intrinsicMetadada.content);
+                } catch (error) {
+                    content = intrinsicMetadada.content
+                }
+
                 var configuration = {
                     "metadata": {
                         "actor": intrinsicMetadada.actor || {},
@@ -905,7 +939,7 @@
                         "published": intrinsicMetadada.published || "",
                         "target": intrinsicMetadada.target || {}
                     },
-                    "content": JSON.parse(intrinsicMetadada.content)
+                    "content": content
                 };
 
                 configuration.metadata.generator = {
@@ -1010,43 +1044,42 @@
             //counter_updateResource++;
             //console.log("counter_updateResource " + counter_updateResource);
             var error = {};
-            if (resourceId && resourceId != "") {
+            if (resourceId) {
                 ils.readResource(resourceId, function (originalResource) {
                     if (originalResource && !originalResource.error && originalResource.displayName) {
                         ils.getContextFromMetadata(metadata, function () {
                             var newContent = "";
-                            var newMetadata = [];
 
-                            if (content && content != "") {
+                            if (content) {
                                 newContent = JSON.stringify(content);
                             }
 
-                            if (metadata && metadata != "") {
-                                newMetadata = metadata;
-                            }
+                            ils.validateMetadata(metadata, function (err, validMetadata) {
+                                if (err) return cb(err);
 
-                            var params = {
-                                "contextId": resourceId,
-                                "document": {
-                                    "parentType": context.storageType,
-                                    "parentSpaceId": context.storageId,
-                                    "mimeType": "txt",
-                                    "fileName": originalResource.displayName,
-                                    "content": newContent,
-                                    "metadata": newMetadata
-                                }
-                            };
+                                var params = {
+                                    "contextId": resourceId,
+                                    "document": {
+                                        "parentType": context.storageType,
+                                        "parentSpaceId": context.storageId,
+                                        "mimeType": "txt",
+                                        "fileName": originalResource.displayName,
+                                        "content": newContent,
+                                        "metadata": validMetadata
+                                    }
+                                };
 
-                            osapi.documents.update(params).execute(function (resource) {
-                                if (resource && !resource.error && resource.id) {
-                                    return cb(resource);
-                                } else {
-                                    error = {
-                                        "error": "The resource couldn't be updated.",
-                                        "log": resource.error
-                                    };
-                                    return cb(error);
-                                }
+                                osapi.documents.update(params).execute(function (resource) {
+                                    if (resource && !resource.error && resource.id) {
+                                        return cb(resource);
+                                    } else {
+                                        error = {
+                                            "error": "The resource couldn't be updated.",
+                                            "log": resource.error
+                                        };
+                                        return cb(error);
+                                    }
+                                });
                             });
                         });
                     } else {

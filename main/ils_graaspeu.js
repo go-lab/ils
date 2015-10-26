@@ -1180,8 +1180,20 @@
             }
         },
 
-        // get all those resources compliant with the filter
-        filterVault: function (vaultId, userId, objectType, appId,
+
+        /**
+         * Finds all those vault resources compliant with the filters
+         * @param  {string} vaultId  the id of the Vault space where the resources are stored, equivalent to storageId (mandatory)
+         * @param  {string} userId  the user who created the resources (optional)
+         * @param  {string} appId  the app that creates the resources, equivalent to generator.id (optional)
+         * @param  {string} objectType  the objectType specified ien the resource metadata (optional)
+         * @param  {string} creationDateFrom mininum date for the resource creation  (optional)
+         * @param  {string} creationDateTo  maximum date for the resource creation (optional)
+         * @param  {string} lastModificationDateFrom mininum date for the resource modification (optional)
+         * @param  {string} lastModificationDateTo   maximum date for the resource modificaiton (optional)
+         * @param  {Function} cb  callback
+         */
+        filterVault: function (vaultId, userId, appId, objectType,
                                creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
                                cb) {
             //counter_filterVault++;
@@ -1191,22 +1203,23 @@
             if (vaultId) {
                 var filters = {};
                 if (userId) { filters["creator"] = userId ;}
-                if (objectType) { filters["metadata.objectType"] = objectType;}
                 if (appId) { filters["metadata.generator.id"] = appId;}
+                if (objectType) { filters["metadata.objectType"] = objectType;}
 
                 var params = {
                     contextId: vaultId,
-                    contextType: "@space",
-                    filters: filters
+                    contextType: "@space"
                 };
 
-                if (creationDateFrom) { params.createdSince = creationDateFrom;}
-                if (creationDateTo) { params.createdUntil = creationDateTo;}
-                if (lastModificationDateFrom) { params.modifiedSince = lastModificationDateFrom;}
-                if (lastModificationDateTo) { params.modifiedUntil = lastModificationDateTo;}
+                if (Object.keys(filters).length > 0) {params.filters = filters}
+                if (creationDateFrom && Date.parse(creationDateFrom) !== NaN) { params.createdSince = creationDateFrom;}
+                if (creationDateTo && Date.parse(creationDateTo) !== NaN) { params.createdUntil = creationDateTo;}
+                if (lastModificationDateFrom && Date.parse(lastModificationDateFrom) !== NaN) { params.modifiedSince = lastModificationDateFrom;}
+                if (lastModificationDateTo && Date.parse(lastModificationDateTo) !== NaN) { params.modifiedUntil = lastModificationDateTo;}
 
-                if ((Object.keys(filters).length > 0) | creationDateFrom | creationDateTo | lastModificationDateFrom |
-                    lastModificationDateTo) {
+
+                if (params.filters || params.createdSince || params.createdUntil || params.modifiedSince
+                    || params.modifiedUntil) {
                     osapi.documents.get(params).execute(function (resources) {
                         if (resources.list) {
                             return cb(resources.list);

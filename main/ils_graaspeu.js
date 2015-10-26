@@ -75,6 +75,7 @@
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
+    //var counter_filterVault = 0;
     //var counter_listConfiguration = 0;
     //var counter_listVaultNames = 0;
     //var counter_listConfigurationNames = 0;
@@ -1151,17 +1152,6 @@
             ils.getVault(function (vault) {
                 osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-//                ils.getAction(vault.id, value.id, function (action) {
-//                  var metadata = "";
-//                  if (value.metadata) {
-//                    metadata = value.metadata;
-//                  }
-                            // append the metadata to the resource object
-//                  value["metadata"] = metadata;
-//                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
@@ -1179,24 +1169,70 @@
             if (vaultId && vaultId != "") {
                 osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-                            //                ils.getAction(vault.id, value.id, function (action) {
-                            //                  var metadata = "";
-                            //                  if (value.metadata) {
-                            //                    metadata = value.metadata;
-                            //                  }
-                            // append the metadata to the resource object
-                            //                  value["metadata"] = metadata;
-                            //                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
                     }
                 });
             } else {
-                error = {"error": "There Vault identifier cannot be empty. The files could not be obtained"};
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
+                return cb(error);
+            }
+        },
+
+
+        /**
+         * Finds all those vault resources compliant with the filters
+         * @param  {string} vaultId  the id of the Vault space where the resources are stored, equivalent to storageId (mandatory)
+         * @param  {string} userId  the user who created the resources (optional)
+         * @param  {string} appId  the app that creates the resources, equivalent to generator.id (optional)
+         * @param  {string} objectType  the objectType specified ien the resource metadata (optional)
+         * @param  {string} creationDateFrom mininum date for the resource creation  (optional)
+         * @param  {string} creationDateTo  maximum date for the resource creation (optional)
+         * @param  {string} lastModificationDateFrom mininum date for the resource modification (optional)
+         * @param  {string} lastModificationDateTo   maximum date for the resource modificaiton (optional)
+         * @param  {Function} cb  callback
+         */
+        filterVault: function (vaultId, userId, appId, objectType,
+                               creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
+                               cb) {
+            //counter_filterVault++;
+            //console.log("counter_filterVault " + counter_filterVault);
+            var error = {"error": "No resource available in the Vault."};
+
+            if (vaultId) {
+                var filters = {};
+                if (userId) { filters["creator"] = userId ;}
+                if (appId) { filters["metadata.generator.id"] = appId;}
+                if (objectType) { filters["metadata.objectType"] = objectType;}
+
+                var params = {
+                    contextId: vaultId,
+                    contextType: "@space"
+                };
+
+                if (Object.keys(filters).length > 0) {params.filters = filters}
+                if (creationDateFrom && Date.parse(creationDateFrom) !== NaN) { params.createdSince = creationDateFrom;}
+                if (creationDateTo && Date.parse(creationDateTo) !== NaN) { params.createdUntil = creationDateTo;}
+                if (lastModificationDateFrom && Date.parse(lastModificationDateFrom) !== NaN) { params.modifiedSince = lastModificationDateFrom;}
+                if (lastModificationDateTo && Date.parse(lastModificationDateTo) !== NaN) { params.modifiedUntil = lastModificationDateTo;}
+
+
+                if (params.filters || params.createdSince || params.createdUntil || params.modifiedSince
+                    || params.modifiedUntil) {
+                    osapi.documents.get(params).execute(function (resources) {
+                        if (resources.list) {
+                            return cb(resources.list);
+                        } else {
+                            return cb(error);
+                        }
+                    });
+                } else{
+                    error = {"error": "No filter has been provided"};
+                    return cb(error);
+                }
+            } else {
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
                 return cb(error);
             }
         },

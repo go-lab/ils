@@ -1186,11 +1186,11 @@
          * @param  {string} vaultId  the id of the Vault space where the resources are stored, equivalent to storageId (mandatory)
          * @param  {string} userId  the user who created the resources (optional)
          * @param  {string} appId  the app that creates the resources, equivalent to generator.id (optional)
-         * @param  {string} objectType  the objectType specified ien the resource metadata (optional)
-         * @param  {string} creationDateFrom mininum date for the resource creation  (optional)
-         * @param  {string} creationDateTo  maximum date for the resource creation (optional)
-         * @param  {string} lastModificationDateFrom mininum date for the resource modification (optional)
-         * @param  {string} lastModificationDateTo   maximum date for the resource modificaiton (optional)
+         * @param  {string} objectType  the objectType specified in the resource, equivalent to metadata.target (optional)
+         * @param  {string} creationDateFrom mininum date for the resource creation according to UTC (optional)
+         * @param  {string} creationDateTo  maximum date for the resource creation according to UTC(optional)
+         * @param  {string} lastModificationDateFrom mininum date for the resource modification according to UTC (optional)
+         * @param  {string} lastModificationDateTo   maximum date for the resource modificaiton according to UTC (optional)
          * @param  {Function} cb  callback
          */
         filterVault: function (vaultId, userId, appId, objectType,
@@ -1204,7 +1204,7 @@
                 var filters = {};
                 if (userId) { filters["creator"] = userId ;}
                 if (appId) { filters["metadata.generator.id"] = appId;}
-                if (objectType) { filters["metadata.objectType"] = objectType;}
+                if (objectType) { filters["metadata.target.objectType"] = objectType;}
 
                 var params = {
                     contextId: vaultId,

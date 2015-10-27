@@ -1270,7 +1270,7 @@
             }
         },
 
-        // log the action of adding a resource in the Vault
+        // logs the action based on objectId, objectType, objectName, spaceId, spaceName, actionType
         logAction: function (objectId, objectType, objectName, spaceId, spaceName, actionType, cb) {
             //counter_logAction++;
             //console.log("counter_logAction " + counter_logAction);

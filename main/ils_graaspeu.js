@@ -75,6 +75,7 @@
     //var counter_updateResource = 0;
     //var counter_listFilesBySpaceId = 0;
     //var counter_listVault = 0;
+    //var counter_filterVault = 0;
     //var counter_listConfiguration = 0;
     //var counter_listVaultNames = 0;
     //var counter_listConfigurationNames = 0;
@@ -747,37 +748,63 @@
             return (extendedMetadata);
         },
 
+        validateMetadata: function (metadata, cb){
+            if (!metadata) return cb();
+
+            var error = {
+                "error": "The metadata is not valid. It cannot be parsed as a JSON object."
+            };
+
+            if (typeof metadata === 'string') {
+                try {
+                    metadata = JSON.parse(metadata);
+                }catch (err) {
+                    return cb(error);
+                }
+            }
+
+            if (typeof metadata !== 'object') {
+                return cb(error);
+            }
+
+            return cb(null, metadata);
+        },
+
         // create a resource in the Vault, resourceName and content need to be passed
         // resourceName should be in string format, metadata and content should be in JSON format
         createResource: function (resourceName, content, metadata, cb) {
             //counter_createResource++;
             //console.log("counter_createResource " + counter_createResource);
             var error = {};
-            if (resourceName && resourceName != undefined) {
+            if (resourceName) {
                 ils.getContextFromMetadata(metadata, function () {
                     ils.getUniqueName(resourceName, function (uniqueName) {
-                        var params = {
-                            "document": {
-                                "parentType": context.storageType,
-                                "parentSpaceId": context.storageId,
-                                "mimeType": "txt",
-                                "fileName": uniqueName,
-                                "content": JSON.stringify(content),
-                                "metadata": metadata
-                            }
-                        };
+                        ils.validateMetadata(metadata, function (err, validMetadata) {
+                            if (err) return cb(err);
 
-                        osapi.documents.create(params).execute(function (resource) {
-                            if (resource && !resource.error && resource.id) {
-                                return cb(resource);
-                            } else {
-                                //TODO verify error types and return "The resourceName already exists in the space." when it happens
-                                error = {
-                                    "error": "The resource couldn't be created.",
-                                    "log": resource.error
-                                };
-                                return cb(error);
-                            }
+                            var params = {
+                                "document": {
+                                    "parentType": context.storageType,
+                                    "parentSpaceId": context.storageId,
+                                    "mimeType": "txt",
+                                    "fileName": uniqueName,
+                                    "content": JSON.stringify(content),
+                                    "metadata": validMetadata
+                                }
+                            };
+
+                            osapi.documents.create(params).execute(function (resource) {
+                                if (resource && !resource.error && resource.id) {
+                                    return cb(resource);
+                                } else {
+                                    //TODO verify error types and return "The resourceName already exists in the space." when it happens
+                                    error = {
+                                        "error": "The resource couldn't be created.",
+                                        "log": resource.error
+                                    };
+                                    return cb(error);
+                                }
+                            });
                         });
                     });
                 });
@@ -897,6 +924,14 @@
         getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
                 var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
+
+                var content;
+                try {
+                    content = JSON.parse(intrinsicMetadada.content);
+                } catch (error) {
+                    content = intrinsicMetadada.content
+                }
+
                 var configuration = {
                     "metadata": {
                         "actor": intrinsicMetadada.actor || {},
@@ -904,7 +939,7 @@
                         "published": intrinsicMetadada.published || "",
                         "target": intrinsicMetadada.target || {}
                     },
-                    "content": JSON.parse(intrinsicMetadada.content)
+                    "content": content
                 };
 
                 configuration.metadata.generator = {
@@ -1009,43 +1044,42 @@
             //counter_updateResource++;
             //console.log("counter_updateResource " + counter_updateResource);
             var error = {};
-            if (resourceId && resourceId != "") {
+            if (resourceId) {
                 ils.readResource(resourceId, function (originalResource) {
                     if (originalResource && !originalResource.error && originalResource.displayName) {
                         ils.getContextFromMetadata(metadata, function () {
                             var newContent = "";
-                            var newMetadata = [];
 
-                            if (content && content != "") {
+                            if (content) {
                                 newContent = JSON.stringify(content);
                             }
 
-                            if (metadata && metadata != "") {
-                                newMetadata = metadata;
-                            }
+                            ils.validateMetadata(metadata, function (err, validMetadata) {
+                                if (err) return cb(err);
 
-                            var params = {
-                                "contextId": resourceId,
-                                "document": {
-                                    "parentType": context.storageType,
-                                    "parentSpaceId": context.storageId,
-                                    "mimeType": "txt",
-                                    "fileName": originalResource.displayName,
-                                    "content": newContent,
-                                    "metadata": newMetadata
-                                }
-                            };
+                                var params = {
+                                    "contextId": resourceId,
+                                    "document": {
+                                        "parentType": context.storageType,
+                                        "parentSpaceId": context.storageId,
+                                        "mimeType": "txt",
+                                        "fileName": originalResource.displayName,
+                                        "content": newContent,
+                                        "metadata": validMetadata
+                                    }
+                                };
 
-                            osapi.documents.update(params).execute(function (resource) {
-                                if (resource && !resource.error && resource.id) {
-                                    return cb(resource);
-                                } else {
-                                    error = {
-                                        "error": "The resource couldn't be updated.",
-                                        "log": resource.error
-                                    };
-                                    return cb(error);
-                                }
+                                osapi.documents.update(params).execute(function (resource) {
+                                    if (resource && !resource.error && resource.id) {
+                                        return cb(resource);
+                                    } else {
+                                        error = {
+                                            "error": "The resource couldn't be updated.",
+                                            "log": resource.error
+                                        };
+                                        return cb(error);
+                                    }
+                                });
                             });
                         });
                     } else {
@@ -1151,17 +1185,6 @@
             ils.getVault(function (vault) {
                 osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-//                ils.getAction(vault.id, value.id, function (action) {
-//                  var metadata = "";
-//                  if (value.metadata) {
-//                    metadata = value.metadata;
-//                  }
-                            // append the metadata to the resource object
-//                  value["metadata"] = metadata;
-//                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
@@ -1179,29 +1202,75 @@
             if (vaultId && vaultId != "") {
                 osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {
                     if (resources.list) {
-                        if (resources.list.length > 0) {
-                            //TODO: those resources without metadada should be enriched based on the actions registered
-                            //                ils.getAction(vault.id, value.id, function (action) {
-                            //                  var metadata = "";
-                            //                  if (value.metadata) {
-                            //                    metadata = value.metadata;
-                            //                  }
-                            // append the metadata to the resource object
-                            //                  value["metadata"] = metadata;
-                            //                });
-                        }
                         return cb(resources.list);
                     } else {
                         return cb(error);
                     }
                 });
             } else {
-                error = {"error": "There Vault identifier cannot be empty. The files could not be obtained"};
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
                 return cb(error);
             }
         },
 
-        // log the action of adding a resource in the Vault
+
+        /**
+         * Finds all those vault resources compliant with the filters
+         * @param  {string} vaultId  the id of the Vault space where the resources are stored, equivalent to storageId (mandatory)
+         * @param  {string} userId  the user who created the resources (optional)
+         * @param  {string} appId  the app that creates the resources, equivalent to generator.id (optional)
+         * @param  {string} objectType  the objectType specified in the resource, equivalent to metadata.target (optional)
+         * @param  {string} creationDateFrom mininum date for the resource creation according to UTC (optional)
+         * @param  {string} creationDateTo  maximum date for the resource creation according to UTC(optional)
+         * @param  {string} lastModificationDateFrom mininum date for the resource modification according to UTC (optional)
+         * @param  {string} lastModificationDateTo   maximum date for the resource modificaiton according to UTC (optional)
+         * @param  {Function} cb  callback
+         */
+        filterVault: function (vaultId, userId, appId, objectType,
+                               creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
+                               cb) {
+            //counter_filterVault++;
+            //console.log("counter_filterVault " + counter_filterVault);
+            var error = {"error": "No resource available in the Vault."};
+
+            if (vaultId) {
+                var filters = {};
+                if (userId) { filters["creator"] = userId ;}
+                if (appId) { filters["metadata.generator.id"] = appId;}
+                if (objectType) { filters["metadata.target.objectType"] = objectType;}
+
+                var params = {
+                    contextId: vaultId,
+                    contextType: "@space"
+                };
+
+                if (Object.keys(filters).length > 0) {params.filters = filters}
+                if (creationDateFrom && Date.parse(creationDateFrom) !== NaN) { params.createdSince = creationDateFrom;}
+                if (creationDateTo && Date.parse(creationDateTo) !== NaN) { params.createdUntil = creationDateTo;}
+                if (lastModificationDateFrom && Date.parse(lastModificationDateFrom) !== NaN) { params.modifiedSince = lastModificationDateFrom;}
+                if (lastModificationDateTo && Date.parse(lastModificationDateTo) !== NaN) { params.modifiedUntil = lastModificationDateTo;}
+
+
+                if (params.filters || params.createdSince || params.createdUntil || params.modifiedSince
+                    || params.modifiedUntil) {
+                    osapi.documents.get(params).execute(function (resources) {
+                        if (resources.list) {
+                            return cb(resources.list);
+                        } else {
+                            return cb(error);
+                        }
+                    });
+                } else{
+                    error = {"error": "No filter has been provided"};
+                    return cb(error);
+                }
+            } else {
+                error = {"error": "The Vault identifier cannot be empty. The files could not be obtained"};
+                return cb(error);
+            }
+        },
+
+        // logs the action based on objectId, objectType, objectName, spaceId, spaceName, actionType
         logAction: function (objectId, objectType, objectName, spaceId, spaceName, actionType, cb) {
             //counter_logAction++;
             //console.log("counter_logAction " + counter_logAction);

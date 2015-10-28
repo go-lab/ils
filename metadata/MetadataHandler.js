@@ -449,9 +449,6 @@ phase:
       this.identifyContext();
       if (typeof osapi !== "undefined" && osapi !== null) {
         try {
-          if (!$.cookie) {
-            throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library).";
-          }
           if (!ils) {
             throw "ILS library needs to be present before using the (GoLab)MetadataHandler.";
           }

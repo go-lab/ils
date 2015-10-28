@@ -352,8 +352,6 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
     if osapi?
       # we in an OpenSocial context, try to get information from there...
       try
-        if not $.cookie
-          throw "jquery.cookie library needs to be present before using the (GoLab)MetadataHandler (needed by ILS library)."
         if not ils
           throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
         ils.getAppContextParameters (context) =>

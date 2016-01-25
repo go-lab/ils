@@ -39,7 +39,7 @@
       this.getResourceBundle = __bind(this.getResourceBundle, this);
       this.applyFilters = __bind(this.applyFilters, this);
       this.className = "golab.ils.storage.StorageHandler";
-      this._debug = false;
+      this._debug = true;
       if (this._debug) {
         console.log("Initializing StorageHandler.");
       }
@@ -269,7 +269,7 @@
     StorageHandler.prototype._findLatestResourceId = function(objectType, metadatas) {
       var date, entry, latestDate, latestId, _i, _len;
       if (this._debug) {
-        console.log("_findLatestResourceId(" + objectType + ",)");
+        console.log("_findLatestResourceId(" + objectType + ", " + metadatas.length + ")");
       }
       latestDate = new Date(1970, 0, 1);
       latestId = void 0;
@@ -298,9 +298,16 @@
           var date, entry, latestDate, latestId, _i, _len;
           if (error != null) {
             return setTimeout(function() {
+              if (this._debug) {
+                console.log("StorageHandler: an error occured: " + error);
+              }
               return cb(error, void 0);
             }, 0);
           } else {
+            if (_this._debug) {
+              console.log("StorageHandler: found resources:");
+              console.log(metadatas);
+            }
             latestDate = new Date(1970, 0, 1);
             latestId = void 0;
             for (_i = 0, _len = metadatas.length; _i < _len; _i++) {
@@ -312,11 +319,14 @@
                 date = new Date(entry.metadata.published);
                 if (date > latestDate) {
                   latestDate = date;
-                  latestId = entry.id;
+                  latestId = entry.metadata.id;
                 }
               }
             }
             if (latestId != null) {
+              if (_this._debug) {
+                console.log("StorageHandler: now reading " + latestId);
+              }
               return _this.readResource(latestId, cb);
             } else {
               return setTimeout(function() {
@@ -841,52 +851,68 @@
     VaultStorageHandler.prototype.readResource = function(resourceId, cb) {
       var error;
       try {
-        return ils.readResource(resourceId, (function(_this) {
-          return function(result) {
-            var error, resource;
-            if (result.error != null) {
-              return cb(result.error);
-            } else {
-              if (_this._debug != null) {
-                console.log("ils.readResource returns:");
-              }
-              if (_this._debug != null) {
-                console.log(result);
-              }
-              resource = {};
-              if (typeof result.metadata === 'object') {
-                resource.metadata = result.metadata;
+        if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
+          return ils.getApp((function(_this) {
+            return function(app) {
+              var configuration;
+              console.log("3333");
+              console.log(app);
+              if ((app.metadata != null) && (app.metadata.settings != null)) {
+                configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
               } else {
-                try {
-                  resource.metadata = JSON.parse(result.metadata);
-                } catch (_error) {
-                  error = _error;
-                  console.warn("Could not parse metadata when reading a resource:");
-                  console.warn(result.metadata);
-                  cb(error);
-                  return;
-                }
+                configuration = void 0;
               }
-              resource.metadata.id = resourceId;
-              if (typeof result.content === 'object') {
-                resource.content = result.content;
+              return cb(null, configuration);
+            };
+          })(this));
+        } else {
+          return ils.readResource(resourceId, (function(_this) {
+            return function(result) {
+              var error, resource;
+              if (result.error != null) {
+                return cb(result.error);
               } else {
-                try {
-                  resource.content = JSON.parse(result.content);
-                } catch (_error) {
-                  error = _error;
-                  console.warn("Could not parse content when reading a resource:");
-                  console.warn(result.content);
-                  cb(error);
-                  return;
+                if (_this._debug != null) {
+                  console.log("ils.readResource returns:");
                 }
+                if (_this._debug != null) {
+                  console.log(result);
+                }
+                resource = {};
+                if (typeof result.metadata === 'object') {
+                  resource.metadata = result.metadata;
+                } else {
+                  try {
+                    resource.metadata = JSON.parse(result.metadata);
+                  } catch (_error) {
+                    error = _error;
+                    console.warn("Could not parse metadata when reading a resource:");
+                    console.warn(result.metadata);
+                    cb(error);
+                    return;
+                  }
+                }
+                resource.metadata.id = resourceId;
+                if (typeof result.content === 'object') {
+                  resource.content = result.content;
+                } else {
+                  try {
+                    resource.content = JSON.parse(result.content);
+                  } catch (_error) {
+                    error = _error;
+                    console.warn("Could not parse content when reading a resource:");
+                    console.warn(result.content);
+                    cb(error);
+                    return;
+                  }
+                }
+                _this.metadataHandler.setId(resource.metadata.id);
+                _this.metadataHandler.setTarget(resource.metadata.target);
+                return cb(null, resource);
               }
-              _this.metadataHandler.setId(resource.metadata.id);
-              _this.metadataHandler.setTarget(resource.metadata.target);
-              return cb(null, resource);
-            }
-          };
-        })(this));
+            };
+          })(this));
+        }
       } catch (_error) {
         error = _error;
         console.warn("Something went wrong when trying to load resource " + resourceId + " from the vault:");
@@ -926,17 +952,26 @@
       try {
         resource = this.getResourceBundle(content);
         this.metadataHandler.setId(resource.metadata.id);
-        console.log("Setting configuration resource in Vault.");
-        console.log("resource");
-        console.log(resource);
+        if (this._debug != null) {
+          console.log("Setting configuration resource in Vault:");
+        }
+        if (this._debug != null) {
+          console.log(resource);
+        }
         return ils.setAppConfiguration(resource.content, resource.metadata, (function(_this) {
           return function(result) {
-            console.log("ils.createConfigurationFile returns:");
+            if (_this._debug != null) {
+              console.log("ils.createConfigurationFile returns:");
+            }
             if (result.error != null) {
-              console.log(result.error);
+              if (_this._debug != null) {
+                console.log(result.error);
+              }
               return cb(result.error);
             } else {
-              console.log(result);
+              if (_this._debug != null) {
+                console.log(result);
+              }
               return cb(null, resource);
             }
           };
@@ -956,8 +991,12 @@
         }, 0);
         return;
       }
-      console.log("VaultStorageHandler.createResource called.");
-      console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      if (this._debug != null) {
+        console.log("VaultStorageHandler.createResource called.");
+      }
+      if (this._debug != null) {
+        console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      }
       if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
         return this.setConfiguration(content, cb);
       } else {
@@ -993,7 +1032,6 @@
                     return;
                   }
                 }
-                returnedResource.id = result.id;
                 returnedResource.metadata.id = result.id;
                 _this.metadataHandler.setId(returnedResource.id);
                 return cb(null, returnedResource);
@@ -1017,8 +1055,12 @@
         }, 0);
         return;
       }
-      console.log("VaultStorageHandler.updateResource called.");
-      console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      if (this._debug != null) {
+        console.log("VaultStorageHandler.updateResource called.");
+      }
+      if (this._debug != null) {
+        console.log("... for type: " + (this.metadataHandler.getMetadata().target.objectType));
+      }
       if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
         return this.setConfiguration(content, cb);
       } else {
@@ -1041,7 +1083,6 @@
               } else {
                 updatedResource = {};
                 updatedResource.content = content;
-                console.log("******** : " + typeof result.metadata);
                 if ((typeof result.metadata) === 'object') {
                   updatedResource.metadata = result.metadata;
                 } else {
@@ -1114,62 +1155,101 @@
     };
 
     VaultStorageHandler.prototype._listResourceMetaDatas = function(forCaching, cb) {
-      var error;
-      try {
-        return ils.listVaultExtendedById(this.metadataHandler.getMetadata().storageId, (function(_this) {
-          return function(result) {
-            var error, item, resource, returnedMetadatas, _i, _len;
-            if (_this._debug != null) {
-              console.log("ils.listVaultExtendedById returns:");
+      var error, filter;
+      if (this.metadataHandler.getMetadata().target.objectType === "configuration") {
+        return ils.getApp((function(_this) {
+          return function(app) {
+            var configuration, returnedMetadatas;
+            returnedMetadatas = [];
+            if ((app.metadata != null) && (app.metadata.settings != null)) {
+              configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
+              returnedMetadatas.push(configuration);
             }
-            if (_this._debug != null) {
-              console.log(result);
-            }
-            if (result.error != null) {
-              if (result.error === "No resource available in the Vault.") {
-                return cb(null, []);
-              } else {
-                return cb(result.error);
-              }
-            } else {
-              returnedMetadatas = [];
-              for (_i = 0, _len = result.length; _i < _len; _i++) {
-                resource = result[_i];
-                try {
-                  item = {};
-                  if (resource.metadata) {
-                    item.id = resource.id;
-                    if (typeof resource.metadata === 'object') {
-                      item.metadata = resource.metadata;
-                    } else {
-                      item.metadata = JSON.parse(resource.metadata);
-                    }
-                    if ((item.metadata != null) && (item.metadata.target != null)) {
-                      item.metadata.id = resource.id;
-                      if (forCaching && resource.content) {
-                        item.content = JSON.parse(resource.content);
-                      }
-                      returnedMetadatas.push(item);
-                    }
-                  }
-                } catch (_error) {
-                  error = _error;
-                  console.log("caught an error when parsing metadata from Vault");
-                  console.log(error);
-                }
-              }
-              if (!forCaching) {
-                returnedMetadatas = _this.applyFilters(returnedMetadatas);
-              }
-              return cb(null, returnedMetadatas);
-            }
+            return cb(null, returnedMetadatas);
           };
         })(this));
-      } catch (_error) {
-        error = _error;
-        console.warn("Something went wrong when trying to list the resources in the vault:");
-        console.warn(error);
-        return cb(error);
+      } else {
+        try {
+          filter = {};
+          filter.vaultId = this.metadataHandler.getMetadata().storageId;
+          if (this._filterForUser) {
+            if (this.metadataHandler.getMetadata().contextualActor != null) {
+              filter.userId = this.metadataHandler.getMetadata().contextualActor.id;
+            } else {
+              filter.userId = this.metadataHandler.getMetadata().actor.id;
+            }
+          } else {
+            filter.userId = "";
+          }
+          if (this._filterForAppId) {
+            filter.appId = this.metadataHandler.getMetadata().generator.id;
+          } else {
+            filter.appId = "";
+          }
+          if (this._filterForResourceType) {
+            filter.objectType = this.metadataHandler.getMetadata().target.objectType;
+          } else {
+            filter.objectType = "";
+          }
+          filter.creationDateFrom = "";
+          filter.creationDateTo = "";
+          filter.lastModificationDateFrom = "";
+          filter.lastModificationDateTo = "";
+          return ils.filterVault(filter.vaultId, filter.userId, filter.appId, filter.objectType, filter.creationDateFrom, filter.creationDateTo, filter.lastModificationDateFrom, filter.lastModificationDateTo, (function(_this) {
+            return function(result) {
+              var error, item, resource, returnedMetadatas, _i, _len;
+              if (_this._debug) {
+                console.log("ils.filterVault returns:");
+              }
+              if (_this._debug) {
+                console.log(result);
+              }
+              if (result.error != null) {
+                if (result.error === "No resource available in the Vault.") {
+                  return cb(null, []);
+                } else {
+                  return cb(result.error);
+                }
+              } else {
+                returnedMetadatas = [];
+                for (_i = 0, _len = result.length; _i < _len; _i++) {
+                  resource = result[_i];
+                  try {
+                    item = {};
+                    if (resource.metadata) {
+                      item.id = resource.id;
+                      if (typeof resource.metadata === 'object') {
+                        item.metadata = resource.metadata;
+                      } else {
+                        item.metadata = JSON.parse(resource.metadata);
+                      }
+                      if ((item.metadata != null) && (item.metadata.target != null)) {
+                        item.metadata.id = resource.id;
+                        if (forCaching && resource.content) {
+                          item.content = JSON.parse(resource.content);
+                        }
+                        returnedMetadatas.push(item);
+                      }
+                    }
+                  } catch (_error) {
+                    error = _error;
+                    console.log("caught an error when parsing metadata from Vault");
+                    console.log(error);
+                  }
+                }
+                if (!forCaching) {
+                  returnedMetadatas = _this.applyFilters(returnedMetadatas);
+                }
+                return cb(null, returnedMetadatas);
+              }
+            };
+          })(this));
+        } catch (_error) {
+          error = _error;
+          console.warn("Something went wrong when trying to list the resources in the vault:");
+          console.warn(error);
+          return cb(error);
+        }
       }
     };
 
@@ -1606,6 +1686,7 @@
               console.log("GET readResource success, response:");
               console.log(resource);
             }
+            delete resource._id;
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {

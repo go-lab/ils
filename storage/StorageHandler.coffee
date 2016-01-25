@@ -18,7 +18,7 @@ class window.golab.ils.storage.StorageHandler
 
   constructor: (metadataHandler, @_filterForResourceType = true, @_filterForUser = true, @_filterForProvider = true, @_customFilter = null, @_filterForAppId = true) ->
     @className = "golab.ils.storage.StorageHandler"
-    @_debug = false
+    @_debug = true
     #    @_debug = true
     if @_debug then console.log "Initializing StorageHandler."
     @_lastResourceId = undefined
@@ -190,7 +190,7 @@ class window.golab.ils.storage.StorageHandler
 
   _findLatestResourceId: (objectType, metadatas) ->
     if (@_debug)
-      console.log("_findLatestResourceId(#{objectType},)")
+      console.log("_findLatestResourceId(#{objectType}, #{metadatas.length})")
     latestDate = new Date(1970,0,1)
     latestId = undefined
     for entry in metadatas
@@ -211,22 +211,27 @@ class window.golab.ils.storage.StorageHandler
     @listResourceMetaDatas (error, metadatas) =>
       if error?
         setTimeout(->
+          if @_debug then console.log "StorageHandler: an error occured: #{error}"
           cb(error, undefined)
         , 0)
       else
+        if @_debug
+          console.log "StorageHandler: found resources:"
+          console.log metadatas
         latestDate = new Date(1970,0,1)
         latestId = undefined
         for entry in metadatas
           if objectType? and objectType isnt entry.metadata.target.objectType
-            # skip entry if an objectType is give, but it doesn't match
+            # skip entry if an objectType is given, but it doesn't match
             continue
           if entry.metadata.published?
             # search for the latest date
             date = new Date(entry.metadata.published)
             if date > latestDate
               latestDate = date
-              latestId = entry.id
+              latestId = entry.metadata.id
         if latestId?
+          if @_debug then console.log "StorageHandler: now reading #{latestId}"
           @readResource latestId, cb
         else
           setTimeout(->
@@ -576,38 +581,48 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     # maps is correctly to the callback parameters
     # and does some additional error catching
     try
-      ils.readResource resourceId, (result) =>
-        if result.error?
-          cb result.error
-        else
-          if @_debug? then console.log "ils.readResource returns:"
-          if @_debug? then console.log result
-          resource = {}
-          if typeof result.metadata is 'object'
-            resource.metadata = result.metadata
+      if @metadataHandler.getMetadata().target.objectType is "configuration"
+        ils.getApp (app) =>
+          console.log "3333"
+          console.log app
+          if app.metadata? and app.metadata.settings?
+            configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
           else
-            try
-              resource.metadata = JSON.parse(result.metadata)
-            catch error
-              console.warn "Could not parse metadata when reading a resource:"
-              console.warn result.metadata
-              cb error
-              return
-          resource.metadata.id = resourceId
-          if typeof result.content is 'object'
-            resource.content = result.content
+            configuration = undefined
+          cb null, configuration
+      else
+        ils.readResource resourceId, (result) =>
+          if result.error?
+            cb result.error
           else
-            try
-              resource.content = JSON.parse(result.content)
-            catch error
-              console.warn "Could not parse content when reading a resource:"
-              console.warn result.content
-              cb error
-              return
-            # update the metadata with new properties
-          @metadataHandler.setId resource.metadata.id
-          @metadataHandler.setTarget(resource.metadata.target)
-          cb null, resource
+            if @_debug? then console.log "ils.readResource returns:"
+            if @_debug? then console.log result
+            resource = {}
+            if typeof result.metadata is 'object'
+              resource.metadata = result.metadata
+            else
+              try
+                resource.metadata = JSON.parse(result.metadata)
+              catch error
+                console.warn "Could not parse metadata when reading a resource:"
+                console.warn result.metadata
+                cb error
+                return
+            resource.metadata.id = resourceId
+            if typeof result.content is 'object'
+              resource.content = result.content
+            else
+              try
+                resource.content = JSON.parse(result.content)
+              catch error
+                console.warn "Could not parse content when reading a resource:"
+                console.warn result.content
+                cb error
+                return
+              # update the metadata with new properties
+            @metadataHandler.setId resource.metadata.id
+            @metadataHandler.setTarget(resource.metadata.target)
+            cb null, resource
     catch error
       console.warn "Something went wrong when trying to load resource #{resourceId} from the vault:"
       console.warn error
@@ -638,16 +653,15 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     try
       resource = @getResourceBundle(content)
       @metadataHandler.setId resource.metadata.id
-      console.log "Setting configuration resource in Vault."
-      console.log "resource"
-      console.log resource
+      if @_debug? then console.log "Setting configuration resource in Vault:"
+      if @_debug? then console.log resource
       ils.setAppConfiguration resource.content, resource.metadata, (result) =>
-        console.log "ils.createConfigurationFile returns:"
+        if @_debug? then console.log "ils.createConfigurationFile returns:"
         if result.error?
-          console.log result.error
+          if @_debug? then console.log result.error
           cb result.error
         else
-          console.log result
+          if @_debug? then console.log result
           cb null, resource
     catch
       console.warn "Something went wrong when trying to create a configuration in the vault:"
@@ -664,8 +678,8 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
-    console.log "VaultStorageHandler.createResource called."
-    console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
+    if @_debug? then console.log "VaultStorageHandler.createResource called."
+    if @_debug? then console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
     if @metadataHandler.getMetadata().target.objectType is "configuration"
       @setConfiguration content, cb
     else
@@ -696,7 +710,6 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
                 cb error
                 return
             # the id might have change here. update in metadata handler
-            returnedResource.id = result.id
             returnedResource.metadata.id = result.id
             @metadataHandler.setId returnedResource.id
             cb null, returnedResource
@@ -715,8 +728,8 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
-    console.log "VaultStorageHandler.updateResource called."
-    console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
+    if @_debug? then console.log "VaultStorageHandler.updateResource called."
+    if @_debug? then console.log "... for type: #{@metadataHandler.getMetadata().target.objectType}"
     if @metadataHandler.getMetadata().target.objectType is "configuration"
       @setConfiguration content, cb
     else
@@ -733,7 +746,6 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
           else
             updatedResource = {}
             updatedResource.content = content
-            console.log "******** : "+typeof(result.metadata)
             if (typeof result.metadata) is 'object'
               updatedResource.metadata = result.metadata
             else
@@ -788,45 +800,74 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
     # this function relays the call to the ILS library,
     # maps is correctly to the callback parameters
     # and does some additional error catching
-    try
-      ils.listVaultExtendedById @metadataHandler.getMetadata().storageId, (result) =>
-        if @_debug? then console.log "ils.listVaultExtendedById returns:"
-        if @_debug? then console.log result
-        if result.error?
-          if result.error is "No resource available in the Vault."
-            cb null, []
+    if @metadataHandler.getMetadata().target.objectType is "configuration"
+      ils.getApp (app) =>
+        returnedMetadatas = []
+        if app.metadata? and app.metadata.settings?
+          configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
+          returnedMetadatas.push configuration
+        cb null, returnedMetadatas
+    else
+      try
+        filter = {}
+        filter.vaultId = @metadataHandler.getMetadata().storageId
+        if @_filterForUser
+          if @metadataHandler.getMetadata().contextualActor?
+            filter.userId = @metadataHandler.getMetadata().contextualActor.id
           else
-            cb result.error
+            filter.userId = @metadataHandler.getMetadata().actor.id
         else
-          returnedMetadatas = []
-          for resource in result
-            # do a quick sanity check:
-            try
-              item = {}
-              if (resource.metadata)
-                item.id = resource.id
-                # check if resource.metadata is already an object
-                # if yes, use it, if not, parse it
-                if typeof resource.metadata is 'object'
-                  item.metadata = resource.metadata
-                else
-                  item.metadata = JSON.parse(resource.metadata)
-                if item.metadata? and item.metadata.target?
-                  # to prevent potential inconsistencies:
-                  item.metadata.id = resource.id
-                  if (forCaching && resource.content)
-                    item.content = JSON.parse(resource.content)
-                  returnedMetadatas.push item
-            catch error
-              console.log "caught an error when parsing metadata from Vault"
-              console.log error
-          if (!forCaching)
-            returnedMetadatas = @applyFilters(returnedMetadatas)
-          cb null, returnedMetadatas
-    catch error
-      console.warn "Something went wrong when trying to list the resources in the vault:"
-      console.warn error
-      cb error
+          filter.userId = ""
+        if @_filterForAppId
+          filter.appId = @metadataHandler.getMetadata().generator.id
+        else
+          filter.appId = ""
+        if @_filterForResourceType
+          filter.objectType = @metadataHandler.getMetadata().target.objectType
+        else
+          filter.objectType = ""
+        filter.creationDateFrom = ""
+        filter.creationDateTo = ""
+        filter.lastModificationDateFrom = ""
+        filter.lastModificationDateTo = ""
+        ils.filterVault filter.vaultId, filter.userId, filter.appId, filter.objectType, filter.creationDateFrom, filter.creationDateTo, filter.lastModificationDateFrom, filter.lastModificationDateTo, (result) =>
+          if @_debug then console.log "ils.filterVault returns:"
+          if @_debug then console.log result
+          if result.error?
+            if result.error is "No resource available in the Vault."
+              cb null, []
+            else
+              cb result.error
+          else
+            returnedMetadatas = []
+            for resource in result
+# do a quick sanity check:
+              try
+                item = {}
+                if (resource.metadata)
+                  item.id = resource.id
+                  # check if resource.metadata is already an object
+                  # if yes, use it, if not, parse it
+                  if typeof resource.metadata is 'object'
+                    item.metadata = resource.metadata
+                  else
+                    item.metadata = JSON.parse(resource.metadata)
+                  if item.metadata? and item.metadata.target?
+# to prevent potential inconsistencies:
+                    item.metadata.id = resource.id
+                    if (forCaching && resource.content)
+                      item.content = JSON.parse(resource.content)
+                    returnedMetadatas.push item
+              catch error
+                console.log "caught an error when parsing metadata from Vault"
+                console.log error
+            if (!forCaching)
+              returnedMetadatas = @applyFilters(returnedMetadatas)
+            cb null, returnedMetadatas
+      catch error
+        console.warn "Something went wrong when trying to list the resources in the vault:"
+        console.warn error
+        cb error
 
   listResourceMetaDatas: (cb) ->
     @_listResourceMetaDatas(false, cb)
@@ -1160,10 +1201,12 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
           if @_debug
             console.log("GET readResource success, response:")
             console.log resource
+          delete resource._id
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET readResource failed, response:"
           console.warn errorThrown
+
           cb errorThrown
       })
     catch error

@@ -464,19 +464,13 @@
                     context.generator.url = response.appUrl;
                     context.generator.id = response.id;
                     context.generator.displayName = response.displayName;
-
-                    //TODO updates when graasp deals with the app permissions
-                    if (context.actor.objectType=="person" && response.memberships) {
-                        var isMember = _.filter(response.memberships, function (member) {
-                            return (member.userId === context.actor.id ) && (member.memberType === "owner" || member.memberType === "contributor");
-                        });
-                        if (isMember.length>0) {
+                    if (ils.identifyContext() != context_standalone_ils){
+                        if (response.userMemberType === "owner" || response.userMemberType === "contributor"){
                             context.actor.objectType = user_editor;
                         } else {
                             context.actor.objectType = user_viewer;
                         }
                     }
-
                     return cb(response);
                 } else {
                     var error = {

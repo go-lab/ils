@@ -855,13 +855,12 @@
           return ils.getApp((function(_this) {
             return function(app) {
               var configuration;
-              console.log("3333");
-              console.log(app);
               if ((app.metadata != null) && (app.metadata.settings != null)) {
                 configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
               } else {
                 configuration = void 0;
               }
+              ut.commons.utils.decodeSpecialKeyCharsInJson(configuration);
               return cb(null, configuration);
             };
           })(this));
@@ -908,6 +907,7 @@
                 }
                 _this.metadataHandler.setId(resource.metadata.id);
                 _this.metadataHandler.setTarget(resource.metadata.target);
+                ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
                 return cb(null, resource);
               }
             };
@@ -985,6 +985,7 @@
 
     VaultStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource, resourceName;
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1034,6 +1035,7 @@
                 }
                 returnedResource.metadata.id = result.id;
                 _this.metadataHandler.setId(returnedResource.id);
+                ut.commons.utils.decodeSpecialKeyCharsInJson(returnedResource.content);
                 return cb(null, returnedResource);
               }
             };
@@ -1049,6 +1051,7 @@
 
     VaultStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, metadata, resource;
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1096,6 +1099,7 @@
                   }
                 }
                 _this.metadataHandler.setId(updatedResource.metadata.id);
+                ut.commons.utils.decodeSpecialKeyCharsInJson(updatedResource.content);
                 return cb(null, updatedResource);
               }
             };
@@ -1181,12 +1185,12 @@
           } else {
             filter.userId = "";
           }
-          if (this._filterForAppId) {
+          if (this._filterForAppId && !forCaching) {
             filter.appId = this.metadataHandler.getMetadata().generator.id;
           } else {
             filter.appId = "";
           }
-          if (this._filterForResourceType) {
+          if (this._filterForResourceType && !forCaching) {
             filter.objectType = this.metadataHandler.getMetadata().target.objectType;
           } else {
             filter.objectType = "";
@@ -1302,6 +1306,7 @@
               console.log("GET readResource success, response:");
               console.log(resource);
             }
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1387,6 +1392,7 @@
 
     MongoStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource;
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1408,6 +1414,7 @@
               console.log(responseData);
             }
             delete resource._id;
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(void 0, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1426,6 +1433,7 @@
 
     MongoStorageHandler.prototype.updateResource = function(resourceId, content, cb) {
       var error, resource;
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1447,6 +1455,7 @@
               console.log(responseData);
             }
             delete resource._id;
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1532,6 +1541,7 @@
 
     MongoIISStorageHandler.prototype.createResource = function(content, cb) {
       var error, resource;
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1553,6 +1563,7 @@
               console.log(responseData);
             }
             delete resource._id;
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(void 0, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1574,6 +1585,7 @@
       if (async == null) {
         async = true;
       }
+      ut.commons.utils.encodeSpecialKeyCharsInJson(content);
       if (this.isReadOnly()) {
         setTimeout(function() {
           return cb("StorageHandler is readOnly, cannot create resource.");
@@ -1597,6 +1609,7 @@
               console.log(jqXHR);
             }
             delete resource._id;
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {
@@ -1687,6 +1700,7 @@
               console.log(resource);
             }
             delete resource._id;
+            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content);
             return cb(null, resource);
           },
           error: function(responseData, textStatus, errorThrown) {

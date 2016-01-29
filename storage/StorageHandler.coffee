@@ -587,7 +587,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
             configuration = ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, "undefined", "undefined", "undefined");
           else
             configuration = undefined
-          ut.commons.utils.decodeSpecialKeyCharsInJson(configuration)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(configuration)
           cb null, configuration
       else
         ils.readResource resourceId, (result) =>
@@ -621,7 +621,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
               # update the metadata with new properties
             @metadataHandler.setId resource.metadata.id
             @metadataHandler.setTarget(resource.metadata.target)
-            ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+            window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
             cb null, resource
     catch error
       console.warn "Something went wrong when trying to load resource #{resourceId} from the vault:"
@@ -669,7 +669,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
       cb error
 
   createResource: (content, cb) =>
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -713,7 +713,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
             # the id might have change here. update in metadata handler
             returnedResource.metadata.id = result.id
             @metadataHandler.setId returnedResource.id
-            ut.commons.utils.decodeSpecialKeyCharsInJson(returnedResource.content)
+            window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(returnedResource.content)
             cb null, returnedResource
       catch error
         console.warn "Something went wrong when trying to create a resource in the vault:"
@@ -721,7 +721,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
         cb error
 
   updateResource: (resourceId, content, cb) ->
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -760,7 +760,7 @@ class window.golab.ils.storage.VaultStorageHandler extends window.golab.ils.stor
                 cb error
             # the id might have change here. update in metadata handler
             @metadataHandler.setId updatedResource.metadata.id
-            ut.commons.utils.decodeSpecialKeyCharsInJson(updatedResource.content)
+            window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(updatedResource.content)
             cb null, updatedResource
       catch error
         console.warn "Something went wrong when trying to update resource #{resourceId} in the vault:"
@@ -903,7 +903,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
           if @_debug
             console.log("GET readResource success, response:")
             console.log resource
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET readResource failed, response:"
@@ -968,7 +968,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   createResource: (content, cb) =>
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -993,7 +993,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
             console.log responseData
           # remove that mongo-internal id again
           delete resource._id
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb undefined, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST createResource failed, response:"
@@ -1006,7 +1006,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
       cb error
 
   updateResource: (resourceId, content, cb) ->
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -1029,7 +1029,7 @@ class window.golab.ils.storage.MongoStorageHandler extends window.golab.ils.stor
             console.log("POST updateResource success, response:")
             console.log responseData
           delete resource._id
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST updateResource failed, response:"
@@ -1085,7 +1085,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       console.error "I need an urlPrefix as second parameter."
 
   createResource: (content, cb) =>
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -1110,7 +1110,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
             console.log responseData
           # remove that mongo-internal id again
           delete resource._id
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb undefined, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST createResource failed, response:"
@@ -1123,7 +1123,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
       cb error
 
   updateResource: (resourceId, content, cb, async = true) ->
-    ut.commons.utils.encodeSpecialKeyCharsInJson(content)
+    window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson(content)
     if @isReadOnly()
       setTimeout(->
         cb("StorageHandler is readOnly, cannot create resource.")
@@ -1149,7 +1149,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
             console.log textStatus
             console.log jqXHR
           delete resource._id
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "POST updateResource failed, response:"
@@ -1215,7 +1215,7 @@ class window.golab.ils.storage.MongoIISStorageHandler extends window.golab.ils.s
             console.log("GET readResource success, response:")
             console.log resource
           delete resource._id
-          ut.commons.utils.decodeSpecialKeyCharsInJson(resource.content)
+          window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson(resource.content)
           cb null, resource
         error: (responseData, textStatus, errorThrown) ->
           console.warn "GET readResource failed, response:"
@@ -1480,3 +1480,51 @@ window.golab.ils.storage.utils.loadPreviewResources = (metadataHandler, storageH
       callback)
   else
     callback()
+
+
+window.golab.ils.storage.utils.specialChars = [
+  {
+    char: '.',
+    encodeRegExp: /\./g,
+    decodeRegExp: /\\u002E/g,
+    encodedChar: "\\u002E"
+  },
+  {
+    char: '$',
+    encodeRegExp: /\$/g,
+    decodeRegExp: /\\u0024/g,
+    encodedChar: "\\u0024"
+  },
+]
+
+window.golab.ils.storage.utils.encodeSpecialJsonKeyChars = (key) ->
+  encodedKey = key
+  for i in window.golab.ils.storage.utils.specialChars
+    encodedKey = encodedKey.replace(i.encodeRegExp, i.encodedChar)
+  return encodedKey
+
+window.golab.ils.storage.utils.decodeSpecialJsonKeyChars = (key) ->
+  decodedKey = key
+  for i in window.golab.ils.storage.utils.specialChars
+    decodedKey = decodedKey.replace(i.decodeRegExp, i.char)
+  return decodedKey
+
+window.golab.ils.storage.utils.codeSpecialKeyCharsInJson = (json, codeFunction) ->
+  switch typeof json
+    when "object"
+      for key in json
+        codeSpecialKeyCharsInJson(json[key], codeFunction)
+        if typeof(key) is "string"
+          codedKey = codeFunction(key)
+          if codedKey isnt key
+            value = json[key]
+            delete json[key]
+            json[codedKey] = value
+      break
+    else return json
+
+window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson = (json) ->
+  codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.encodeSpecialJsonKeyChars)
+
+window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson = (json) ->
+  codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.decodeSpecialJsonKeyChars)

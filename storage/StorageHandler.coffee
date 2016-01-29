@@ -1524,7 +1524,7 @@ window.golab.ils.storage.utils.codeSpecialKeyCharsInJson = (json, codeFunction) 
     else return json
 
 window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson = (json) ->
-  codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.encodeSpecialJsonKeyChars)
+  window.golab.ils.storage.utils.codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.encodeSpecialJsonKeyChars)
 
 window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson = (json) ->
-  codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.decodeSpecialJsonKeyChars)
+  window.golab.ils.storage.utils.codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.decodeSpecialJsonKeyChars)

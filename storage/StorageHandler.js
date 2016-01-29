@@ -2140,11 +2140,11 @@
   };
 
   window.golab.ils.storage.utils.encodeSpecialKeyCharsInJson = function(json) {
-    return codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.encodeSpecialJsonKeyChars);
+    return window.golab.ils.storage.utils.codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.encodeSpecialJsonKeyChars);
   };
 
   window.golab.ils.storage.utils.decodeSpecialKeyCharsInJson = function(json) {
-    return codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.decodeSpecialJsonKeyChars);
+    return window.golab.ils.storage.utils.codeSpecialKeyCharsInJson(json, window.golab.ils.storage.utils.decodeSpecialJsonKeyChars);
   };
 
 }).call(this);

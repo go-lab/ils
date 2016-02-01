@@ -366,16 +366,15 @@
             //counter_getSubspacesBySpaceId++;
             //console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function (items) {
-                if (!items.error) {
-                    var subspaces = _.filter(items, function (item) {
-                        return item.spaceType;
-                    });
-                    return cb(subspaces);
+            var filters = {};
+            filters["_type"] = "Space";
+            osapi.spaces.get({contextId: spaceId, contextType: "@space", filters: filters}).execute(function (spaces) {
+                if (!spaces.error && spaces.list) {
+                    return cb(spaces.list);
                 } else {
                     error = {
                         "error": "The list of spaces could not be obtained.",
-                        "log": items.error
+                        "log": spaces.error
                     };
                     return cb(error);
                 }
@@ -387,16 +386,15 @@
             //counter_getAppsBySpaceId++;
             //console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
             var error;
-            ils.getItemsBySpaceId(spaceId, function (items) {
-                if (!items.error) {
-                    var apps = _.filter(items, function (item) {
-                        return item.itemType && item.itemType === "Application";
-                    });
-                    return cb(apps);
+            var filters = {};
+            filters["_type"] = "Application";
+            osapi.spaces.get({contextId: spaceId, contextType: "@space", filters: filters}).execute(function (apps) {
+                if (!apps.error && apps.list) {
+                    return cb(apps.list);
                 } else {
                     error = {
                         "error": "The list of apps could not be obtained.",
-                        "log": items.error
+                        "log": apps.error
                     };
                     return cb(error);
                 }
@@ -432,23 +430,33 @@
         getVaultByIlsId: function (ilsId, cb) {
             //counter_getVaultByIlsId++;
             //console.log("counter_getVaultByIlsId " + counter_getVaultByIlsId);
-            var error = {};
+            var error;
             if (ilsId && ilsId != "") {
-                osapi.spaces.get({contextId: ilsId, contextType: "@space"}).execute(
-                    function (items) {
-                        var vault = _.find(items.list, function (item) {
-                            return item.spaceType && item.metadata && item.metadata.type === "Vault";
-                        });
-                        if (vault && vault.id) {
+                var filters = {};
+                filters["_type"] = "Space";
+                filters["metadata.type"] = "Vault";
+                osapi.spaces.get({contextId: ilsId, contextType: "@space", filters: filters}).execute(function (spaces) {
+                    if (!spaces.error && spaces.list) {
+                       if (spaces.list.length==1) {
+                           var vault = spaces.list[0];
                             context.storageId = vault.id;
                             context.storageType = vault.spaceType;
                             return cb(vault);
-                        } else {
+                        } else if(spaces.list.length==0) {
                             error = {"error": "There is no Vault available."};
                             return cb(error);
+                        } else {
+                            error = {"error": "There is more that one Vault available."};
+                            return cb(error);
                         }
+                    } else {
+                        error = {
+                            "error": "The list of spaces could not be obtained.",
+                            "log": spaces.error
+                        };
+                        return cb(error);
                     }
-                );
+                });
             } else {
                 error = {"error": "There ILS identifier cannot be empty. The Vault space could not be obtained"};
                 return cb(error);

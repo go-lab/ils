@@ -600,25 +600,21 @@
             var error = {};
             ils.existResource(resourceId, function (exists) {
                 if (exists) {
-                    ils.getVault(function (vault) {
-                        ils.getCurrentUser(function (username) {
-                            osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
-                                if (deleteResponse) {
-                                    if (!deleteResponse.error) {
-                                        return cb(true);
-                                    } else {
-                                        error = {
-                                            "error": "The resource couldn't be removed.",
-                                            "log": deleteResponse.error
-                                        };
-                                        return cb(error);
-                                    }
-                                } else {
-                                    error = {"error": "The resource couldn't be removed."};
-                                    return cb(error);
-                                }
-                            });
-                        });
+                    osapi.documents.delete({contextId: resourceId}).execute(function (deleteResponse) {
+                        if (deleteResponse) {
+                            if (!deleteResponse.error) {
+                                return cb(true);
+                            } else {
+                                error = {
+                                    "error": "The resource couldn't be removed.",
+                                    "log": deleteResponse.error
+                                };
+                                return cb(error);
+                            }
+                        } else {
+                            error = {"error": "The resource couldn't be removed."};
+                            return cb(error);
+                        }
                     });
                 } else {
                     error = {"error": "The resource to be deleted is not available. The resource couldn't be removed."};

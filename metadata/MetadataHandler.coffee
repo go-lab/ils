@@ -132,7 +132,7 @@ class window.golab.ils.metadata.MetadataHandler
     # the context might already be set through subclass-constructors. if not, do it now.
     @_context = @_context or @identifyContext()
     if metadata
-      # cloning the parameter to avoid side-effects
+# cloning the parameter to avoid side-effects
       @_metadata = JSON.parse(JSON.stringify(metadata))
     else
       throw "MetadataHandler needs an initial set of metadata at construction!"
@@ -149,12 +149,12 @@ class window.golab.ils.metadata.MetadataHandler
   generateUUID: () ->
     d = new Date().getTime()
     uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace /[xy]/g, (char) ->
-      r = (d + Math.random()*16)%16 | 0
-      d = Math.floor(d/16)
+      r = (d + Math.random() * 16) % 16 | 0
+      d = Math.floor(d / 16)
       if char is 'x'
         return r.toString(16)
       else
-        return (r&0x7|0x8).toString(16)
+        return (r & 0x7 | 0x8).toString(16)
     return uuid
 
   identifyContext: () =>
@@ -166,6 +166,10 @@ class window.golab.ils.metadata.MetadataHandler
           @_context = contextURLParameter.toLowerCase()
         else
           console.warn("unknown url context parameter value: #{contextURLParameter}")
+    else
+      previewUrlParameter = getParameterFromUrl("preview")
+      if (previewUrlParameter == "")
+        @_context = window.golab.ils.context.preview
     if (!@_context)
       ilsContext = ils.identifyContext()
       if @_debug
@@ -178,7 +182,8 @@ class window.golab.ils.metadata.MetadataHandler
         when "preview" then @_context = window.golab.ils.context.preview
         when "standalone_ils" then @_context = window.golab.ils.context.ils
         when "standalone_html" then @_context = window.golab.ils.context.standalone
-        else @_context = window.golab.ils.context.unknown
+        else
+          @_context = window.golab.ils.context.unknown
     ### the old style
       if not osapi?
         @_context = window.golab.ils.context.standalone
@@ -209,8 +214,11 @@ class window.golab.ils.metadata.MetadataHandler
       parts = queryPart.substring(1).split("&")
       for part in parts
         partParts = part.split("=")
-        if (partParts.length == 2 && partParts[0] == key)
-          parameter = partParts[1]
+        if (parts.length && partParts[0] == key)
+          if (partParts.length == 2)
+            parameter = partParts[1]
+          else if (partParts.length == 1)
+            parameter = ""
     parameter
 
   setId: (newId) ->
@@ -221,14 +229,14 @@ class window.golab.ils.metadata.MetadataHandler
     @_metadata.id
 
   setMetadata: (newMetadata) ->
-    # cloning the parameter to avoid side-effects
+# cloning the parameter to avoid side-effects
     @_metadata = JSON.parse(JSON.stringify(newMetadata))
     @
 
   getMetadata: () ->
     @_metadata
 
-  setActor:(newActor) ->
+  setActor: (newActor) ->
     @_metadata.actor = newActor
 
   getActor: () ->
@@ -268,12 +276,12 @@ class window.golab.ils.metadata.MetadataHandler
 
   getILSStructure: (callback) =>
     if window.ils?
-      # do the retrieval
+# do the retrieval
       window.ils.getIls (ils) =>
         if ils.error?
           callback {error: "ils.getIls failed, cannot get ILS structure.", detail: ils.error}, null
         else
-          # the top-level ils-structure
+# the top-level ils-structure
           ilsStructure = {}
           ilsStructure.id = ils.id
           ilsStructure.url = ils.profileUrl
@@ -289,7 +297,7 @@ class window.golab.ils.metadata.MetadataHandler
               # will be used as deferred promise:
               #---------------------------
               phaseReadPromise = (phase, phaseIndex) =>
-                #read the phase content, i.e. the apps
+              #read the phase content, i.e. the apps
                 deferred = new $.Deferred()
                 window.ils.getAppsBySpaceId phase.id, (apps) =>
                   if apps.error?
@@ -306,8 +314,9 @@ class window.golab.ils.metadata.MetadataHandler
                       }
                     ilsStructure.phases[phaseIndex] = {
                       id: phase.id,
-                      type: type,
+                      type: phase.metadata.type,
                       displayName: phase.displayName,
+                      visibilityLevel: phase.visibilityLevel,
                       apps: appList
                     }
                     deferred.resolve()
@@ -320,6 +329,8 @@ class window.golab.ils.metadata.MetadataHandler
                   type = phase.metadata.type
                 else
                   type = 'User defined'
+                  phase.metadata = {}
+                  phase.metadata.type = 'User defined'
                 if type is 'Vault' or type is 'About'
                   # skipping the Vault and About space
                   continue
@@ -350,7 +361,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
   constructor: (metadata, cb) ->
     @identifyContext()
     if osapi?
-      # we in an OpenSocial context, try to get information from there...
+# we in an OpenSocial context, try to get information from there...
       try
         if not ils
           throw "ILS library needs to be present before using the (GoLab)MetadataHandler."
@@ -375,7 +386,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
           # ------ information about the tool (in case of ILS metawidget, tool = provider
           # metadata.generator.displayName is given through the metadata in the constructor paramter
           if context.provider.id is undefined or context.provider.id is "unknown"
-            # golabz preview context
+# golabz preview context
             console.log "MetadataHandler: preview context"
             metadata.provider.objectType = "unknown"
             metadata.provider.id = "unknown"
@@ -386,7 +397,7 @@ class window.golab.ils.metadata.GoLabMetadataHandler extends window.golab.ils.me
             metadata.provider.inquiryPhaseId = undefined
             metadata.provider.inquiryPhaseName = undefined
           else if context.provider.inquiryPhaseId is undefined or context.provider.inquiryPhaseId is "unknown"
-            # ILS metawidget context
+# ILS metawidget context
             console.log "MetadataHandler: ILS metawidget context"
             metadata.provider.inquiryPhase = "ils"
             metadata.provider.inquiryPhaseId = undefined
@@ -424,14 +435,14 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
     getIdentifyingUrl = ->
       path = window.location.pathname
       subPaths = window.location.pathname.split("/")
-      if (subPaths.length>1)
+      if (subPaths.length > 1)
         switch subPaths[1].toLocaleLowerCase()
           when "production"
             path = subPaths[1]
           when "experiments"
             path = subPaths[1]
-            if subPaths.length>2
-              path += "/"+subPaths[2]
+            if subPaths.length > 2
+              path += "/" + subPaths[2]
           else
             path = ""
       "#{window.location.protocol}//#{window.location.host}/#{path}".toLowerCase()
@@ -457,6 +468,8 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
     # find nick name
     if (@getParameterFromUrl("username")?)
       userNickname = @getParameterFromUrl("username")
+    else if (@getContext() == window.golab.ils.context.preview)
+      userNickname = "Preview"
     else
       userNickname = localStorage.getItem('goLabNickName')
       if (!userNickname)
@@ -469,7 +482,7 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
 
     # display nick name in window title
     windowTitle = window.document.title
-    if (!windowTitle || windowTitle[0]!="[")
+    if (!windowTitle || windowTitle[0] != "[")
       window.document.title = "[#{userNickname}] #{windowTitle}"
 
     metadata.actor.displayName = userNickname
@@ -480,7 +493,7 @@ class window.golab.ils.metadata.LocalMetadataHandler extends window.golab.ils.me
       urlString = "#{url}"
       removePart = (character)->
         lastIndex = urlString.lastIndexOf(character)
-        if (lastIndex>=0)
+        if (lastIndex >= 0)
           urlString = urlString.substr(0, lastIndex)
 
       removePart("?")

@@ -182,7 +182,7 @@ phase:
     };
 
     MetadataHandler.prototype.identifyContext = function() {
-      var contextURLParameter, ilsContext;
+      var contextURLParameter, ilsContext, previewUrlParameter;
       this._context = null;
       contextURLParameter = getParameterFromUrl("context");
       if (contextURLParameter) {
@@ -197,6 +197,11 @@ phase:
             break;
           default:
             console.warn("unknown url context parameter value: " + contextURLParameter);
+        }
+      } else {
+        previewUrlParameter = getParameterFromUrl("preview");
+        if (previewUrlParameter === "") {
+          this._context = window.golab.ils.context.preview;
         }
       }
       if (!this._context) {
@@ -258,8 +263,12 @@ phase:
         for (_i = 0, _len = parts.length; _i < _len; _i++) {
           part = parts[_i];
           partParts = part.split("=");
-          if (partParts.length === 2 && partParts[0] === key) {
-            parameter = partParts[1];
+          if (parts.length && partParts[0] === key) {
+            if (partParts.length === 2) {
+              parameter = partParts[1];
+            } else if (partParts.length === 1) {
+              parameter = "";
+            }
           }
         }
       }
@@ -381,8 +390,9 @@ phase:
                           }
                           ilsStructure.phases[phaseIndex] = {
                             id: phase.id,
-                            type: type,
+                            type: phase.metadata.type,
                             displayName: phase.displayName,
+                            visibilityLevel: phase.visibilityLevel,
                             apps: appList
                           };
                           return deferred.resolve();
@@ -398,6 +408,8 @@ phase:
                       type = phase.metadata.type;
                     } else {
                       type = 'User defined';
+                      phase.metadata = {};
+                      phase.metadata.type = 'User defined';
                     }
                     if (type === 'Vault' || type === 'About') {
                       continue;
@@ -567,6 +579,8 @@ phase:
       }
       if ((this.getParameterFromUrl("username") != null)) {
         userNickname = this.getParameterFromUrl("username");
+      } else if (this.getContext() === window.golab.ils.context.preview) {
+        userNickname = "Preview";
       } else {
         userNickname = localStorage.getItem('goLabNickName');
         if (!userNickname) {

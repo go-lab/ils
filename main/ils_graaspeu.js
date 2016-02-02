@@ -634,7 +634,7 @@
             var error = {};
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
-                    if (resource && !resource.error && resource.url) {
+                    if (resource && !resource.error && resource.id) {
                         return cb(true);
                     } else {
                         return cb(false);
@@ -650,23 +650,11 @@
         readResource: function (resourceId, cb) {
             //counter_readResource++;
             //console.log("counter_readResource " + counter_readResource);
-
             var error = {};
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
                     if (!resource.error && resource.id) {
-                        //TODO: those resources without metadada should be enriched based on the actions registered
-//              ils.getAction(resource.parentId, resourceId, function(action) {
-//                var metadata = "";
-//                if (resource.metadata) {
-//                  metadata = resource.metadata;
-//                }
-                        // append the metadata to the resource object
-//                resource["metadata"] = metadata;
-                        //TODO: log action
                         return cb(resource);
-//              });
-
                     } else {
                         error = {
                             "error": "The resource is not available.",

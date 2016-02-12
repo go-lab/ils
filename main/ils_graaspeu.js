@@ -1031,53 +1031,39 @@
             //console.log("counter_updateResource " + counter_updateResource);
             var error = {};
             if (resourceId) {
-                ils.readResource(resourceId, function (originalResource) {
-                    if (originalResource && !originalResource.error && originalResource.displayName) {
-                        ils.getContextFromMetadata(metadata, function () {
-                            var newContent = "";
+                ils.getContextFromMetadata(metadata, function () {
+                    var newContent = (content) ? JSON.stringify(content) : "";
 
-                            if (content) {
-                                newContent = JSON.stringify(content);
+                    ils.validateMetadata(metadata, function (err, validMetadata) {
+                        if (err) return cb(err);
+
+                        var params = {
+                            "contextId": resourceId,
+                            "document": {
+                                "parentType": context.storageType,
+                                "parentSpaceId": context.storageId,
+                                "mimeType": "txt",
+                                "fileName": validMetadata.target.displayName,
+                                "content": newContent,
+                                "metadata": validMetadata
                             }
-
-                            ils.validateMetadata(metadata, function (err, validMetadata) {
-                                if (err) return cb(err);
-
-                                var params = {
-                                    "contextId": resourceId,
-                                    "document": {
-                                        "parentType": context.storageType,
-                                        "parentSpaceId": context.storageId,
-                                        "mimeType": "txt",
-                                        "fileName": originalResource.displayName,
-                                        "content": newContent,
-                                        "metadata": validMetadata
-                                    }
-                                };
-
-                                osapi.documents.update(params).execute(function (resource) {
-                                    if (resource && !resource.error && resource.id) {
-                                        return cb(resource);
-                                    } else {
-                                        error = {
-                                            "error": "The resource couldn't be updated.",
-                                            "log": resource.error
-                                        };
-                                        return cb(error);
-                                    }
-                                });
-                            });
-                        });
-                    } else {
-                        error = {
-                            "error": "The resource couldn't be updated.",
-                            "log": originalResource.error
                         };
-                        return cb(error);
-                    }
+
+                        osapi.documents.update(params).execute(function (resource) {
+                            if (resource && !resource.error && resource.id) {
+                                return cb(resource);
+                            } else {
+                                error = {
+                                    "error": "The resource couldn't be updated. Check if the resource exist and you have enough permits.",
+                                    "log": resource.error
+                                };
+                                return cb(error);
+                            }
+                        });
+                    });
                 });
             } else {
-                error = {"error": "The resourceName cannot be null. The resource couldn't be updated."};
+                error = {"error": "The resourceId cannot be null. The resource couldn't be updated."};
                 return cb(error);
             }
         },

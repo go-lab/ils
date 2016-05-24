@@ -7,15 +7,25 @@
 
 
 (function () {
+
     var ils;
+    /*
+     Possible contexts using the library
+     */
     var context_graasp = "graasp";
     var context_preview = "preview";
     var context_standalone_ils = "standalone_ils";
     var context_standalone_html = "standalone_html";
     var context_unknown = "unknown";
+    /*
+    User types interacting with the apps
+     */
     var user_student = "graasp_student";
     var user_viewer = "graasp_viewer";
     var user_editor = "graasp_editor";
+    /*
+     ILS contextual information
+     */
     var context = {
         actor: {
             "objectType": "person",
@@ -46,49 +56,59 @@
 
     };
 
-    //var counter_getCurrentUser = 0;
-    //var counter_identifyContext = 0;
-    //var counter_getParent = 0;
-    //var counter_getParentInquiryPhase = 0;
-    //var counter_getIls = 0;
-    //var counter_getIlsId = 0;
-    //var counter_getSpaceBySpaceId = 0;
-    //var counter_getItemsBySpaceId = 0;
-    //var counter_getSubspacesBySpaceId = 0;
-    //var counter_getAppsBySpaceId = 0;
-    //var counter_getVault = 0;
-    //var counter_getVaultByIlsId = 0;
-    //var counter_getApp = 0;
-    //var counter_getAppId = 0;
-    //var counter_getContextFromMetadata = 0;
-    //var counter_getAppContextParameters = 0;
-    //var counter_deleteResource = 0;
-    //var counter_existResource = 0;
-    //var counter_readResource = 0;
-    //var counter_getMetadata = 0;
-    //var counter_obtainMetadataFromAction = 0;
-    //var counter_createResource = 0;
-    //var counter_getUniqueName = 0;
-    //var counter_getConfiguration = 0;
-    //var counter_getAllConfigurations = 0;
-    //var counter_setAppConfiguration = 0;
-    //var counter_updateResource = 0;
-    //var counter_listFilesBySpaceId = 0;
-    //var counter_listVault = 0;
-    //var counter_filterVault = 0;
-    //var counter_listConfiguration = 0;
-    //var counter_listVaultNames = 0;
-    //var counter_listConfigurationNames = 0;
-    //var counter_listVaultExtended = 0;
-    //var counter_listVaultExtendedById = 0;
-    //var counter_logAction = 0;
-    //var counter_getAction = 0;
+    /*
+    Debugging vars counting the number of calls to each function.
+    Set debugging as true to print the number of calls.
+     */
+    var debugging = false;
+    var counter_getCurrentUser = 0;
+    var counter_identifyContext = 0;
+    var counter_getParent = 0;
+    var counter_getParentInquiryPhase = 0;
+    var counter_getIls = 0;
+    var counter_getIlsId = 0;
+    var counter_getSpaceBySpaceId = 0;
+    var counter_getItemsBySpaceId = 0;
+    var counter_getSubspacesBySpaceId = 0;
+    var counter_getAppsBySpaceId = 0;
+    var counter_getVault = 0;
+    var counter_getVaultByIlsId = 0;
+    var counter_getApp = 0;
+    var counter_getAppId = 0;
+    var counter_getContextFromMetadata = 0;
+    var counter_getAppContextParameters = 0;
+    var counter_deleteResource = 0;
+    var counter_existResource = 0;
+    var counter_readResource = 0;
+    var counter_getMetadata = 0;
+    var counter_obtainMetadataFromAction = 0;
+    var counter_createResource = 0;
+    var counter_getUniqueName = 0;
+    var counter_getConfiguration = 0;
+    var counter_getAllConfigurations = 0;
+    var counter_setAppConfiguration = 0;
+    var counter_updateResource = 0;
+    var counter_listFilesBySpaceId = 0;
+    var counter_listVault = 0;
+    var counter_filterVault = 0;
+    var counter_listConfiguration = 0;
+    var counter_listVaultNames = 0;
+    var counter_listConfigurationNames = 0;
+    var counter_listVaultExtended = 0;
+    var counter_listVaultExtendedById = 0;
+    var counter_logAction = 0;
+    var counter_getAction = 0;
 
     ils = {
-        // get the nickname of the student who is currently using the ils
+        /**
+         * Returns the nickname of the student who is currently using the ils
+         * @param cb
+         */
         getCurrentUser: function (cb) {
-            //counter_getCurrentUser++;
-            //console.log("counter_getCurrentUser " + counter_getCurrentUser);
+            if (debugging) {
+                counter_getCurrentUser++;
+                console.log("counter_getCurrentUser " + counter_getCurrentUser);
+            }
             var error = {"error": "The username couldn't be obtained."};
             var context_type = ils.identifyContext();
 
@@ -112,7 +132,11 @@
                 });
             }
 
-            //get the reviewer in case of existing
+            /**
+             * Returns the reviewer in case of existing
+             * @param cb
+             * @returns reviewer
+             */
             function getReviewer (cb) {
                 var reviewer;
                 if (gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
@@ -122,6 +146,9 @@
                 }
             }
 
+            /**
+             * Returns the nickname of the logged user
+             */
             getLoggedUser(function(logged_user){
                 if (!logged_user.error) {
                     getReviewer(function (reviewer) {
@@ -160,10 +187,15 @@
             });
         },
 
-        // Returns the type of context where the app is running
+        /**
+         * Returns the type of context where the app is running
+         * @returns context_type
+         */
         identifyContext: function () {
-            //counter_identifyContext++;
-            //console.log("counter_identifyContext " + counter_identifyContext);
+            if (debugging) {
+                counter_identifyContext++;
+                console.log("counter_identifyContext " + counter_identifyContext);
+            }
 
             if (typeof osapi === "undefined" || osapi === null) {
                 return (context_standalone_html);
@@ -186,10 +218,15 @@
             }
         },
 
-        // get the parent space of the widget
+        /**
+         * Returns the parent space of the widget
+         * @param cb
+         */
         getParent: function (cb) {
-            //counter_getParent++;
-            //console.log("counter_getParent " + counter_getParent);
+            if (debugging) {
+                counter_getParent++;
+                console.log("counter_getParent " + counter_getParent);
+            }
             var error = {"error": "The parent space couldn't be obtained."};
             osapi.context.get().execute(function (context_space) {
                 if (context_space && context_space != undefined) {
@@ -218,10 +255,16 @@
             });
         },
 
-        // get the type of inquiry phase where the app is running in
+        /**
+         * Returns the type of inquiry phase where the app is running in
+         * @param cb
+         */
         getParentInquiryPhase: function (cb) {
-            //counter_getParentInquiryPhase++;
-            //console.log("counter_getParentInquiryPhase " + counter_getParentInquiryPhase);
+            if (debugging) {
+                counter_getParentInquiryPhase++;
+                console.log("counter_getParentInquiryPhase " + counter_getParentInquiryPhase);
+            }
+
             var error;
             this.getParent(function (parent) {
                 if (!parent.error) {
@@ -241,10 +284,16 @@
             });
         },
 
-        // get the current ILS of the app
+        /**
+         * Returns the spaceId of the ILS and the parent space of the current app and sets the context.provider attributes
+         * @param cb
+         */
         getIls: function (cb) {
-            //counter_getIls++;
-            //console.log("counter_getIls " + counter_getIls);
+            if (debugging) {
+                counter_getIls++;
+                console.log("counter_getIls " + counter_getIls);
+            }
+
             var error;
             osapi.context.get().execute(function (space) {
                 if (!space.error) {
@@ -310,11 +359,17 @@
             });
         },
 
-
-        // get the Id of the current ILS
+        /**
+         * Returns the the spaceId of the current ILS
+         * @param cb
+         * @returns space
+         */
         getIlsId: function (cb) {
-            //counter_getIlsId++;
-            //console.log("counter_getIlsId " + counter_getIlsId);
+            if (debugging) {
+                counter_getIlsId++;
+                console.log("counter_getIlsId " + counter_getIlsId);
+            }
+
             var ilsId = context.provider.id;
 
             if (!ilsId){
@@ -326,10 +381,17 @@
             }
         },
 
-        // get the description of an space based on the spaceId
+        /**
+         * Returns the space attributes of a given spaceId
+         * @param spaceId
+         * @param cb
+         */
         getSpaceBySpaceId: function (spaceId, cb) {
-            //counter_getSpaceBySpaceId++;
-            //console.log("counter_getSpaceBySpaceId " + counter_getSpaceBySpaceId);
+            if (debugging) {
+                counter_getSpaceBySpaceId++;
+                console.log("counter_getSpaceBySpaceId " + counter_getSpaceBySpaceId);
+            }
+
             osapi.spaces.get({contextId: spaceId}).execute(function (space) {
                 if (!space.error && space.id) {
                     return cb(space);
@@ -343,10 +405,17 @@
             });
         },
 
-        // get the items of the spaceId
+        /**
+         * Returns the subitems of a given spaceId
+         * @param spaceId
+         * @param cb
+         */
         getItemsBySpaceId: function (spaceId, cb) {
-            //counter_getItemsBySpaceId++;
-            //console.log("counter_getItemsBySpaceId " + counter_getItemsBySpaceId);
+            if (debugging) {
+                counter_getItemsBySpaceId++;
+                console.log("counter_getItemsBySpaceId " + counter_getItemsBySpaceId);
+            }
+
             var error;
             osapi.spaces.get({contextId: spaceId, contextType: "@space"}).execute(function (items) {
                 if (!items.error && items.list) {
@@ -361,10 +430,17 @@
             });
         },
 
-        // get the subspaces of the spaceId
+        /**
+         * Returns the subspaces of a given spaceId
+         * @param spaceId
+         * @param cb
+         */
         getSubspacesBySpaceId: function (spaceId, cb) {
-            //counter_getSubspacesBySpaceId++;
-            //console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
+            if (debugging) {
+                counter_getSubspacesBySpaceId++;
+                console.log("counter_getSubspacesBySpaceId " + counter_getSubspacesBySpaceId);
+            }
+
             var error;
             var filters = {};
             filters["_type"] = "Space";
@@ -381,10 +457,17 @@
             });
         },
 
-        // get the apps of the spaceId
+        /**
+         * Returns the list of apps located in a given space based on the spaceId
+         * @param spaceId
+         * @param cb
+         */
         getAppsBySpaceId: function (spaceId, cb) {
-            //counter_getAppsBySpaceId++;
-            //console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
+            if (debugging) {
+                counter_getAppsBySpaceId++;
+                console.log("counter_getAppsBySpaceId " + counter_getAppsBySpaceId);
+            }
+
             var error;
             var filters = {};
             filters["_type"] = "Application";
@@ -401,10 +484,17 @@
             });
         },
 
-        // get the Vault of the current ILS
+        /**
+         * Returns the Vault space of the current ILS.
+         * If there's no Vault, an error is returned.
+         * @param cb
+         */
         getVault: function (cb) {
-            //counter_getVault++;
-            //console.log("counter_getVault " + counter_getVault);
+            if (debugging) {
+                counter_getVault++;
+                console.log("counter_getVault " + counter_getVault);
+            }
+
             var error = {};
             ils.getIls(function (parentIls) {
                 if (!parentIls.error) {
@@ -426,10 +516,19 @@
             });
         },
 
-        // get the Vault of the current ILS
+        /**
+         * Returns the Vault space of a given space (based on the spaceId) and sets the context.storage values
+         * If there's no Vault, an error is returned.
+         * @param ilsId
+         * @param cb
+         * @returns {*}
+         */
         getVaultByIlsId: function (ilsId, cb) {
-            //counter_getVaultByIlsId++;
-            //console.log("counter_getVaultByIlsId " + counter_getVaultByIlsId);
+            if (debugging) {
+                counter_getVaultByIlsId++;
+                console.log("counter_getVaultByIlsId " + counter_getVaultByIlsId);
+            }
+
             var error;
             if (ilsId && ilsId != "") {
                 var filters = {};
@@ -463,10 +562,16 @@
             }
         },
 
-        // get the info of the current app
+        /**
+         * Returns the attributes of the current app and sets the context.generator and context.actor values
+         * @param cb
+         */
         getApp: function (cb) {
-            //counter_getApp++;
-            //console.log("counter_getApp " + counter_getApp);
+            if (debugging) {
+                counter_getApp++;
+                console.log("counter_getApp " + counter_getApp);
+            }
+
             osapi.apps.get({contextId: "@self"}).execute(function (response) {
                 if (!response.error && response.id) {
                     context.generator.url = response.appUrl;
@@ -490,10 +595,16 @@
             });
         },
 
-        // get the current appId
+        /**
+         * Returns the current appId
+         * @param cb
+         */
         getAppId: function (cb) {
-            //counter_getAppId++;
-            //console.log("counter_getAppId " + counter_getAppId);
+            if (debugging) {
+                counter_getAppId++;
+                console.log("counter_getAppId " + counter_getAppId);
+            }
+
             ils.getApp(function (app) {
                 if (app.id) { //for os apps
                     return cb(app.id);
@@ -510,10 +621,19 @@
             });
         },
 
-        // get the parameters that describe the context of the app (actor, generator, provider, target)
+        /**
+         * Obtains the parameters that describe the context of the app (actor, generator, provider, target)
+         * and sets context.actor, context.provider, context.generator and context provider attributes
+         * @param metadata
+         * @param cb
+         * @returns cb
+         */
         getContextFromMetadata: function (metadata, cb) {
-            //counter_getContextFromMetadata++;
-            //console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
+            if (debugging) {
+                counter_getContextFromMetadata++;
+                console.log("counter_getContextFromMetadata " + counter_getContextFromMetadata);
+            }
+
             if (!metadata.actor || !metadata.actor.objectType || !metadata.actor.id || !metadata.actor.displayName
                 || !metadata.actor.id) {
                 ils.getCurrentUser(function (viewer) {});
@@ -573,10 +693,17 @@
 
         },
 
-        // get the parameters that describe the context of the app (actor, generator, provider, target)
+        /**
+         * Returns the parameters that describe the context of the app (actor, generator, provider, target)
+         * @param cb
+         * @returns context
+         */
         getAppContextParameters: function (cb) {
-            //counter_getAppContextParameters++;
-            //console.log("counter_getAppContextParameters " + counter_getAppContextParameters);
+            if (debugging) {
+                counter_getAppContextParameters++;
+                console.log("counter_getAppContextParameters " + counter_getAppContextParameters);
+            }
+
             if (context.actor.id && context.generator.id && context.provider.id && context.storageId) {
                 return cb(context);
             } else {
@@ -592,11 +719,19 @@
             }
         },
 
-
-        // delete a resource by the resourceId, the result is true if the resource has been successfully deleted
+        /**
+         * Deletes a resource by the resourceId. The result is true if the resource has been successfully deleted,
+         * or an error if any problem emerged in the process.
+         * Notice that only ILS owners are allowed to remove resources.
+         * @param resourceId
+         * @param cb
+         */
         deleteResource: function (resourceId, cb) {
-            //counter_deleteResource++;
-            //console.log("counter_deleteResource " + counter_deleteResource);
+            if (debugging) {
+                counter_deleteResource++;
+                console.log("counter_deleteResource " + counter_deleteResource);
+            }
+
             var error = {};
             ils.existResource(resourceId, function (exists) {
                 if (exists) {
@@ -623,10 +758,18 @@
             });
         },
 
-        // verifies whether there is a resource by the resourceId, the result is true/false
+        /**
+         * Verifies whether there is a resource by the resourceId, the result is true/false depending on whether the resourceId exists or not.
+         * @param resourceId
+         * @param cb
+         * @returns boolean
+         */
         existResource: function (resourceId, cb) {
-            //counter_existResource++;
-            //console.log("counter_existResource " + counter_existResource);
+            if (debugging) {
+                counter_existResource++;
+                console.log("counter_existResource " + counter_existResource);
+            }
+
             var error = {};
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
@@ -642,10 +785,18 @@
             }
         },
 
-        // read a resource by the resourceId, the result is the combination of resource content and the metadata
+        /**
+         * Reads a resource by the resourceId, the result is the combination of resource content and the metadata
+         * @param resourceId
+         * @param cb
+         * @returns resource / error depending on whether the resource is found or not
+         */
         readResource: function (resourceId, cb) {
-            //counter_readResource++;
-            //console.log("counter_readResource " + counter_readResource);
+            if (debugging) {
+                counter_readResource++;
+                console.log("counter_readResource " + counter_readResource);
+            }
+
             var error = {};
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
@@ -665,23 +816,28 @@
             }
         },
 
-        // returns the metadata related to a resource by the resourceId
+        /**
+         * Returns the metadata related to a resource by the resourceId
+         * @param resourceId
+         * @param cb
+         * @returns metadata / error  depending on whether the metadata is found or not
+         */
         getMetadata: function (resourceId, cb) {
-            //counter_getMetadata++;
-            //console.log("counter_getMetadata " + counter_getMetadata);
+            if (debugging) {
+                counter_getMetadata++;
+                console.log("counter_getMetadata " + counter_getMetadata);
+            }
+
             var error = {};
             if (resourceId && resourceId != "") {
                 osapi.documents.get({contextId: resourceId, size: "-1"}).execute(function (resource) {
                     if (!resource.error) {
-                        //TODO: those resources without metadada should be enriched based on the actions registered
-                        //ils.getAction(resource.parentId, resourceId, function (action) {
                         if (resource.metadata) {
                             return cb(JSON.parse(resource.metadata));
                         } else {
                             error = {"error": "The resource has no metadata."};
                             return cb(error);
                         }
-                        //});
                     } else {
                         error = {
                             "error": "The resource is not available.",
@@ -696,10 +852,19 @@
             }
         },
 
-        // returns the basic metadata inferred from the history
+        /**
+         * Returns the basic metadata inferred from the history
+         * @param metadata
+         * @param action
+         * @param parentIls
+         * @returns extendedMetadata
+         */
         obtainMetadataFromAction: function (metadata, action, parentIls) {
-            //counter_obtainMetadataFromAction++;
-            //console.log("counter_obtainMetadataFromAction " + counter_obtainMetadataFromAction);
+            if (debugging) {
+                counter_obtainMetadataFromAction++;
+                console.log("counter_obtainMetadataFromAction " + counter_obtainMetadataFromAction);
+            }
+
             var extendedMetadata = "";
             if (metadata) {
                 extendedMetadata = JSON.parse(metadata);
@@ -734,6 +899,12 @@
             return (extendedMetadata);
         },
 
+        /**
+         * Verifies if the metadata is an object or a string (parseable as a json). If not, an error is returned
+         * @param metadata
+         * @param cb
+         * @returns metadata / error
+         */
         validateMetadata: function (metadata, cb){
             if (!metadata) return cb();
 
@@ -756,11 +927,20 @@
             return cb(null, metadata);
         },
 
-        // create a resource in the Vault, resourceName and content need to be passed
-        // resourceName should be in string format, metadata and content should be in JSON format
+        /**
+         * Creates a resource in the Vault and returns either the resource of an error if it was not possible to create the resource.
+         * @param resourceName (mandatory) in string format
+         * @param content (mandatory) in JSON format
+         * @param metadata (optional) in JSON format
+         * @param cb
+         * @returns resource / error
+         */
         createResource: function (resourceName, content, metadata, cb) {
-            //counter_createResource++;
-            //console.log("counter_createResource " + counter_createResource);
+            if (debugging) {
+                counter_createResource++;
+                console.log("counter_createResource " + counter_createResource);
+            }
+
             var error = {};
             if (resourceName) {
                 ils.getContextFromMetadata(metadata, function () {
@@ -800,10 +980,17 @@
             }
         },
 
-        // ensure unique filenames
+        /**
+         * Returns unique filenames by appending the userName and the timeStamp at the beginning of the resourceName
+         * @param resourceName
+         * @param cb
+         */
         getUniqueName: function (resourceName, cb) {
-            //counter_getUniqueName++;
-            //console.log("counter_getUniqueName " + counter_getUniqueName);
+            if (debugging) {
+                counter_getUniqueName++;
+                console.log("counter_getUniqueName " + counter_getUniqueName);
+            }
+
             ils.getCurrentUser(function (username) {
                 var timeStamp = new Date().getTime();
                 var uniqueName = username + "_" + timeStamp + "_" + resourceName;
@@ -811,11 +998,16 @@
             });
         },
 
-
-        //Returns the Configuration Space based on the VaultId
+        /**
+         * Returns the configuraiton of the current app or an error if it couldn't be obtained
+         * @param cb
+         */
         getConfiguration: function (cb) {
-            //counter_getConfiguration++;
-            //console.log("counter_getConfiguration " + counter_getConfiguration);
+            if (debugging) {
+                counter_getConfiguration++;
+                console.log("counter_getConfiguration " + counter_getConfiguration);
+            }
+
             var error = {};
 
             ils.getApp(function (app) {
@@ -825,7 +1017,7 @@
                     });
                 } else {
                     error = {
-                        "error": "The configuration could not be saved.",
+                        "error": "The configuration could not be obtained.",
                         "log": app.error || ""
                     };
                     return cb(error);
@@ -834,11 +1026,16 @@
 
         },
 
-
-        //Returns all the configurations of the apps added to the ILS
+        /**
+         * Returns all the configurations of the apps added to the ILS
+         * @param cb
+         */
         getAllConfigurations: function (cb) {
-            //counter_getAllConfigurations++;
-            //console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
+            if (debugging) {
+                counter_getAllConfigurations++;
+                console.log("counter_getAllConfigurations " + counter_getAllConfigurations);
+            }
+
             var error = {};
             var ilsConfigurations = [];
             ils.getIlsId(function(ilsId){
@@ -907,6 +1104,17 @@
             });
         },
 
+        /**
+         * Returns the app configuration based on its attributes
+         * @param appId
+         * @param appName
+         * @param appUrl
+         * @param appSettings
+         * @param phaseId
+         * @param phaseType
+         * @param phaseName
+         * @returns configuration or undefined depending on whether the process finished successfully or not
+         */
         getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
                 var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
@@ -957,11 +1165,19 @@
             }
         },
 
-        // sets the configuration of the app, content and metadata need to be passed
-        // content should be in JSON format
+        /**
+         * Sets the configuration of the app, content and metadata need to be passed
+         * @param content (mandatory)
+         * @param metadata (mandatory)
+         * @param cb
+         * @returns the app or an error depending on whether the process finished successfully or not
+         */
         setAppConfiguration: function (content, metadata, cb) {
-            //counter_setAppConfiguration++;
-            //console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
+            if (debugging) {
+                counter_setAppConfiguration++;
+                console.log("counter_setAppConfiguration " + counter_setAppConfiguration);
+            }
+
             var error = {};
 
             ils.validateConfiguration(metadata, function(isValid){
@@ -1010,7 +1226,12 @@
             });
         },
 
-        // verifies the confituration metadata
+        /**
+         * Verifies the configuration metadata
+         * @param metadata
+         * @param cb
+         * @returns true or an error depending on whether the metadata was compliant or not
+         */
         validateConfiguration: function (metadata, cb){
             if (metadata && metadata.actor && metadata.id && metadata.published && metadata.target &&
                 (typeof metadata.actor === 'object') && (typeof metadata.id === 'string') &&
@@ -1024,11 +1245,20 @@
             }
         },
 
-        // updates a resource in the Vault, resourceId, content and metadata need to be passed
-        // content should be in JSON format
+        /**
+         * Updates a resource in the Vault
+         * @param resourceId (mandatory)
+         * @param content (mandatory) in JSON format
+         * @param metadata (mandatory)
+         * @param cb
+         * @returns updatedResource or error depending on whether the resource was updated or not
+         */
         updateResource: function (resourceId, content, metadata, cb) {
-            //counter_updateResource++;
-            //console.log("counter_updateResource " + counter_updateResource);
+            if (debugging) {
+                counter_updateResource++;
+                console.log("counter_updateResource " + counter_updateResource);
+            }
+
             var error = {};
             if (resourceId) {
                 ils.getContextFromMetadata(metadata, function () {
@@ -1068,10 +1298,18 @@
             }
         },
 
-        // get a list of all resources in the Space
+        /**
+         * Returns a list of all resources in a space based on its spaceId
+         * @param spaceId
+         * @param cb
+         * @returns resourceList or error depending on whether the space was accessible or not
+         */
         listFilesBySpaceId: function (spaceId, cb) {
-            //counter_listFilesBySpaceId++;
-            //console.log("counter_listFilesBySpaceId " + counter_listFilesBySpaceId);
+            if (debugging) {
+                counter_listFilesBySpaceId++;
+                console.log("counter_listFilesBySpaceId " + counter_listFilesBySpaceId);
+            }
+
             var error = {"error": "The spaceId cannot be empty."};
             if (spaceId && spaceId != "") {
                 osapi.documents.get({contextId: spaceId, contextType: "@space"}).execute(function (resources) {
@@ -1085,10 +1323,18 @@
             }
         },
 
-        // get a list of all resources in the Vault
+
+        /**
+         * Returns a list of all resources in the Vault
+         * @param cb
+         * @returns resourceList or error depending on whether the space was accessible or not
+         */
         listVault: function (cb) {
-            //counter_listVault++;
-            //console.log("counter_listVault " + counter_listVault);
+            if (debugging) {
+                counter_listVault++;
+                console.log("counter_listVault " + counter_listVault);
+            }
+
             ils.getVault(function (space) {
                 if (!space.error) {
                     ils.listFilesBySpaceId(space.id, function (list) {
@@ -1100,10 +1346,17 @@
             });
         },
 
-        // get a list of all resources in the Vault
+        /**
+         * Returns the list of configurations in the ILS [Deprecated]
+         * @param cb
+         * @returns configurationList or error depending on whether the information was accessible or not
+         */
         listConfiguration: function (cb) {
-            //counter_listConfiguration++;
-            //console.log("counter_listConfiguration " + counter_listConfiguration);
+            if (debugging) {
+                counter_listConfiguration++;
+                console.log("counter_listConfiguration " + counter_listConfiguration);
+            }
+
             ils.getConfiguration(function (space) {
                 if (!space.error) {
                     ils.listFilesBySpaceId(space.id, function (list) {
@@ -1115,10 +1368,17 @@
             });
         },
 
-        // get a list of all resources in the Vault
+        /**
+         * Returns the names list of all resources in the Vault
+         * @param cb
+         * @returns resourceList or an error if it is not possible to access the Vault space
+         */
         listVaultNames: function (cb) {
-            //counter_listVaultNames++;
-            //console.log("counter_listVaultNames " + counter_listVaultNames);
+            if (debugging) {
+                counter_listVaultNames++;
+                console.log("counter_listVaultNames " + counter_listVaultNames);
+            }
+
             var nameList = [];
             ils.listVault(function (resourceList) {
                 if (!resourceList.error) {
@@ -1132,10 +1392,16 @@
             });
         },
 
-        // get a list of all resources in the Configuration
+        /**
+         * Gets a list of all resources in the Configuration [Deprecated]
+         * @param cb
+         */
         listConfigurationNames: function (cb) {
-            //counter_listConfigurationNames++;
-            //console.log("counter_listConfigurationNames " + counter_listConfigurationNames);
+            if (debugging) {
+                counter_listConfigurationNames++;
+                console.log("counter_listConfigurationNames " + counter_listConfigurationNames);
+            }
+
             var nameList = [];
             ils.listConfiguration(function (resourceList) {
                 if (!resourceList.error) {
@@ -1149,10 +1415,17 @@
             });
         },
 
-        // get a list of all resources in the Vault including all the metadata extracted from the actions
+        /**
+         * Gets a list of all resources in the Vault space of the current ILS
+         * @param cb
+         * @returns resourceList or an error if it is not possible to access the Vault space
+         */
         listVaultExtended: function (cb) {
-            //counter_listVaultExtended++;
-            //console.log("counter_listVaultExtended " + counter_listVaultExtended);
+            if (debugging) {
+                counter_listVaultExtended++;
+                console.log("counter_listVaultExtended " + counter_listVaultExtended);
+            }
+
             var error = {"error": "No resource available in the Vault."};
             ils.getVault(function (vault) {
                 osapi.documents.get({contextId: vault.id, contextType: "@space"}).execute(function (resources) {
@@ -1166,10 +1439,18 @@
         },
 
 
-        // get a list of all resources in the Vault (including all the metadata extracted from the actions) based on the VaultId
+        /**
+         * Gets a list of all resources in the Vault based on the VaultId
+         * @param vaultId
+         * @param cb
+         * @returns resourceList or an error if it is not possible to access the Vault space
+         */
         listVaultExtendedById: function (vaultId, cb) {
-            //counter_listVaultExtendedById++;
-            //console.log("counter_listVaultExtendedById " + counter_listVaultExtendedById);
+            if (debugging) {
+                counter_listVaultExtendedById++;
+                console.log("counter_listVaultExtendedById " + counter_listVaultExtendedById);
+            }
+
             var error = {"error": "No resource available in the Vault."};
             if (vaultId && vaultId != "") {
                 osapi.documents.get({contextId: vaultId, contextType: "@space"}).execute(function (resources) {
@@ -1201,8 +1482,11 @@
         filterVault: function (vaultId, userId, appId, objectType,
                                creationDateFrom, creationDateTo, lastModificationDateFrom, lastModificationDateTo,
                                cb) {
-            //counter_filterVault++;
-            //console.log("counter_filterVault " + counter_filterVault);
+            if (debugging) {
+                counter_filterVault++;
+                console.log("counter_filterVault " + counter_filterVault);
+            }
+
             var error = {"error": "No resource available in the Vault."};
 
             if (vaultId) {
@@ -1242,10 +1526,22 @@
             }
         },
 
-        // logs the action based on objectId, objectType, objectName, spaceId, spaceName, actionType
+        /**
+         * Logs the action based on objectId, objectType, objectName, spaceId, spaceName, actionType
+         * @param objectId
+         * @param objectType
+         * @param objectName
+         * @param spaceId
+         * @param spaceName
+         * @param actionType
+         * @param cb
+         */
         logAction: function (objectId, objectType, objectName, spaceId, spaceName, actionType, cb) {
-            //counter_logAction++;
-            //console.log("counter_logAction " + counter_logAction);
+            if (debugging) {
+                counter_logAction++;
+                console.log("counter_logAction " + counter_logAction);
+            }
+
             var params = {
                 "userId": "@viewer",
                 "groupId": "@self",
@@ -1290,10 +1586,18 @@
 
         },
 
-        // get the action of adding the resource in the Vault based on resourceId and vaultId
+        /**
+         * Gets the actions related to a resource in the Vault based on resourceId and vaultId
+         * @param vaultId
+         * @param resourceId
+         * @param cb
+         */
         getAction: function (vaultId, resourceId, cb) {
-            //counter_getAction++;
-            //console.log("counter_getAction " + counter_getAction);
+            if (debugging) {
+                counter_getAction++;
+                console.log("counter_getAction " + counter_getAction);
+            }
+
             var error;
             var params = {
                 contextId: vaultId,

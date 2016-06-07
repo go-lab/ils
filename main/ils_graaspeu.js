@@ -101,7 +101,7 @@
 
     ils = {
         /**
-         * Returns the nickname of the student who is currently using the ils
+         * Returns an object with the id and the displayname of the student who is currently using the ils
          * @param cb
          */
         getCurrentUser: function (cb) {

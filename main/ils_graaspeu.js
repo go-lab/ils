@@ -51,6 +51,9 @@
 
         target: {},
 
+        "hasAngeLA": null,
+        "hasAngeLO": null,
+
         "storageId": null,
         "storageType": null
 
@@ -572,11 +575,17 @@
                 console.log("counter_getApp " + counter_getApp);
             }
 
-            osapi.apps.get({contextId: "@self"}).execute(function (response) {
+            var params = {
+                initialize: true
+            };
+
+            osapi.apps.get({contextId: "@self", params: params}).execute(function (response) {
                 if (!response.error && response.id) {
                     context.generator.url = response.appUrl;
                     context.generator.id = response.id;
                     context.generator.displayName = response.displayName;
+                    context.hasAngeLA = (response.hasAngeLA) ? response.hasAngeLA : false;
+                    context.hasAngeLO = (response.hasAngeLO) ? response.hasAngeLO : false;
                     if (ils.identifyContext() != context_standalone_ils){
                         if (response.userMemberType === "owner" || response.userMemberType === "contributor"){
                             context.actor.objectType = user_editor;

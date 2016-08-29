@@ -593,8 +593,6 @@
                     context.generator.url = response.appUrl;
                     context.generator.id = response.id;
                     context.generator.displayName = response.displayName;
-                    context.hasAngeLA = (response.hasAngeLA) ? response.hasAngeLA : false;
-                    context.hasAngeLO = (response.hasAngeLO) ? response.hasAngeLO : false;
                     if (ils.identifyContext() != context_standalone_ils){
                         if (response.userMemberType === "owner" || response.userMemberType === "contributor"){
                             context.actor.objectType = user_editor;
@@ -821,7 +819,7 @@
                                 context.provider.hidden = (context_ils.hidden) ? (context_ils.hidden) : false;
                                 context.provider.visibility = (context_ils.visLevel) ? (context_ils.visLevel) : null;
                                 context.provider.ilsHasAngeLA = (context_ils.hasAngeLA) ? context_ils.hasAngeLA : false;
-                                context.provider.ilshasAngeLO = (context_ils.hasAngeLO) ? context_ils.hasAngeLO : false;
+                                context.provider.ilsHasAngeLO = (context_ils.hasAngeLO) ? context_ils.hasAngeLO : false;
                                 return cb(true);
                             } else {
                                 console.log("The app is not located in an ILS or in one of its phases.");

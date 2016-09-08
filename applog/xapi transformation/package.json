@@ -1,0 +1,10 @@
+{
+  "name": "xAPITransformer",
+  "version": "0.0.4",
+  "description": "",
+  "main": "transformToXAPI.js",
+  "author": "Sven Manske",
+  "dependencies": {
+    "moment-timezone":"0.5.4"
+  }
+}

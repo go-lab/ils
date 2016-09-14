@@ -1,0 +1,8 @@
+{
+  "name": "golabz-ils",
+  "version": "0.0.1",
+  "description": "",
+  "dependencies": {
+    "moment-timezone":"0.5.4"
+  }
+}

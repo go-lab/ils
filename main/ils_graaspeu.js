@@ -30,29 +30,38 @@
         actor: {
             "objectType": "person",
             "id": null,
-            "displayName": null
+            "displayName": null,
+            "lang": null
         },
         generator: {
             "objectType": "application",
             "url": (typeof gadgets != "undefined") ? gadgets.util.getUrlParameters().url : window.location.href,
             "id": null,
-            "displayName": null
+            "displayName": null,
+            "hidden": null,
+            "visibility": null,
+            "configuration": null
         },
 
         provider: {
             "objectType": context_preview,
             "url": window.location.href,
             "id": null,
+            "lang": null,
             "displayName": null,
+            "hidden": null,
+            "ilsHasAngeLA": null,
+            "ilsHasAngeLO": null,
             "inquiryPhaseId": "undefined",
             "inquiryPhaseName": "undefined",
-            "inquiryPhase": "undefined"
+            "inquiryPhase": "undefined",
+            "inquiryHidden": "undefined",
+            "inquiryVisibility": "undefined",
+            "inquiryPhaseHasAngeLA": null,
+            "inquiryPhaseHasAngeLO": null
         },
 
         target: {},
-
-        "hasAngeLA": null,
-        "hasAngeLO": null,
 
         "storageId": null,
         "storageType": null
@@ -63,7 +72,7 @@
     Debugging vars counting the number of calls to each function.
     Set debugging as true to print the number of calls.
      */
-    var debugging = false;
+    var debugging = true;
     var counter_getCurrentUser = 0;
     var counter_identifyContext = 0;
     var counter_getParent = 0;
@@ -103,6 +112,44 @@
     var counter_getAction = 0;
 
     ils = {
+
+        /**
+         * Returns the nickname of the logged user
+         *
+         */
+        getLoggedUser: function (cb) {
+            var logged_user;
+            osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
+                if (viewer.id && viewer.displayName) {
+                    logged_user = {
+                        "id": viewer.id,
+                        "displayName": viewer.displayName
+                    }
+                    return cb(logged_user);
+                } else {
+                    error = {
+                        "error": "The username couldn't be obtained.",
+                        "log": viewer.error
+                    };
+                    return cb(error);
+                }
+            });
+        },
+
+        /**
+         * Returns the reviewer in case of existing
+         * @param cb
+         * @returns reviewer
+         */
+        getReviewer: function (cb) {
+            var reviewer;
+            if (gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
+                var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
+                reviewer = (view_params) ? view_params.reviewer : null;
+                return cb(reviewer);
+            }
+        },
+
         /**
          * Returns an object with the id and the displayname of the student who is currently using the ils
          * @param cb
@@ -115,46 +162,12 @@
             var error = {"error": "The username couldn't be obtained."};
             var context_type = ils.identifyContext();
 
+
+
             //get the user logged in the Graasp
-            function getLoggedUser (cb) {
-                var logged_user;
-                osapi.people.get({userId: '@viewer'}).execute(function (viewer) {
-                    if (viewer.id && viewer.displayName) {
-                        logged_user = {
-                            "id": viewer.id,
-                            "displayName": viewer.displayName
-                        }
-                        return cb(logged_user);
-                    } else {
-                        error = {
-                            "error": "The username couldn't be obtained.",
-                            "log": viewer.error
-                        };
-                        return cb(error);
-                    }
-                });
-            }
-
-            /**
-             * Returns the reviewer in case of existing
-             * @param cb
-             * @returns reviewer
-             */
-            function getReviewer (cb) {
-                var reviewer;
-                if (gadgets.util.getUrlParameters()['view-params'] && JSON.parse(gadgets.util.getUrlParameters()['view-params'])) {
-                    var view_params = JSON.parse(gadgets.util.getUrlParameters()['view-params']);
-                    reviewer = (view_params) ? view_params.reviewer : null;
-                    return cb(reviewer);
-                }
-            }
-
-            /**
-             * Returns the nickname of the logged user
-             */
-            getLoggedUser(function(logged_user){
+            ils.getLoggedUser(function(logged_user){
                 if (!logged_user.error) {
-                    getReviewer(function (reviewer) {
+                    ils.getReviewer(function (reviewer) {
                         //reviewer accessing the ILS
                         if (reviewer && reviewer.id && reviewer.username) {
                             // the reviewer will be the actor of any action
@@ -575,17 +588,11 @@
                 console.log("counter_getApp " + counter_getApp);
             }
 
-            var params = {
-                initialize: true
-            };
-
-            osapi.apps.get({contextId: "@self", params: params}).execute(function (response) {
+            osapi.apps.get({contextId: "@self"}).execute(function (response) {
                 if (!response.error && response.id) {
                     context.generator.url = response.appUrl;
                     context.generator.id = response.id;
                     context.generator.displayName = response.displayName;
-                    context.hasAngeLA = (response.hasAngeLA) ? response.hasAngeLA : false;
-                    context.hasAngeLO = (response.hasAngeLO) ? response.hasAngeLO : false;
                     if (ils.identifyContext() != context_standalone_ils){
                         if (response.userMemberType === "owner" || response.userMemberType === "contributor"){
                             context.actor.objectType = user_editor;
@@ -716,15 +723,171 @@
             if (context.actor.id && context.generator.id && context.provider.id && context.storageId) {
                 return cb(context);
             } else {
-                ils.getCurrentUser(function (viewer) {
-                   ils.getApp(function (app) {
-                        ils.getIls(function (space, subspace) {
-                            ils.getVaultByIlsId(space.id, function (vault) {
-                                return cb(context);
+                osapi.apps.get({contextId: "@self", params: {initialize:true}}).execute(function (response) {
+                    if (response && !response.error) {
+                        var context_application = (response.application) ? response.application : null;
+                        var context_ils = (response.ils) ? response.ils : null;
+                        var context_phase = (response.phase) ? response.phase : null;
+                        var context_user = (response.user) ? response.user : null;
+                        var context_vaults = (response.vaults) ? response.vaults : null;
+                        var context_type = ils.identifyContext();
+
+                        function getContextUser(cb){
+                            if (context_user){
+                                /*
+                                 * authoring view: returns the current user
+                                 * review mode: returns the standalone user
+                                 */
+                                //get the user logged in the Graasp
+                                var logged_user = {
+                                    "id": (context_user._id) ? context_user._id : null,
+                                    "displayName": (context_user.name) ? context_user.name : null
+                                }
+
+                                ils.getReviewer(function (reviewer) {
+                                    //reviewer accessing the ILS
+                                    if (reviewer && reviewer.id && reviewer.username) {
+                                        // the reviewer will be the actor of any action
+                                        context.actor.id = reviewer.id;
+                                        context.actor.displayName = reviewer.username;
+                                        context.actor.objectType = user_editor;
+
+                                        // the contextual user will represent the student
+                                        context.contextualActor = {
+                                            "id": logged_user.id,
+                                            "displayName": logged_user.displayName,
+                                            "objectType": user_student
+                                        };
+
+                                        //real or temporary users
+                                    } else if (context_type == context_graasp || context_type == context_standalone_ils) {
+                                        context.actor.id = logged_user.id;
+                                        context.actor.displayName = logged_user.displayName;
+                                        context.actor.objectType = (context_type == context_standalone_ils) ? user_student : "person";
+                                        context.actor.lang = (context_user.language) ? (context_user.language) : null;
+
+                                    } else {
+                                        console.log("There was an error obtaining the user(s).");
+                                        console.log("logged_user\n" + logged_user);
+                                        console.log("reviewer\n" + reviewer);
+                                        console.log("context_type\n" + context_type);
+                                    }
+                                });
+                                return cb(true);
+
+                            } else {
+                                console.log("The user could not be obtained.");
+                                return cb(false);
+                            }
+                        }
+
+                        function getContextApplication(cb) {
+                            if (context_application) {
+                                context.generator.url = (context_application.url) ? (context_application.url) : null;
+                                context.generator.id = (context_application._id) ? (context_application._id) : null;
+                                context.generator.displayName = (context_application.name) ? (context_application.name) : null;
+                                context.generator.hidden = (context_application.hidden) ? (context_application.hidden) : false;
+                                context.generator.visibility = (context_application.visLevel) ? (context_application.visLevel) : null;
+                                context.generator.configuration = (context_application.metadata && context_application.metadata.settings) ? context_application.metadata.settings : null;
+
+                                /*
+                                 * authoring view: owner, contributor, observer or null if the user is not a member of the space
+                                 * review mode: observer
+                                 */
+                                if (context_type != context_standalone_ils) {
+                                    if (context_application.userMemberType === "owner" || context_application.userMemberType === "contributor") {
+                                        context.actor.objectType = user_editor;
+                                    } else {
+                                        context.actor.objectType = user_viewer;
+                                    }
+                                }
+                                return cb(true);
+                            } else {
+                                console.log("The app data couldn't be obtained.");
+                                return cb(false);
+                            }
+                        }
+
+                        function getContextIls(cb) {
+                            if (context_ils) {
+                                context.provider.objectType = (context_ils.metadata && context_ils.metadata.type) ? context_ils.metadata.type : null;
+                                context.provider.id = (context_ils._id) ? context_ils._id : null;
+                                context.provider.url = (context_ils._id) ? "http://graasp.eu/spaces/" + context_ils._id : null;
+                                context.provider.displayName = (context_ils.name) ? context_ils.name : null;
+                                context.provider.ilsRef = (context_ils.ilsRef) ? context_ils.ilsRef : null;
+                                context.provider.lang = (context_ils.lang) ? context_ils.lang : null;
+                                context.provider.hidden = (context_ils.hidden) ? (context_ils.hidden) : false;
+                                context.provider.visibility = (context_ils.visLevel) ? (context_ils.visLevel) : null;
+                                context.provider.ilsHasAngeLA = (context_ils.hasAngeLA) ? context_ils.hasAngeLA : false;
+                                context.provider.ilsHasAngeLO = (context_ils.hasAngeLO) ? context_ils.hasAngeLO : false;
+                                return cb(true);
+                            } else {
+                                console.log("The app is not located in an ILS or in one of its phases.");
+                                return cb(false);
+                            }
+                        }
+
+                        function getContextPhase(cb) {
+                            if (context_phase) {
+                                context.provider.inquiryPhase = (context_phase.metadata && context_phase.metadata.type) ? context_phase.metadata.type : null;
+                                context.provider.inquiryPhaseId = (context_phase._id) ? context_phase._id : null;
+                                context.provider.inquiryPhaseName = (context_phase.name) ? context_phase.name : null;
+                                context.provider.inquiryHidden = (context_phase.hidden) ? (context_phase.hidden) : false;
+                                context.provider.inquiryVisibility = (context_phase.visLevel) ? (context_phase.visLevel) : null;
+                                context.provider.inquiryPhaseHasAngeLA = (context_phase.hasAngeLA) ? context_phase.hasAngeLA : false;
+                                context.provider.inquiryPhaseHasAngeLO = (context_phase.hasAngeLO) ? context_phase.hasAngeLO : false;
+                                return cb(true);
+                            } else {
+                                console.log("The app is not located in an ILS phase.");
+                                return cb(false);
+                            }
+                        }
+
+                        function getContextVaults(cb) {
+                            if (context_vaults) {
+                                if (context_vaults.length == 1) {
+                                    var vault = context_vaults[0];
+                                    context.storageId = (context_vaults[0]._id) ? context_vaults[0]._id : null;
+                                    //context.storageType = (context_vaults[0].metadata && context_vaults[0].metadata.type) ? context_vaults[0].metadata.type : null;
+                                    context.storageType = (context_vaults[0].metadata && context_vaults[0].metadata.type) ? "folder" : null;
+                                    return cb(true);
+                                } else {
+                                    if (context_vaults.length == 0) {
+                                        console.log("There is no Vault available.");
+                                    } else {
+                                        console.log("There is more that one Vault available.");
+                                    }
+                                    return cb(false);
+                                }
+
+                            } else {
+                                console.log("There is no Vault available.");
+                                return cb(false);
+                            }
+                        }
+
+                        getContextUser(function () {
+                            getContextApplication(function () {
+                                getContextIls(function () {
+                                    getContextPhase(function () {
+                                        getContextVaults(function () {
+                                            return cb(context);
+                                        });
+                                    });
+                                });
                             });
                         });
-                    });
+
+
+                    } else {
+                        error = {
+                            "error": "No context was obtained",
+                            "log": (response.error) ? response.error : null
+                        };
+                        return cb(error);
+                    }
                 });
+
             }
         },
 
@@ -1019,19 +1182,25 @@
 
             var error = {};
 
-            ils.getApp(function (app) {
-                if (app.metadata && app.metadata.settings) {
-                    ils.getIlsId( function(ilsId) { //phaseId, phaseType, phaseName
-                        return cb(ils.getFixedConfiguration(app.id, app.displayName, app.appUrl, app.metadata.settings, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
-                    });
+            function obtainConfiguration(){
+                if (context.generator.configuration) {
+                    return (ils.getFixedConfiguration(context.generator.id, context.generator.displayName, context.generator.url, context.generator.configuration, context.provider.inquiryPhaseId, context.provider.inquiryPhase, context.provider.inquiryPhaseName));
                 } else {
                     error = {
                         "error": "The configuration could not be obtained.",
                         "log": app.error || ""
                     };
-                    return cb(error);
+                    return (error);
                 }
-            });
+            }
+
+            if(context.generator.id){
+                return cb(obtainConfiguration());
+            } else {
+                ils.getAppContextParameters(function(contextParameters){
+                    return cb(obtainConfiguration());
+                });
+            }
 
         },
 
@@ -1126,21 +1295,21 @@
          */
         getFixedConfiguration: function (appId, appName, appUrl, appSettings, phaseId, phaseType, phaseName) {
             try {
-                var intrinsicMetadada = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
+                var intrinsicMetadata = (typeof appSettings === 'string') ? JSON.parse(appSettings) : appSettings;
 
                 var content;
                 try {
-                    content = JSON.parse(intrinsicMetadada.content);
+                    content = JSON.parse(intrinsicMetadata.content);
                 } catch (error) {
-                    content = intrinsicMetadada.content
+                    content = intrinsicMetadata.content
                 }
 
                 var configuration = {
                     "metadata": {
-                        "actor": intrinsicMetadada.actor || {},
-                        "id": intrinsicMetadada.id || "",
-                        "published": intrinsicMetadada.published || "",
-                        "target": intrinsicMetadada.target || {}
+                        "actor": intrinsicMetadata.actor || {},
+                        "id": intrinsicMetadata.id || "",
+                        "published": intrinsicMetadata.published || "",
+                        "target": intrinsicMetadata.target || {}
                     },
                     "content": content
                 };

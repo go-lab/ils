@@ -398,7 +398,7 @@
             }
             var error;
 
-            function obtainIlsStructure(){
+            function obtainIlsStructure(cb){
                 osapi.apps.get({contextId: context.provider.ilsRef, params: {structure:true}}).execute(function (structure) {
                     if (structure) {
                         ilsStructure.id = context.provider.id;
@@ -445,7 +445,7 @@
                                 ilsStructure.apps.push(app);
                             }
                         }
-                        return cb(ilsStructure);
+                        return cb(true);
                     } else {
                         error = {
                             "error": "The space is not available.",
@@ -461,10 +461,14 @@
                 return cb(ilsStructure);
             }else if(!context.provider.ilsRef){
                 ils.getAppContextParameters(function(contextParameters){
-                    return cb(obtainIlsStructure());
+                    obtainIlsStructure(function () {
+                        return cb(ilsStructure);
+                    });
                 });
             } else {
-                return cb(obtainIlsStructure());
+                obtainIlsStructure(function () {
+                    return cb(ilsStructure);
+                });
             }
 
         },

@@ -47,6 +47,7 @@
             "objectType": context_preview,
             "url": window.location.href,
             "id": null,
+            "ilsRef": null,
             "lang": null,
             "displayName": null,
             "hidden": null,
@@ -67,6 +68,16 @@
         "storageType": null
 
     };
+    /*
+    ILS structure
+    */
+    var ilsStructure = {
+        "id" : null,
+        "url" : null,
+        "displayName" : null,
+        "phases" : [],
+        "apps" : []
+    };
 
     /*
     Debugging vars counting the number of calls to each function.
@@ -78,6 +89,7 @@
     var counter_getParent = 0;
     var counter_getParentInquiryPhase = 0;
     var counter_getIls = 0;
+    var counter_getIlsStructure = 0;
     var counter_getIlsId = 0;
     var counter_getSpaceBySpaceId = 0;
     var counter_getItemsBySpaceId = 0;
@@ -373,6 +385,92 @@
                     return cb(error);
                 }
             });
+        },
+
+        /**
+         * Returns the spaceId of the ILS and the parent space of the current app and sets the context.provider attributes
+         * @param cb
+         */
+        getIlsStructure: function (cb) {
+            if (debugging) {
+                counter_getIlsStructure++;
+                console.log("counter_getIlsStructure " + counter_getIlsStructure);
+            }
+            var error;
+
+            function obtainIlsStructure(cb){
+                osapi.apps.get({contextId: context.provider.ilsRef, params: {structure:true}}).execute(function (structure) {
+                    if (structure) {
+                        ilsStructure.id = context.provider.id;
+                        ilsStructure.url = context.provider.url;
+                        ilsStructure.displayName = context.provider.displayName
+
+                        if (structure.phases) {
+                            for (i = 0; i < structure.phases.length; i++) {
+                                var p = structure.phases[i];
+                                var phase = {
+                                    id: p._id ? p._id : null,
+                                    type: (p.metadata && p.metadata.type) ? p.metadata.type : null,
+                                    displayName: p.name ? p.name : null,
+                                    visibilityLevel: p.visLevel ? p.visLevel : null,
+                                    apps: []
+                                }
+                                if (p.items) {
+                                    for (j = 0; j < p.items.length; j++) {
+                                        var a = p.items[j];
+                                        var app = {
+                                            id: a._id ? a._id : null,
+                                            displayName: a.name ? a.name : null,
+                                            url: a.url ? a.url : null,
+                                            itemType: "Application",
+                                            appType: "WidgetGadget"
+                                        }
+                                        phase.apps.push(app);
+                                    }
+                                }
+                                ilsStructure.phases.push(phase);
+                            }
+                        }
+
+                        if (structure.items) {
+                            for (k = 0; k < structure.items.length; k++) {
+                                var a = structure.items[k];
+                                var app = {
+                                    id: a._id ? a._id : null,
+                                    displayName: a.name ? a.name : null,
+                                    url: a.url ? a.url : null,
+                                    itemType: "Application",
+                                    appType: "WidgetGadget"
+                                }
+                                ilsStructure.apps.push(app);
+                            }
+                        }
+                        return cb(true);
+                    } else {
+                        error = {
+                            "error": "The space is not available.",
+                            "log": space.error
+                        };
+                        return cb(error);
+                    }
+                });
+            }
+
+
+            if (ilsStructure.id) {
+                return cb(ilsStructure);
+            }else if(!context.provider.ilsRef){
+                ils.getAppContextParameters(function(contextParameters){
+                    obtainIlsStructure(function () {
+                        return cb(ilsStructure);
+                    });
+                });
+            } else {
+                obtainIlsStructure(function () {
+                    return cb(ilsStructure);
+                });
+            }
+
         },
 
         /**

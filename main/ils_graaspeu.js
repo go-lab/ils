@@ -445,21 +445,20 @@
                                 ilsStructure.apps.push(app);
                             }
                         }
-                        debugger;
-                        return (ilsStructure);
+                        return cb(ilsStructure);
                     } else {
                         error = {
                             "error": "The space is not available.",
                             "log": space.error
                         };
-                        return (error);
+                        return cb(error);
                     }
                 });
             }
 
 
             if (ilsStructure.id) {
-                return (ilsStructure);
+                return cb(ilsStructure);
             }else if(!context.provider.ilsRef){
                 ils.getAppContextParameters(function(contextParameters){
                     return cb(obtainIlsStructure());

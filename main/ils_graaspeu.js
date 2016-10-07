@@ -83,7 +83,7 @@
     Debugging vars counting the number of calls to each function.
     Set debugging as true to print the number of calls.
      */
-    var debugging = true;
+    var debugging = false;
     var counter_getCurrentUser = 0;
     var counter_identifyContext = 0;
     var counter_getParent = 0;

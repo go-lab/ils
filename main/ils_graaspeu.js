@@ -1901,6 +1901,42 @@
                     return cb(error);
                 }
             });
+        },
+
+        /** Logs a given ActivityStream object via Graasp. This is the central logging function for apps' action logging
+         * (whichever apps make use of the UT App API).
+         * Future replacements of the call osapi.activitystreams.create(...) can be done here.
+         * Due to the somewhat unpredictable behavior of Shindig in this respect, no error is thrown, even if the call
+         * appeared to be unsuccessful. Whatch out on the console for potential error messages.
+         * @param activityStreamObject The ActivityStream object that should be logged via Graasp.
+         * */
+        logToGraasp: function(activityStreamObject) {
+            var logObject, shortActionLogDescription;
+            if (osapi !== void 0) {
+                logObject = {
+                    "userId": "@viewer",
+                    "groupId": "@self",
+                    activity: activityStreamObject
+                };
+                shortActionLogDescription = activityStreamObject.actor.displayName + "-"+activityStreamObject.verb + "-" + activityStreamObject.object.objectType;
+                if (debugging) {
+                    console.log("ActionLogger: logging to Graasp: " + shortActionLogDescription);
+                }
+                return osapi.activitystreams.create(logObject).execute((function() {
+                    return function(response) {
+                        if (response.id !== void 0) {
+                            if (debugging) {
+                                console.log("ActionLogger: sucessfully logged via osapi, response.id: " + response.id);
+                            }
+                        } else {
+                            console.warn("ActionLogger: something went wrong when sending log action (" + shortActionLogDescription + ") via osapi, response:");
+                            console.warn(response);
+                        }
+                    };
+                })(this));
+            } else {
+                console.warn("ActionLogger: can't log, osapi is undefined.");
+            }
         }
     };
 

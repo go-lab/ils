@@ -236,6 +236,11 @@
             } else if (document.referrer.indexOf("ils") > -1) {
                 return (context_standalone_ils);
 
+                // http://localhost:9091/pages/ OR http://graasp.eu/pages/ OR
+                // possibly http://pages.graasp.eu/
+            } else if (document.referrer.indexOf("pages") > -1) {
+                return (context_standalone_ils);
+
                 // http://localhost:9091/applications/    http://localhost:9091/spaces/
                 // http://graasp.eu/spaces/applications/  http://graasp.eu/spaces/spaces/
             } else if (document.referrer.indexOf("graasp.eu") > -1 || document.referrer.indexOf("localhost") > -1) {

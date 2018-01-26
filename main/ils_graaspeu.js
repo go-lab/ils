@@ -562,8 +562,8 @@
 
             var error;
             var filters = {};
-            filters["_type"] = "Space"; // Remove after migration
-            filters["category"] = "Space";
+            filters["$and"] = [{"$or": [{_type: "Space"}, {category: "Space"}]}]; // Remove after migration
+            // filters["category"] = "Space"; // Uncomment after migration
             osapi.spaces.get({contextId: spaceId, contextType: "@space", filters: filters}).execute(function (spaces) {
                 if (!spaces.error && spaces.list) {
                     return cb(spaces.list);
@@ -590,8 +590,8 @@
 
             var error;
             var filters = {};
-            filters["_type"] = "Application"; // Remove after migration
-            filters["category"] = "Application";
+            filters["$and"] = [{"$or": [{_type: "Application"}, {category: "Application"}]}]; // Remove after migration
+            // filters["category"] = "Application"; // Uncomment after migration
             osapi.spaces.get({contextId: spaceId, contextType: "@space", filters: filters}).execute(function (apps) {
                 if (!apps.error && apps.list) {
                     return cb(apps.list);
@@ -653,8 +653,8 @@
             var error;
             if (ilsId && ilsId != "") {
                 var filters = {};
-                filters["_type"] = "Space"; // Remove after migration
-                filters["category"] = "Space";
+                filters["$and"] = [{"$or": [{_type: "Space"}, {category: "Space"}]}]; // Remove after migration
+                // filters["category"] = "Space"; // Uncomment after migration
                 filters["metadata.type"] = "Vault";
                 osapi.spaces.get({contextId: ilsId, contextType: "@space", filters: filters}).execute(function (spaces) {
                     if (!spaces.error && spaces.list) {
